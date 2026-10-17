@@ -2,14 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, BookOpen, CalendarDays, CircleUser, LayoutList } from 'lucide-react';
+import { Bell, CalendarDays, CircleUser, LayoutList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const NAVEGACION = [
   { href: '/dashboard', etiqueta: 'Licitaciones', icono: LayoutList, prefijos: ['/dashboard', '/licitaciones'] },
   { href: '/calendario', etiqueta: 'Calendario', icono: CalendarDays, prefijos: ['/calendario'] },
   { href: '/notificaciones', etiqueta: 'Notificaciones', icono: Bell, prefijos: ['/notificaciones'] },
-  { href: '/como-funciona', etiqueta: 'Cómo funciona', icono: BookOpen, prefijos: ['/como-funciona'] },
   { href: '/cuenta', etiqueta: 'Cuenta', icono: CircleUser, prefijos: ['/cuenta'] },
 ];
 

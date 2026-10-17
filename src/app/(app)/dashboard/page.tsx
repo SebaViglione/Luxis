@@ -10,7 +10,8 @@ import { Filtros } from '@/components/licitaciones/filtros';
 import { filtrosDesdeUrl } from '@/components/licitaciones/filtros-url';
 import CountUp from '@/components/reactbits/count-up';
 import { buttonVariants } from '@/components/ui/button';
-import { Cargando } from '@/components/ui/cargando';
+import { ListaCargando } from '@/components/licitaciones/lista-cargando';
+import { Skeleton } from '@/components/ui/skeleton';
 import { EstadoVacio } from '@/components/ui/estado-vacio';
 import { BuscandoLicitaciones } from '@/components/licitaciones/buscando-licitaciones';
 import { db, schema } from '@/db';
@@ -105,12 +106,12 @@ export default function DashboardPage({ searchParams }: PageProps<'/dashboard'>)
         <AnalizarUrl />
       </div>
       <div data-guia="filtros">
-        <Suspense fallback={<div className="h-24 rounded-md border bg-card" aria-hidden />}>
+        <Suspense fallback={<Skeleton className="h-[9.5rem] w-full rounded-md" />}>
           <FiltrosConOpciones />
         </Suspense>
       </div>
       <div data-guia="lista">
-        <Suspense fallback={<Cargando texto="Buscando licitaciones para tu empresa…" />}>
+        <Suspense fallback={<ListaCargando />}>
           <Lista searchParams={searchParams} />
         </Suspense>
       </div>

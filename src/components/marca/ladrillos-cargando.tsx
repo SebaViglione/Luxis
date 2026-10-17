@@ -15,7 +15,8 @@ const ORDEN = [
 export function LadrillosCargando({ className }: { className?: string }) {
   const reducido = useReducedMotion();
   return (
-    <svg viewBox="0 0 24 24" aria-hidden className={cn('size-6 shrink-0 overflow-visible text-primary', className)}>
+    // viewBox con margen arriba: cada ladrillo baja 3 unidades al apoyarse y no se corta.
+    <svg viewBox="-1 -4 26 29" aria-hidden className={cn('size-6 shrink-0 text-primary', className)}>
       {ORDEN.map((l, i) => (
         <motion.rect
           key={`${l.x}-${l.y}`}
@@ -26,7 +27,8 @@ export function LadrillosCargando({ className }: { className?: string }) {
           rx={1.2}
           fill="currentColor"
           initial={false}
-          animate={reducido ? { opacity: 0.7 } : { opacity: [0.12, 1, 1, 0.12], y: [l.y - 3, l.y, l.y, l.y] }}
+          // `y` en motion es un desplazamiento (transform), no la coordenada del ladrillo.
+          animate={reducido ? { opacity: 0.7 } : { opacity: [0.12, 1, 1, 0.12], y: [-3, 0, 0, 0] }}
           transition={reducido ? undefined : { duration: 1.8, times: [0, 0.18, 0.8, 1], delay: i * 0.18, repeat: Infinity, repeatDelay: 0.25, ease: [0.22, 1, 0.36, 1] }}
         />
       ))}

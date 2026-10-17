@@ -28,7 +28,6 @@ const PASOS: Paso[] = [
   { selector: 'header button[aria-label^="Notificaciones"]', titulo: 'Avisos', texto: 'Nuevos matches, cierres y visitas que se acercan y aclaraciones del organismo.' },
   { selector: 'header button[title^="Trae novedades"]', titulo: 'Actualizar', texto: 'Trae lo último publicado en ARCE y recalcula tus matches. Tarda alrededor de un minuto.' },
   { selector: 'aside a[href="/calendario"]', titulo: 'Calendario', texto: 'Consultas, visitas y aperturas de lo que guardaste, ordenadas por fecha.' },
-  { selector: 'aside a[href="/como-funciona"]', titulo: 'Cómo funciona la IA', texto: 'Qué datos usamos, cómo decide y qué tan precisa es. Sin cajas negras.' },
   { titulo: 'Listo', texto: 'Empezá por la primera licitación de la lista. Si querés repasar, la guía está en el menú.' },
 ];
 

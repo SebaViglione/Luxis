@@ -19,7 +19,6 @@ const PREFIJOS_PROTEGIDOS = [
   '/licitaciones',
   '/calendario',
   '/notificaciones',
-  '/como-funciona',
   '/cuenta',
 ];
 
