@@ -38,10 +38,12 @@ export interface PerfilParaMatch {
 }
 
 export async function cargarPerfil(empresaId: string): Promise<PerfilParaMatch | null> {
-  const [e] = await db.select().from(schema.empresas).where(eq(schema.empresas.id, empresaId));
+  const [[e], prods, docs] = await Promise.all([
+    db.select().from(schema.empresas).where(eq(schema.empresas.id, empresaId)),
+    db.select().from(schema.empresaProductos).where(eq(schema.empresaProductos.empresaId, empresaId)),
+    db.select().from(schema.empresaDocumentos).where(eq(schema.empresaDocumentos.empresaId, empresaId)),
+  ]);
   if (!e) return null;
-  const prods = await db.select().from(schema.empresaProductos).where(eq(schema.empresaProductos.empresaId, empresaId));
-  const docs = await db.select().from(schema.empresaDocumentos).where(eq(schema.empresaDocumentos.empresaId, empresaId));
   return {
     empresaId, nombre: e.nombre, departamento: e.departamento, zonas: e.zonasEntrega ?? [], capacidad: e.capacidadNotas,
     productos: prods.map((p) => `${p.nombre}${p.unidad ? ` (${p.unidad})` : ''}`),
@@ -51,10 +53,14 @@ export async function cargarPerfil(empresaId: string): Promise<PerfilParaMatch |
 }
 
 async function contextoLicitacion(idCompra: string) {
-  const [l] = await db.select().from(schema.licitaciones).where(eq(schema.licitaciones.idCompra, idCompra));
+  const L = schema.licitaciones;
+  const [[l], items, [a]] = await Promise.all([
+    db.select({ tipoCompra: L.tipoCompra, numCompra: L.numCompra, anioCompra: L.anioCompra, organismo: L.organismo, unidadEjecutora: L.unidadEjecutora,
+      objeto: L.objeto, lugarEntrega: L.lugarEntrega, fechaTopeOfertas: L.fechaTopeOfertas }).from(L).where(eq(L.idCompra, idCompra)),
+    db.select().from(schema.licitacionItems).where(eq(schema.licitacionItems.idCompra, idCompra)).orderBy(schema.licitacionItems.nroItem),
+    db.select({ quePiden: schema.analisisLicitacion.quePiden }).from(schema.analisisLicitacion).where(eq(schema.analisisLicitacion.idCompra, idCompra)),
+  ]);
   if (!l) return null;
-  const items = await db.select().from(schema.licitacionItems).where(eq(schema.licitacionItems.idCompra, idCompra)).orderBy(schema.licitacionItems.nroItem);
-  const [a] = await db.select({ quePiden: schema.analisisLicitacion.quePiden }).from(schema.analisisLicitacion).where(eq(schema.analisisLicitacion.idCompra, idCompra));
   const fecha = l.fechaTopeOfertas?.toLocaleString('es-UY', { timeZone: 'America/Montevideo' }) ?? 'sin fecha';
   const lineas = items.slice(0, 80).map((i) => `  ${i.nroItem}. ${i.descArticulo} — ${i.cantPedida ?? '?'} ${i.unidad ?? ''}`.trimEnd());
   if (items.length > 80) lineas.push(`  … y ${items.length - 80} ítems más`);
@@ -92,8 +98,7 @@ export async function evaluarLicitacion(perfil: PerfilParaMatch, idCompra: strin
     set: { relevante: fila.relevante, confianza: fila.confianza, razon: fila.razon, itemsOfertables: fila.itemsOfertables, perfilVersion: fila.perfilVersion, updatedAt: fila.updatedAt },
   });
   if (fila.relevante) {
-    await calcularPrecios(idCompra).catch(() => null);
-    await calcularGapParaMatch(perfil.empresaId, idCompra).catch(() => null);
+    await Promise.all([calcularPrecios(idCompra).catch(() => null), calcularGapParaMatch(perfil.empresaId, idCompra).catch(() => null)]);
   }
   return { ...objeto, modelo: nombreModeloRapido };
 }

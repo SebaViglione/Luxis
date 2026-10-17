@@ -16,7 +16,8 @@
     "analizar:pendientes": "tsx scripts/analizar-pendientes.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "eval:matching": "tsx scripts/eval-matching.ts",
-    "recalcular:rubro": "tsx scripts/recalcular-rubro.ts"
+    "recalcular:rubro": "tsx scripts/recalcular-rubro.ts",
+    "backfill:vectores": "tsx scripts/backfill-vectores.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.82",

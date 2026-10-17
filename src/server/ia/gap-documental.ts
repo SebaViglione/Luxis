@@ -46,10 +46,12 @@ export function calcularGap(
 
 /** Recalcula el gap de un match con el análisis del pliego y la documentación actual de la empresa. */
 export async function calcularGapParaMatch(empresaId: string, idCompra: string) {
-  const [a] = await db.select({ req: schema.analisisLicitacion.requisitosDocumentales }).from(schema.analisisLicitacion).where(eq(schema.analisisLicitacion.idCompra, idCompra));
+  const [[a], [l], docs] = await Promise.all([
+    db.select({ req: schema.analisisLicitacion.requisitosDocumentales }).from(schema.analisisLicitacion).where(eq(schema.analisisLicitacion.idCompra, idCompra)),
+    db.select({ cierre: schema.licitaciones.fechaTopeOfertas }).from(schema.licitaciones).where(eq(schema.licitaciones.idCompra, idCompra)),
+    db.select().from(schema.empresaDocumentos).where(eq(schema.empresaDocumentos.empresaId, empresaId)),
+  ]);
   if (!a?.req) return null;
-  const [l] = await db.select({ cierre: schema.licitaciones.fechaTopeOfertas }).from(schema.licitaciones).where(eq(schema.licitaciones.idCompra, idCompra));
-  const docs = await db.select().from(schema.empresaDocumentos).where(eq(schema.empresaDocumentos.empresaId, empresaId));
   const r = calcularGap(a.req, docs, l?.cierre ?? null);
   await db.update(schema.matches).set({ gapDocumental: r.gap, estadoDocumental: r.estado, updatedAt: new Date() })
     .where(and(eq(schema.matches.empresaId, empresaId), eq(schema.matches.idCompra, idCompra)));

@@ -5,6 +5,7 @@ import { descargarArchivo } from './descargas';
 import { extraerTexto, extensionDe, decodificarTexto, type ArchivoExtraido } from './extraccion';
 import { clasificarArchivo, marcarRelevantes } from './clasificar';
 import { urlPliego, BASE_ARCE } from './normalizar';
+import { indexarParrafos } from '@/server/ia/vectores';
 
 const MAX_TEXTO = 400_000;
 
@@ -80,6 +81,8 @@ export async function procesarArchivos(idCompra: string): Promise<ResultadoArchi
     })));
   }
   await db.update(schema.licitaciones).set({ archivosProcesados: true, updatedAt: new Date() }).where(eq(schema.licitaciones.idCompra, idCompra));
+  // Párrafos + embeddings para la búsqueda híbrida (si falla, el texto completo sigue disponible).
+  await indexarParrafos(idCompra).catch((e) => console.warn('[indexarParrafos]', idCompra, (e as Error).message));
   return {
     archivos: clasificados.length, ok: clasificados.filter((x) => x.estado === 'ok').length,
     noSoportados: clasificados.filter((x) => x.estado === 'no_soportado').length, errores: clasificados.filter((x) => x.estado === 'error').length,

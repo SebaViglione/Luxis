@@ -11,6 +11,7 @@ async function main() {
   const sql = postgres(url, { prepare: false, max: 1 });
   try {
     await sql`create extension if not exists pg_trgm`;
+    await sql`create extension if not exists vector`;
     await sql`create index if not exists adjudicaciones_desc_trgm_idx on adjudicaciones using gin (desc_normalizada gin_trgm_ops)`;
     await sql`create index if not exists licitacion_items_desc_trgm_idx on licitacion_items using gin (desc_normalizada gin_trgm_ops)`;
     const t = await sql`select table_name from information_schema.tables where table_schema = 'public' order by 1`;

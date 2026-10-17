@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNotNull } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { modeloRapido, modeloFuerte, nombreModeloRapido, nombreModeloFuerte } from '@/lib/ia/modelos';
 import { generarObjeto } from '@/lib/ia/estructurado';
@@ -42,8 +42,9 @@ async function armarContexto(idCompra: string) {
   const [l] = await db.select().from(schema.licitaciones).where(eq(schema.licitaciones.idCompra, idCompra));
   if (!l) throw new Error(`Licitación ${idCompra} no encontrada`);
   const items = await db.select().from(schema.licitacionItems).where(eq(schema.licitacionItems.idCompra, idCompra)).orderBy(schema.licitacionItems.nroItem);
-  const archivos = (await db.select().from(schema.licitacionArchivos).where(eq(schema.licitacionArchivos.idCompra, idCompra)))
-    .filter((a) => a.relevante && a.texto)
+  const archivos = (await db.select({ nombre: schema.licitacionArchivos.nombre, categoria: schema.licitacionArchivos.categoria, texto: schema.licitacionArchivos.texto })
+    .from(schema.licitacionArchivos)
+    .where(and(eq(schema.licitacionArchivos.idCompra, idCompra), eq(schema.licitacionArchivos.relevante, true), isNotNull(schema.licitacionArchivos.texto))))
     .sort((a, b) => PRIORIDAD[a.categoria as CategoriaArchivo] - PRIORIDAD[b.categoria as CategoriaArchivo]);
   const f = (d: Date | null) => d?.toLocaleString('es-UY', { timeZone: 'America/Montevideo' }) ?? 'no indicada';
   const meta = `LICITACIÓN ${TIPOS_COMPRA[l.tipoCompra] ?? l.tipoCompra} ${l.numCompra}/${l.anioCompra} — ${l.organismo ?? ''} ${l.unidadEjecutora ? `(${l.unidadEjecutora})` : ''}

@@ -9,6 +9,16 @@ import { leerPrecios } from '@/server/ia/precio';
 import { urlDetalleCompra, BASE_ARCE } from '@/server/arce/normalizar';
 
 const DIA = 864e5;
+/** Columnas de licitaciones que usa la UI (sin `raw`, que es jsonb grande). */
+const COLS_LICITACION = {
+    idCompra: schema.licitaciones.idCompra, tipoCompra: schema.licitaciones.tipoCompra, numCompra: schema.licitaciones.numCompra,
+    anioCompra: schema.licitaciones.anioCompra, organismo: schema.licitaciones.organismo, unidadEjecutora: schema.licitaciones.unidadEjecutora,
+    objeto: schema.licitaciones.objeto, estado: schema.licitaciones.estado, fechaPublicacion: schema.licitaciones.fechaPublicacion,
+    fechaApertura: schema.licitaciones.fechaApertura, fechaTopeOfertas: schema.licitaciones.fechaTopeOfertas, fechaSolAclar: schema.licitaciones.fechaSolAclar,
+    fechaSolProrr: schema.licitaciones.fechaSolProrr, fechaTopeEntrega: schema.licitaciones.fechaTopeEntrega, lugarApertura: schema.licitaciones.lugarApertura,
+    lugarEntrega: schema.licitaciones.lugarEntrega, precioPliego: schema.licitaciones.precioPliego, nombreContacto: schema.licitaciones.nombreContacto,
+    emailContacto: schema.licitaciones.emailContacto, urlDetalle: schema.licitaciones.urlDetalle, createdAt: schema.licitaciones.createdAt,
+  };
 const iso = (d: Date | null | undefined) => (d ? d.toISOString() : null);
 const numero = (l: { numCompra: string | null; anioCompra: number | null }) => `${l.numCompra ?? '?'}/${l.anioCompra ?? ''}`;
 
@@ -26,21 +36,14 @@ export async function listarMatches(empresaId: string, filtros: FiltrosDashboard
   if (filtros.cierreDias) conds.push(sql`${L.fechaTopeOfertas} < now() + make_interval(days => ${filtros.cierreDias})`);
   const orden = filtros.orden === 'confianza' ? [desc(M.confianza), L.fechaTopeOfertas] : [L.fechaTopeOfertas, desc(M.confianza)];
 
-  const filas = await db.select({ l: L, m: M, resumen: A.resumen, fechas: A.fechasClave })
+  // Monto estimado = Σ cantidad × precio sugerido de los ítems (subconsulta correlacionada: un solo viaje a la base).
+  const monto = sql<string | null>`(select sum(i.cant_pedida * p.precio_sugerido)::text from licitacion_items i
+    join precios_sugeridos p on p.id_compra = i.id_compra and p.nro_item = i.nro_item
+    where i.id_compra = ${M.idCompra} and p.precio_sugerido is not null)`;
+  const filas = await db.select({ l: COLS_LICITACION, m: M, resumen: A.resumen, fechas: A.fechasClave, monto })
     .from(M).innerJoin(L, eq(L.idCompra, M.idCompra)).leftJoin(A, eq(A.idCompra, M.idCompra))
     .where(and(...conds)).orderBy(...orden).limit(200);
-
-  // Monto estimado = Σ cantidad × precio sugerido de los ítems ofertables.
-  const ids = filas.map((f) => f.l.idCompra);
-  const montos = new Map<string, number>();
-  if (ids.length) {
-    const r = await db.execute<{ id_compra: string; monto: string | null }>(sql`
-      select i.id_compra, sum(i.cant_pedida * p.precio_sugerido)::text as monto
-      from licitacion_items i join precios_sugeridos p on p.id_compra = i.id_compra and p.nro_item = i.nro_item
-      where i.id_compra in (${sql.join(ids.map((i) => sql`${i}`), sql`, `)}) and p.precio_sugerido is not null
-      group by i.id_compra`);
-    for (const x of r) if (x.monto) montos.set(x.id_compra, Number(x.monto));
-  }
+  const montos = new Map<string, number>(filas.filter((f) => f.monto).map((f) => [f.l.idCompra, Number(f.monto)]));
 
   const cards = filas.map(({ l, m, resumen, fechas }): LicitacionCard => ({
     idCompra: l.idCompra, objeto: l.objeto ?? '(sin objeto)', organismo: l.organismo ?? '', tipoCompra: l.tipoCompra,
@@ -65,7 +68,7 @@ export async function resumenDashboard(empresaId: string): Promise<{ total: numb
 }
 
 export async function obtenerDetalle(empresaId: string, idCompra: string): Promise<DetalleLicitacion | null> {
-  const [l] = await db.select().from(schema.licitaciones).where(eq(schema.licitaciones.idCompra, idCompra));
+  const [l] = await db.select(COLS_LICITACION).from(schema.licitaciones).where(eq(schema.licitaciones.idCompra, idCompra));
   if (!l) return null;
   const [items, archivos, aclaraciones, [an], [m], precios] = await Promise.all([
     db.select().from(schema.licitacionItems).where(eq(schema.licitacionItems.idCompra, idCompra)).orderBy(schema.licitacionItems.nroItem),
