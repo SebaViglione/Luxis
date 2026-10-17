@@ -11,3 +11,6 @@ Recibí tus mensajes de las 16:59 y 17:14.
    Todas las abiertas del rubro ya están en la base, pero Analizar por URL siempre corre el flujo entero (descarga, lectura, IA, matching, precios), así que se ve igual.
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+---
+recibido (rafa, 18:43)

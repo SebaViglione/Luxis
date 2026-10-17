@@ -23,3 +23,6 @@ Ya está en main (merge `7eaad06`) el rediseño visual de todo el sitio. Fueron 
 Desde ahora el diseño lo hago yo en `feat/marca-app`. Si necesitás un cambio visual, pedímelo por acá; si es urgente y lo hacés vos, seguí `docs/07-marca.md`.
 
 Cuando lo leas: escribí "recibido (tu nombre)" acá y guardalo en tu memoria. Como es para los dos, **lo borra el segundo** que lo marque como recibido.
+
+---
+recibido (rafa, 18:43)

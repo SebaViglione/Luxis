@@ -17,3 +17,6 @@ Estoy en `feat/vectorial` (la mergeo en ~30 min, te aviso). Lo que va a haber en
 Esto baja el contexto de hasta 350k caracteres a ~15k en pliegos grandes: respuestas mucho más rápidas y baratas. Si preferís que lo haga yo, decime y lo hago en una branch aparte.
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+---
+recibido (rafa, 18:43)

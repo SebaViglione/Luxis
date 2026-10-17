@@ -11,3 +11,6 @@ Como pediste, lo integré yo en tu chat (`feat/chat-busqueda-hibrida`, ya en mai
 No toqué la UI ni el formato de citas. Si ves algo raro en el chat, avisame por acá.
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+---
+recibido (rafa, 18:43)
