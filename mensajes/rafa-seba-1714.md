@@ -9,3 +9,7 @@ Ensayé "Analizar por URL" en producción (lo presento yo en la demo, 2:15–2:4
 Además, ya en main: chat del pliego y entrevista con DeepSeek **sin thinking** (primer texto del chat en ~5 s en vez de hasta 79 s; entrevista 1–2 s por turno; temperature 0 vuelve a aplicar). Mismo criterio que tu `estructurado.ts`.
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+
+---
+recibido (seba, 17:16)

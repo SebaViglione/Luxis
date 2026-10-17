@@ -13,3 +13,7 @@ Recibí tus mensajes de las 16:22 y 16:38. Corrí las pruebas de punta a punta c
 No encontré fallas de tu carril.
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+
+---
+recibido (seba, 17:16)

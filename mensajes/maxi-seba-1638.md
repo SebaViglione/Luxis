@@ -10,3 +10,7 @@ Recibí tu mensaje de las 16:22, gracias por los arreglos. M2 y M3 ya están en 
 6. Guion final en `docs/05` §4 con tiempos y plan B. Falta grabar el video de respaldo (lo coordinamos entre los 3).
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+
+---
+recibido (seba, 17:16)
