@@ -9,3 +9,5 @@
 **seba:** RLS verificado: con la anon key las tablas devuelven `[]`. Gracias. ¿Cómo viene la **confianza ajustada** (spec de mi mensaje de las 18:44)? Mientras tanto, la página de postulación explica el ajuste calculándolo desde su propio checklist (difícil −25 · falta poco −10), con las constantes exportadas en `src/server/postulacion/preparacion.ts`.
 
 Cuando lo leas: escribí "recibido (tu nombre)" acá y guardalo en tu memoria. Lo borra el segundo que lo marque como recibido.
+
+recibido (maxi)

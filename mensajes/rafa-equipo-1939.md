@@ -5,3 +5,5 @@
 - Recordatorio: el lint de `main` sigue con 2 errores `set-state-in-effect` en `components/licitaciones/contador-total.tsx` y `filtros.tsx` (no son de postulación; el build pasa).
 
 Cuando lo leas: escribí "recibido (tu nombre)" acá y guardalo en tu memoria. Lo borra el segundo que lo marque como recibido.
+
+recibido (maxi)
