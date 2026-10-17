@@ -95,16 +95,25 @@ async function Lista({ searchParams }: { searchParams: Promise<Record<string, st
 export default function DashboardPage({ searchParams }: PageProps<'/dashboard'>) {
   return (
     <div className="space-y-6">
-      <Suspense fallback={<EncabezadoCargando />}>
-        <Encabezado />
-      </Suspense>
-      <AnalizarUrl />
-      <Suspense fallback={<div className="h-24 rounded-md border bg-card" aria-hidden />}>
-        <FiltrosConOpciones />
-      </Suspense>
-      <Suspense fallback={<Cargando texto="Buscando licitaciones para tu empresa…" />}>
-        <Lista searchParams={searchParams} />
-      </Suspense>
+      {/* data-guia: anclas de la guía inicial (src/components/guia/guia-inicial.tsx). */}
+      <div data-guia="resumen">
+        <Suspense fallback={<EncabezadoCargando />}>
+          <Encabezado />
+        </Suspense>
+      </div>
+      <div data-guia="analizar-url">
+        <AnalizarUrl />
+      </div>
+      <div data-guia="filtros">
+        <Suspense fallback={<div className="h-24 rounded-md border bg-card" aria-hidden />}>
+          <FiltrosConOpciones />
+        </Suspense>
+      </div>
+      <div data-guia="lista">
+        <Suspense fallback={<Cargando texto="Buscando licitaciones para tu empresa…" />}>
+          <Lista searchParams={searchParams} />
+        </Suspense>
+      </div>
     </div>
   );
 }

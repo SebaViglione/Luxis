@@ -3,10 +3,10 @@
 import { ConversationProvider, useConversation } from '@elevenlabs/react';
 import { Check, Mic, MicOff, PhoneOff } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
+import { BolaVoz, type EstadoBola } from '@/components/marca/bola-voz';
 import { extraerDesdeFuentes } from '@/components/onboarding/leer-eventos';
 import { cn } from '@/lib/utils';
 import type { PerfilEmpresa } from '@/lib/types';
@@ -30,8 +30,11 @@ export function BotonEntrevistaVoz({ perfil, onPerfil }: { perfil: PerfilEmpresa
         <Mic /> Hablar con Luxis
       </Button>
       <Dialog open={abierto} onOpenChange={(abrir) => !abrir && setAbierto(false)}>
-        <DialogContent showCloseButton={false} className="sm:max-w-md">
-          <DialogHeader>
+        <DialogContent
+          showCloseButton={false}
+          className="h-[100svh] max-h-[100svh] max-w-none grid-rows-[auto_1fr] gap-0 rounded-none bg-background p-0 sm:h-[44rem] sm:max-h-[calc(100svh-2rem)] sm:max-w-md sm:rounded-2xl"
+        >
+          <DialogHeader className="sr-only">
             <DialogTitle>Entrevista por voz</DialogTitle>
             <DialogDescription>Hablá como en una llamada. Máximo 4 minutos; después revisás todo por escrito.</DialogDescription>
           </DialogHeader>
@@ -182,69 +185,93 @@ function SesionVoz({
     if (segundos >= DURACION_MAXIMA_S && etapa === 'conversando') endSession();
   }, [segundos, etapa, endSession]);
 
-  if (etapa === 'error') {
-    return (
-      <div className="flex flex-col gap-3">
-        <Alert>
-          <MicOff aria-hidden />
-          <AlertTitle>{error}</AlertTitle>
-          <AlertDescription>La entrevista por chat funciona igual y no perdés nada de lo que ya cargaste.</AlertDescription>
-        </Alert>
-        <Button onClick={onCerrar}>Volver al chat</Button>
-      </div>
-    );
-  }
-
-  if (etapa === 'procesando') {
-    return (
-      <p className="flex items-center gap-2 py-6 text-sm" aria-live="polite">
-        <Spinner /> {progreso ?? 'Pasando la conversación a tu perfil…'}
-      </p>
-    );
-  }
-
   const conectado = conversacion.status === 'connected';
+  const estadoBola: EstadoBola =
+    etapa === 'procesando' ? 'procesando' : !conectado ? 'conectando' : conversacion.isSpeaking ? 'hablando' : 'escuchando';
+  // La bola sigue a quien habla: la voz de Luxis o el micrófono.
+  const leerVolumen = () => (conversacion.isSpeaking ? conversacion.getOutputVolume() : conversacion.getInputVolume());
+  const ultima = lineas.at(-1);
+  const hablo = lineas.some((l) => l.rol === 'empresa');
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between rounded-md border px-3 py-2">
-        <span className="flex items-center gap-2 text-sm">
-          {conectado ? (
-            <span
-              aria-hidden
-              className={cn('size-2.5 rounded-full', conversacion.isSpeaking ? 'animate-pulse bg-primary' : 'bg-foreground/60')}
-            />
-          ) : (
-            <Spinner />
-          )}
-          {!conectado ? 'Conectando…' : conversacion.isSpeaking ? 'Luxis está hablando' : 'Te escucho'}
-        </span>
+    <div className="contents">
+      {/* Barra superior */}
+      <div className="flex items-center justify-between border-b px-4 py-3">
+        <Button variant="ghost" size="sm" className="rounded-full" onClick={etapa === 'error' ? onCerrar : () => { endSession(); onCerrar(); }}>
+          {etapa === 'error' ? 'Volver' : 'Cancelar'}
+        </Button>
+        <p className="text-sm font-medium">Entrevista por voz</p>
         <span
-          className={cn('font-mono text-sm tabular-nums', segundos >= AVISO_FIN_S && 'text-destructive')}
+          className={cn('min-w-16 text-right font-mono text-xs text-muted-foreground tabular-nums', segundos >= AVISO_FIN_S && 'text-destructive')}
           aria-label="Duración de la llamada"
         >
           {formatear(segundos)} / {formatear(DURACION_MAXIMA_S)}
         </span>
       </div>
 
-      <div className="flex max-h-56 flex-col gap-2 overflow-y-auto text-sm" aria-live="polite">
-        {lineas.length === 0 && <p className="text-muted-foreground">Cuando conecte, Luxis te saluda y te hace la primera pregunta.</p>}
-        {lineas.map((l, i) => (
-          <p key={i} className={cn(l.rol === 'empresa' && 'text-muted-foreground')}>
-            <span className="font-medium text-foreground">{l.rol === 'luxis' ? 'Luxis' : 'Vos'}:</span> {l.texto}
-          </p>
-        ))}
-      </div>
+      <div className="flex min-h-0 flex-col items-center px-6 pt-10 pb-6">
+        {etapa === 'error' ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
+            <span className="flex size-16 items-center justify-center rounded-full bg-secondary">
+              <MicOff aria-hidden className="size-6 text-muted-foreground" />
+            </span>
+            <div className="space-y-2">
+              <p className="text-lg font-semibold tracking-tight">{error}</p>
+              <p className="text-sm text-muted-foreground">La entrevista por chat funciona igual y no perdés nada de lo que ya cargaste.</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-1 flex-col items-center justify-center">
+              <BolaVoz estado={estadoBola} leerVolumen={leerVolumen} className="size-52 sm:size-56" />
+              <p className="mt-10 text-xl font-semibold tracking-tight">Luxis</p>
+              <p className="mt-1 flex h-5 items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
+                {etapa === 'procesando' ? (
+                  <><Spinner /> {progreso ?? 'Pasando la conversación a tu perfil…'}</>
+                ) : !conectado ? (
+                  <><Spinner /> Conectando…</>
+                ) : conversacion.isSpeaking ? (
+                  'Está hablando'
+                ) : (
+                  'Te escucho'
+                )}
+              </p>
+            </div>
+            {/* Subtítulo: la última frase, con alto fijo para que nada salte */}
+            <div className="flex h-20 w-full items-start justify-center text-center" aria-live="polite">
+              {etapa !== 'procesando' && (
+                <p key={lineas.length} className="line-clamp-3 max-w-sm animate-in text-sm leading-relaxed duration-500 fade-in-0">
+                  {ultima ? (
+                    <><span className="font-medium">{ultima.rol === 'luxis' ? 'Luxis' : 'Vos'}:</span> <span className="text-muted-foreground">{ultima.texto}</span></>
+                  ) : (
+                    <span className="text-muted-foreground">Cuando conecte, Luxis te saluda y te hace la primera pregunta.</span>
+                  )}
+                </p>
+              )}
+            </div>
+          </>
+        )}
 
-      <Button
-        variant="destructive"
-        onClick={() => {
-          endSession();
-          void procesarTranscript();
-        }}
-      >
-        {lineas.some((l) => l.rol === 'empresa') ? <Check /> : <PhoneOff />}
-        Terminar y armar mi perfil
-      </Button>
+        {etapa === 'error' ? (
+          <Button size="lg" className="h-12 w-full max-w-sm rounded-full text-base" onClick={onCerrar}>
+            Volver al chat
+          </Button>
+        ) : (
+          <Button
+            size="lg"
+            disabled={etapa === 'procesando'}
+            className="h-12 w-full max-w-sm rounded-full text-base"
+            variant={hablo ? 'default' : 'outline'}
+            onClick={() => {
+              endSession();
+              void procesarTranscript();
+            }}
+          >
+            {hablo ? <Check /> : <PhoneOff />}
+            Terminar y armar mi perfil
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
