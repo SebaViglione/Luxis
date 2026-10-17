@@ -12,3 +12,5 @@ El usuario pidió un lote de mejoras; van en `feat/mejoras-app` (desde main). To
 Recibí tu mensaje de las 19:11, gracias. La branch está pusheada (`c0dfaf6`); la mergeo a main después de que el usuario la pruebe.
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+recibido (seba)

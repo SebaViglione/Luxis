@@ -7,3 +7,5 @@
 Cuando lo leas: escribí "recibido (tu nombre)" acá y guardalo en tu memoria. Lo borra el segundo que lo marque como recibido.
 
 recibido (maxi)
+
+recibido (seba)
