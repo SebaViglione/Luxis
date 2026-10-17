@@ -34,16 +34,31 @@ function resumenPapeles(match: NonNullable<DetalleLicitacion['match']>) {
  * Panel de decisión: responde de un vistazo si conviene, a qué precio y si llegás con los papeles.
  * Es el momento visual de la pantalla (textura de puntos + monto que cuenta una vez).
  */
-export function PanelDecision({ d, diasCierre, irA }: { d: DetalleLicitacion; diasCierre: number | null; irA: (pestana: string) => void }) {
+/** Monto total posible (precio sugerido × cantidad de lo que podés ofertar). Lo arma el servidor con los mismos precios de la pestaña Precios. */
+export function MontoPosible({ total, moneda }: { total: number; moneda: string }) {
+  if (total <= 0) {
+    return (
+      <div className="space-y-2">
+        <p className="text-sm">Sin precios de referencia</p>
+        <p className="text-sm text-muted-foreground">No encontramos ventas parecidas al Estado. Usá tu lista de precios.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-muted-foreground">Podrías vender por</p>
+      <p className="font-mono text-3xl font-semibold tabular-nums">
+        ≈ <CountUp to={Math.round(total)} duration={1} separator="." trigger="load" prefix={moneda === 'USD' ? 'US$ ' : '$ '} />
+      </p>
+    </div>
+  );
+}
+
+export function PanelDecision({ d, diasCierre, irA, montoPrecio }: { d: DetalleLicitacion; diasCierre: number | null; irA: (pestana: string) => void; montoPrecio: React.ReactNode }) {
   const l = d.licitacion;
   const urgente = diasCierre !== null && diasCierre >= 0 && diasCierre <= 3;
   const cerrada = diasCierre !== null && diasCierre < 0;
-  const ofertables = new Set((d.match?.itemsOfertables ?? []).filter((i) => i.puedeOfertar).map((i) => i.nroItem));
-  const total = d.precios.reduce((t, p) => {
-    const item = d.items.find((i) => i.nroItem === p.nroItem);
-    return p.precioSugerido !== null && item && (ofertables.size === 0 || ofertables.has(p.nroItem)) ? t + p.precioSugerido * item.cantidad : t;
-  }, 0);
-  const moneda = d.precios[0]?.moneda ?? 'UYU';
+  const hayOfertables = (d.match?.itemsOfertables ?? []).some((i) => i.puedeOfertar);
   const nivel = d.match ? nivelConfianza(d.match.confianza) : null;
   const papeles = d.match ? resumenPapeles(d.match) : null;
 
@@ -82,21 +97,11 @@ export function PanelDecision({ d, diasCierre, irA }: { d: DetalleLicitacion; di
           </Pregunta>
 
           <Pregunta titulo="¿A qué precio?">
-            {total > 0 ? (
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Podrías vender por</p>
-                <p className="font-mono text-3xl font-semibold tabular-nums">
-                  ≈ <CountUp to={Math.round(total)} duration={1} separator="." trigger="load" prefix={moneda === 'USD' ? 'US$ ' : '$ '} />
-                </p>
-                <button type="button" onClick={() => irA('precios')} className="text-sm text-foreground underline underline-offset-4 hover:text-primary">
-                  Ver precio por producto
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-sm">Sin precios de referencia</p>
-                <p className="text-sm text-muted-foreground">No encontramos ventas parecidas al Estado. Usá tu lista de precios.</p>
-              </div>
+            {montoPrecio}
+            {hayOfertables && (
+              <button type="button" onClick={() => irA('precios')} className="mt-2 text-sm text-foreground underline underline-offset-4 hover:text-primary">
+                Ver precio por producto
+              </button>
             )}
           </Pregunta>
 

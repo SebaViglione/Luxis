@@ -15,9 +15,11 @@ const PESTANAS = [
 ] as const;
 
 /** Vista de una licitación: panel de decisión + pestañas en lenguaje llano (los enlaces del panel abren la pestaña). */
-export function VistaLicitacion({ d, diasCierre, contenido }: {
+export function VistaLicitacion({ d, diasCierre, montoPrecio, contenido }: {
   d: DetalleLicitacion;
   diasCierre: number | null;
+  /** Respuesta a "¿A qué precio?" (componente de servidor con los mismos precios de la pestaña). */
+  montoPrecio: ReactNode;
   contenido: Record<(typeof PESTANAS)[number]['id'], ReactNode>;
 }) {
   const [pestana, setPestana] = useState<string>('resumen');
@@ -28,7 +30,7 @@ export function VistaLicitacion({ d, diasCierre, contenido }: {
   };
   return (
     <div className="space-y-6">
-      <PanelDecision d={d} diasCierre={diasCierre} irA={irA} />
+      <PanelDecision d={d} diasCierre={diasCierre} irA={irA} montoPrecio={montoPrecio} />
       <div ref={ancla} className="scroll-mt-20">
         <Tabs value={pestana} onValueChange={(v) => setPestana(String(v))}>
           <div className="overflow-x-auto overflow-y-hidden border-b pb-[5px]">
