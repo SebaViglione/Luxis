@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { connection } from 'next/server';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { ChatPliego } from '@/components/chat/chat-pliego';
 import { AccionesMatch } from '@/components/licitaciones/acciones-match';
@@ -35,6 +36,7 @@ function Dato({ etiqueta, children, destacado }: { etiqueta: string; children: R
 
 async function Detalle({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  await connection();
   const { empresaId } = await requerirSesion();
   const d = await obtenerDetalle(empresaId, decodificar(id));
   if (!d) notFound();

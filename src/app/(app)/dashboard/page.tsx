@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
+import { connection } from 'next/server';
 import { sql } from 'drizzle-orm';
 import { SearchX } from 'lucide-react';
 import { AnalizarUrl } from '@/components/licitaciones/analizar-url';
@@ -23,6 +24,7 @@ async function perfilRecienActualizado(empresaId: string): Promise<boolean> {
 }
 
 async function Encabezado() {
+  await connection();
   const { empresaId } = await requerirSesion();
   const r = await resumenDashboard(empresaId);
   return (
@@ -48,6 +50,7 @@ function EncabezadoCargando() {
 }
 
 async function FiltrosConOpciones() {
+  await connection();
   const { empresaId } = await requerirSesion();
   const todas = await listarMatches(empresaId, { estado: 'todas', confianzaMin: 0 });
   const organismos = [...new Set(todas.map((c) => c.organismo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
@@ -56,6 +59,7 @@ async function FiltrosConOpciones() {
 
 async function Lista({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const filtros = filtrosDesdeUrl(await searchParams);
+  await connection();
   const { empresaId } = await requerirSesion();
   const cards = await listarMatches(empresaId, filtros);
 

@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
+import { connection } from 'next/server';
 import { addDays, addMonths, format, parse, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -16,6 +17,7 @@ const inicioDelDia = (dia: string) => new Date(`${dia}T00:00:00-03:00`);
 
 async function Calendario({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = await searchParams;
+  await connection();
   const sesion = await requerirSesion();
   const hoy = hoyMontevideo();
   const pedido = typeof sp.mes === 'string' && /^\d{4}-\d{2}$/.test(sp.mes) ? sp.mes : hoy.slice(0, 7);

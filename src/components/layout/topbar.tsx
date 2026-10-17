@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { connection } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { Logo } from '@/components/marca/logo';
@@ -9,6 +10,8 @@ import { Campanita } from './campanita';
 import { MenuMovil } from './menu-movil';
 
 async function DatosSesion() {
+  // Supabase usa Date.now() al validar el token: sin connection() el prerender lo rechaza.
+  await connection();
   const sesion = await obtenerSesion();
   if (!sesion) return null;
   const [[empresa], noLeidas, ultimas] = await Promise.all([

@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
+import { connection } from 'next/server';
 import { Bell } from 'lucide-react';
 import { ItemNotificacion } from '@/components/notificaciones/item-notificacion';
 import { TIPO_NOTIFICACION } from '@/components/notificaciones/tipos';
@@ -14,6 +15,7 @@ import { contarNoLeidas, listarNotificaciones, TIPOS_NOTIFICACION } from '@/serv
 async function Lista({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = await searchParams;
   const tipo = TIPOS_NOTIFICACION.find((t) => t === sp.tipo);
+  await connection();
   const sesion = await requerirSesion();
   const [notificaciones, noLeidas] = await Promise.all([
     listarNotificaciones(sesion.empresaId, { tipo, limite: 200 }),
