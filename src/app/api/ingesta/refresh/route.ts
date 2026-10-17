@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { refresh } from '@/server/arce/ingesta';
 
-export const runtime = 'nodejs';
 export const maxDuration = 300;
 
 /**
