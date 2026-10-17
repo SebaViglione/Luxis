@@ -13,7 +13,7 @@ import { PasoDocumentos } from './paso-documentos';
 import { PasoPresentar } from './paso-presentar';
 import { PasoRequisitos } from './paso-requisitos';
 
-const PASOS = ['Requisitos', 'Cotización', 'Documentos', 'Presentar'] as const;
+const PASOS = ['Qué piden', 'Tus precios', 'Formularios', 'Presentar'] as const;
 
 // Las condiciones del análisis a veces son párrafos: solo las usamos de valor inicial si son cortas.
 const corto = (texto: string | undefined) => (texto && texto.length <= 80 ? texto : '');
@@ -62,10 +62,10 @@ export function AsistentePostulacion({ datos }: { datos: DatosPagina }) {
       </Link>
 
       <header className="space-y-1">
-        <p className="font-mono text-xs tracking-wide text-muted-foreground uppercase">Postulación</p>
+        <p className="text-sm text-muted-foreground">Preparar mi oferta</p>
         <h1 className="text-2xl leading-tight font-semibold text-balance">{suavizarMayusculas(l.objeto)}</h1>
         <p className="text-sm text-muted-foreground">
-          {l.organismo} · {l.tipoCompraNombre} <span className="font-mono">{l.numero}</span> · recepción de ofertas{' '}
+          {l.tipoCompraNombre} N° <span className="font-mono">{l.numero}</span> de {l.organismo} · cierra el{' '}
           <span className="font-mono">{fechaHora(l.fechaTopeOfertas)}</span>
         </p>
       </header>
