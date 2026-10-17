@@ -87,8 +87,8 @@ export async function GET(request: Request) {
   const archivo = parametros.get('archivo');
   const numero = Number(parametros.get('p'));
   if (archivo && Number.isInteger(numero) && numero > 0) {
-    const texto = await buscarParrafo(idCompra, archivo, numero);
-    return Response.json({ texto });
+    const parrafo = await buscarParrafo(idCompra, archivo, numero);
+    return Response.json({ texto: parrafo?.texto ?? null, archivo: parrafo?.archivo ?? null });
   }
 
   const [contexto, historial] = await Promise.all([
