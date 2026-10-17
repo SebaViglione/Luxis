@@ -159,7 +159,11 @@ export interface LicitacionCard {
   fechaTopeOfertas: string | null;
   diasParaCierre: number | null;
   fechaPublicacion: string;
+  /** Confianza efectiva = confianza del matching − ajuste por dificultad documental. */
   confianza: number;
+  /** Confianza del matching sin ajustar y ajuste aplicado (dificil 25 · alcanzable 10). */
+  confianzaBase?: number;
+  ajusteDocumental?: number;
   razon: string;
   resumen: string | null;
   itemsOfertables: ItemOfertable[];
@@ -198,6 +202,8 @@ export interface DetalleLicitacion {
   analisis: AnalisisPliego | null;
   match: {
     confianza: number;
+    confianzaBase?: number;
+    ajusteDocumental?: number;
     razon: string;
     itemsOfertables: ItemOfertable[];
     gapDocumental: GapDocumental[];
@@ -251,4 +257,11 @@ export const MONEDAS_ARCE: Record<number, Moneda> = { 0: 'UYU', 1: 'USD', 2: 'US
 export function monedaDesdeId(id: number | null | undefined): Moneda {
   if (id === null || id === undefined) return 'UYU';
   return MONEDAS_ARCE[id] ?? 'OTRA';
+}
+
+/** Cuánto baja la confianza según lo difícil que es presentarse (se aplica al leer, no se guarda). */
+export const AJUSTE_DOCUMENTAL: Record<EstadoDocumental, number> = { dificil: 25, alcanzable: 10, cumple: 0, desconocido: 0 };
+export function confianzaEfectiva(confianza: number, estado: string): { confianza: number; ajuste: number } {
+  const ajuste = AJUSTE_DOCUMENTAL[estado as EstadoDocumental] ?? 0;
+  return { confianza: Math.max(0, confianza - ajuste), ajuste };
 }

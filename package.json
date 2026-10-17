@@ -17,7 +17,8 @@
     "seed:demo": "tsx scripts/seed-demo.ts",
     "eval:matching": "tsx scripts/eval-matching.ts",
     "recalcular:rubro": "tsx scripts/recalcular-rubro.ts",
-    "backfill:vectores": "tsx scripts/backfill-vectores.ts"
+    "backfill:vectores": "tsx scripts/backfill-vectores.ts",
+    "recalcular:gaps": "tsx scripts/recalcular-gaps.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.82",
