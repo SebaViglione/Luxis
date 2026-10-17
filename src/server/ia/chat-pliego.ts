@@ -6,8 +6,12 @@ import { db } from '@/db';
 import { licitacionAclaraciones, licitacionArchivos, licitaciones, licitacionItems } from '@/db/schema';
 import type { CategoriaArchivo } from '@/lib/types';
 import { PRIORIDAD } from '@/server/arce/clasificar';
+import { buscarParrafos, obtenerParrafo, resumenParrafos } from '@/server/ia/busqueda';
 
 const MAX_CARACTERES = 350_000;
+/** Por encima de este total de texto relevante, el chat usa búsqueda híbrida (extractos) en vez del texto completo. */
+const UMBRAL_EXTRACTOS = 60_000;
+const K_EXTRACTOS = 14;
 const LARGO_PARRAFO = 700;
 
 // Mismo orden que usa el análisis del pliego (seba) cuando el texto no entra completo.
@@ -27,6 +31,8 @@ export interface ContextoPliego {
   basadoEn: 'pliego' | 'metadata';
   archivos: ArchivoEnContexto[];
   omitidos: string[];
+  /** 'completo': todo el texto relevante; 'extractos': párrafos recuperados por búsqueda híbrida. */
+  modo: 'completo' | 'extractos';
   texto: string;
 }
 
@@ -66,7 +72,13 @@ export function dividirEnParrafos(texto: string): string[] {
   return parrafos;
 }
 
-export async function armarContextoPliego(idCompra: string): Promise<ContextoPliego | null> {
+/**
+ * Arma el contexto del chat. Pliegos chicos: texto completo. Pliegos grandes (> 60k caracteres relevantes) y con
+ * `consulta`: solo los párrafos que recupera la búsqueda híbrida (vectorial + full-text), con la misma numeración [pN].
+ */
+export async function armarContextoPliego(idCompra: string, consulta?: string): Promise<ContextoPliego | null> {
+  // La búsqueda (que incluye ~1–2 s de embedding en Gemini) arranca en paralelo con la lectura de la licitación.
+  const busqueda = consulta?.trim() ? buscarParrafos(idCompra, consulta, { k: K_EXTRACTOS }).catch(() => []) : null;
   const [licitacion] = await db.select().from(licitaciones).where(eq(licitaciones.idCompra, idCompra)).limit(1);
   if (!licitacion) return null;
 
@@ -74,7 +86,7 @@ export async function armarContextoPliego(idCompra: string): Promise<ContextoPli
     db.select().from(licitacionItems).where(eq(licitacionItems.idCompra, idCompra)).orderBy(asc(licitacionItems.nroItem)),
     db.select().from(licitacionAclaraciones).where(eq(licitacionAclaraciones.idCompra, idCompra)).orderBy(asc(licitacionAclaraciones.fecha)),
     db
-      .select({ nombre: licitacionArchivos.nombre, categoria: licitacionArchivos.categoria, texto: licitacionArchivos.texto })
+      .select({ nombre: licitacionArchivos.nombre, categoria: licitacionArchivos.categoria, caracteres: licitacionArchivos.caracteres })
       .from(licitacionArchivos)
       .where(
         and(
@@ -116,7 +128,22 @@ export async function armarContextoPliego(idCompra: string): Promise<ContextoPli
       : []),
   ].join('\n');
 
-  const ordenados = archivos
+  const totalCaracteres = archivos.reduce((t, a) => t + (a.caracteres ?? 0), 0);
+  if (busqueda && totalCaracteres > UMBRAL_EXTRACTOS) {
+    const extractos = contextoPorExtractos(await busqueda, archivos.map((a) => a.nombre));
+    if (extractos) {
+      return {
+        idCompra, objeto: licitacion.objeto ?? '', emailContacto: licitacion.emailContacto, basadoEn: 'pliego',
+        archivos: extractos.archivos, omitidos: [], modo: 'extractos', texto: [metadata, ...extractos.bloques].join('\n\n'),
+      };
+    }
+  }
+
+  const conTexto = await db
+    .select({ nombre: licitacionArchivos.nombre, categoria: licitacionArchivos.categoria, texto: licitacionArchivos.texto })
+    .from(licitacionArchivos)
+    .where(and(eq(licitacionArchivos.idCompra, idCompra), eq(licitacionArchivos.relevante, true), eq(licitacionArchivos.estadoExtraccion, 'ok')));
+  const ordenados = conTexto
     .filter((a) => a.texto?.trim())
     .sort((a, b) => prioridad(a.categoria) - prioridad(b.categoria));
 
@@ -155,8 +182,56 @@ export async function armarContextoPliego(idCompra: string): Promise<ContextoPli
     basadoEn: incluidos.length > 0 ? 'pliego' : 'metadata',
     archivos: incluidos,
     omitidos,
+    modo: 'completo',
     texto: [metadata, ...bloques].join('\n\n'),
   };
+}
+
+/**
+ * Resumen para el tab del chat (qué se leyó) sin cargar el texto de pliegos grandes:
+ * usa los conteos de licitacion_parrafos; si el pliego es chico o no está indexado, arma el contexto normal.
+ */
+export async function resumenContextoPliego(idCompra: string): Promise<Omit<ContextoPliego, 'texto'> | null> {
+  const [lic] = await db.select({ objeto: licitaciones.objeto, emailContacto: licitaciones.emailContacto }).from(licitaciones).where(eq(licitaciones.idCompra, idCompra)).limit(1);
+  if (!lic) return null;
+  const archivos = await db.select({ nombre: licitacionArchivos.nombre, caracteres: licitacionArchivos.caracteres }).from(licitacionArchivos)
+    .where(and(eq(licitacionArchivos.idCompra, idCompra), eq(licitacionArchivos.relevante, true), eq(licitacionArchivos.estadoExtraccion, 'ok')));
+  const total = archivos.reduce((t, a) => t + (a.caracteres ?? 0), 0);
+  if (total > UMBRAL_EXTRACTOS) {
+    const nombres = new Set(archivos.map((a) => a.nombre));
+    const resumen = (await resumenParrafos(idCompra)).filter((r) => nombres.has(r.archivo_nombre));
+    if (resumen.length) {
+      return {
+        idCompra, objeto: lic.objeto ?? '', emailContacto: lic.emailContacto, basadoEn: 'pliego', modo: 'extractos', omitidos: [],
+        archivos: resumen.sort((a, b) => prioridad(a.categoria) - prioridad(b.categoria))
+          .map((r) => ({ nombre: r.archivo_nombre, categoria: r.categoria, parrafos: r.parrafos, recortado: false })),
+      };
+    }
+  }
+  const completo = await armarContextoPliego(idCompra);
+  if (!completo) return null;
+  const { texto: _texto, ...resto } = completo;
+  void _texto;
+  return resto;
+}
+
+/** Párrafos relevantes para la consulta, agrupados por archivo (orden PRIORIDAD) y con su [pN] original. */
+function contextoPorExtractos(resultados: Awaited<ReturnType<typeof buscarParrafos>>, relevantes: string[]) {
+  const encontrados = resultados.filter((p) => relevantes.includes(p.archivoNombre));
+  if (!encontrados.length) return null;
+  const porArchivo = new Map<string, { categoria: string; parrafos: Map<number, string> }>();
+  for (const p of encontrados) {
+    const g = porArchivo.get(p.archivoNombre) ?? { categoria: p.categoria, parrafos: new Map() };
+    g.parrafos.set(p.nroParrafo, p.texto);
+    porArchivo.set(p.archivoNombre, g);
+  }
+  const ordenados = [...porArchivo.entries()].sort((a, b) => prioridad(a[1].categoria) - prioridad(b[1].categoria));
+  const bloques = ordenados.map(([nombre, g]) => {
+    const lineas = [...g.parrafos.entries()].sort((a, b) => a[0] - b[0]).map(([n, t]) => `[p${n}] ${t}`);
+    return `=== ARCHIVO: "${nombre}" ===\n(tipo de documento: ${g.categoria} · extractos seleccionados)\n${lineas.join('\n')}`;
+  });
+  const archivos: ArchivoEnContexto[] = ordenados.map(([nombre, g]) => ({ nombre, categoria: g.categoria, parrafos: g.parrafos.size, recortado: true }));
+  return { bloques, archivos };
 }
 
 const normalizarNombre = (s: string) =>
@@ -178,6 +253,9 @@ export async function buscarParrafo(
   archivo: string,
   numero: number,
 ): Promise<{ archivo: string; texto: string } | null> {
+  // Camino rápido: un solo párrafo desde licitacion_parrafos (misma numeración), sin cargar el archivo.
+  const rapido = await obtenerParrafo(idCompra, archivo, numero).catch(() => null);
+  if (rapido) return { archivo: rapido.archivoNombre, texto: rapido.texto };
   const archivos = await db
     .select({ nombre: licitacionArchivos.nombre, categoria: licitacionArchivos.categoria, texto: licitacionArchivos.texto })
     .from(licitacionArchivos)
@@ -219,7 +297,12 @@ export function instruccionesChatPliego(contexto: ContextoPliego): SystemModelMe
       'IMPORTANTE: no tenemos el texto del pliego de esta licitación (no se pudo descargar o leer). Respondé solo con los datos del portal y aclará al principio de cada respuesta que no tenés el pliego.',
     );
   }
-  const recortados = contexto.archivos.filter((a) => a.recortado).map((a) => a.nombre);
+  if (contexto.modo === 'extractos') {
+    avisos.push(
+      'AVISO: el pliego es largo; abajo tenés EXTRACTOS (párrafos seleccionados por búsqueda para esta pregunta), no el texto completo. Los [pN] son los números reales de cada archivo: citalos tal cual. Si la respuesta no aparece en los extractos, decí que no la encontraste en las partes consultadas del pliego y sugerí reformular la pregunta o consultar al contacto.',
+    );
+  }
+  const recortados = contexto.modo === 'completo' ? contexto.archivos.filter((a) => a.recortado).map((a) => a.nombre) : [];
   if (recortados.length || contexto.omitidos.length) {
     avisos.push(
       `AVISO: el pliego es muy largo y no entró completo.${recortados.length ? ` Recortados: ${recortados.join(', ')}.` : ''}${

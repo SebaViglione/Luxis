@@ -39,10 +39,12 @@ export async function buscarParrafos(idCompra: string, consulta: string, opts: {
   }
   const filas = await db.execute<{ id: number; archivo_id: number; archivo_nombre: string; categoria: string; nro_parrafo: number; texto: string; score: number }>(sql`
     with v as (
-      select id, row_number() over (order by embedding <=> ${vec}::vector) as r
+      -- Búsqueda EXACTA dentro de la licitación (≤ 2.000 párrafos): el índice HNSW filtra después y pierde recall.
+      -- El "+ 0" evita que el planner use el índice.
+      select id, row_number() over (order by (embedding <=> ${vec}::vector) + 0) as r
       from licitacion_parrafos
       where id_compra = ${idCompra} and embedding is not null and ${vec}::text is not null
-      order by embedding <=> ${vec}::vector limit 40
+      order by (embedding <=> ${vec}::vector) + 0 limit 40
     ),
     f as (
       select p.id, row_number() over (order by ts_rank_cd(p.tsv, q) desc) as r
