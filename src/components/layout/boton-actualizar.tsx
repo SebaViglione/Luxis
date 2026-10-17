@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { generarMisNotificaciones } from '@/components/notificaciones/acciones';
@@ -10,7 +10,6 @@ type Estado = { tipo: 'inactivo' } | { tipo: 'trabajando'; texto: string; desde:
 export function BotonActualizar() {
   const [estado, setEstado] = useState<Estado>({ tipo: 'inactivo' });
   const [segundos, setSegundos] = useState(0);
-  const [, iniciar] = useTransition();
   const trabajando = estado.tipo === 'trabajando';
   const desde = trabajando ? estado.desde : null;
 
@@ -20,7 +19,8 @@ export function BotonActualizar() {
     return () => window.clearInterval(id);
   }, [desde]);
 
-  const actualizar = () => iniciar(async () => {
+  // Sin startTransition: React 19 posterga los setState de una transición y el progreso no se vería.
+  const actualizar = async () => {
     const inicio = Date.now();
     setSegundos(0);
     setEstado({ tipo: 'trabajando', texto: 'Buscando novedades en ARCE…', desde: inicio });
@@ -34,7 +34,7 @@ export function BotonActualizar() {
     } catch {
       setEstado({ tipo: 'error', texto: 'No se pudo actualizar. ARCE puede estar lento: probá de nuevo en unos minutos.' });
     }
-  });
+  };
 
   return (
     <div className="flex items-center gap-2">

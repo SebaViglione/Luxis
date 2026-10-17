@@ -6,7 +6,7 @@ import { es } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { diasDeLaGrilla, GrillaMes } from '@/components/calendario/grilla-mes';
 import { LeyendaEventos, ListaEventos } from '@/components/calendario/lista-eventos';
-import { hoyMontevideo } from '@/components/calendario/tipos-evento';
+import { hoyMontevideo, sinEntregasDuplicadas } from '@/components/calendario/tipos-evento';
 import { buttonVariants } from '@/components/ui/button';
 import { Cargando } from '@/components/ui/cargando';
 import { requerirSesion } from '@/server/auth/sesion';
@@ -28,10 +28,10 @@ async function Calendario({ searchParams }: { searchParams: Promise<Record<strin
   const desdeHoy = inicioDelDia(hoy);
   const hasta14 = new Date(desdeHoy.getTime() + 15 * 864e5);
 
-  const [delMes, proximos] = await Promise.all([
+  const [delMes, proximos] = (await Promise.all([
     listarEventos(sesion.empresaId, desdeGrilla, hastaGrilla),
     listarEventos(sesion.empresaId, desdeHoy, hasta14),
-  ]);
+  ])).map(sinEntregasDuplicadas);
   const titulo = format(mes, 'MMMM yyyy', { locale: es });
 
   return (

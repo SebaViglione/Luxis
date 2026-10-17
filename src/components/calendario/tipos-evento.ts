@@ -29,6 +29,12 @@ export function agruparPorDia(eventos: EventoCalendario[]): Map<string, EventoCa
   return mapa;
 }
 
+// El análisis a veces marca la "entrega de ofertas" como tipo entrega: si coincide con el cierre, es el mismo evento.
+export function sinEntregasDuplicadas(eventos: EventoCalendario[]): EventoCalendario[] {
+  const cierres = new Set(eventos.filter((e) => e.tipo === 'apertura').map((e) => `${e.idCompra}|${Date.parse(e.fecha)}`));
+  return eventos.filter((e) => e.tipo !== 'entrega' || !cierres.has(`${e.idCompra}|${Date.parse(e.fecha)}`));
+}
+
 // El evento se titula "Cierre de ofertas: objeto"; en la grilla se muestra solo el objeto.
 export function objetoDelEvento(e: EventoCalendario): string {
   const i = e.titulo.indexOf(': ');
