@@ -16,7 +16,6 @@ function Marco({ titulo, children, className }: { titulo: string; children: Reac
         <p className="mb-4 font-mono text-[11px] tracking-wide text-muted-foreground uppercase">{titulo}</p>
         {children}
       </div>
-      <p className="mt-3 text-center font-mono text-[11px] text-muted-foreground">Ejemplo ilustrativo</p>
     </MotionConfig>
   );
 }

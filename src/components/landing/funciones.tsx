@@ -169,7 +169,6 @@ function EscenarioFijo() {
                 <Panel>
                   <div className="[zoom:1.12]"><f.Demo /></div>
                 </Panel>
-                <p className="mt-4 text-center font-mono text-[11px] text-muted-foreground">Ejemplo ilustrativo</p>
               </motion.div>
             </AnimatePresence>
           </div>

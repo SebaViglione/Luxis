@@ -80,7 +80,6 @@ export function Hero() {
             className="w-full lg:pl-10"
           >
             <Escenario3D progreso={scrollYProgress} px={px} py={py} />
-            <p className="mt-24 text-center font-mono text-[11px] text-muted-foreground">Ejemplo ilustrativo</p>
           </motion.div>
         </div>
       </section>

@@ -1,4 +1,4 @@
-// Datos ilustrativos para los mockups de la landing. Se muestran con la etiqueta "Ejemplo ilustrativo";
+// Datos ilustrativos para los mockups de la landing:
 // no representan licitaciones reales ni resultados de la IA.
 
 export type MatchEjemplo = {

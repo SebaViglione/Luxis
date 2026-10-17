@@ -17,6 +17,7 @@ Orden de lectura según rol:
 | `04-plan-de-accion.md` | Cronograma 14:00→21:00, sync points, plan de recorte, reglas de integración |
 | `05-rubrica-demo-pitch.md` | Rúbrica, checklist de consigna, empresa demo, guion de 3 minutos, variaciones para el jurado, preguntas y respuestas, checklist pre-demo |
 | `06-preguntas-abiertas.md` | Dudas con decisión por defecto y dueño |
+| `07-marca.md` | Identidad de marca: logo, color, tipografía, voz, íconos, movimiento y patrones de UI |
 | `tareas/seba.md` · `tareas/rafa.md` · `tareas/maxi.md` | Briefs para el agente de código de cada integrante, con tareas en orden, branch, archivos, cómo hacerlo, verificación y entrega |
 
 Convenciones del repo: `CLAUDE.md` (Claude Code) y `.kiro/steering/luxis.md` (Kiro) tienen las mismas reglas.
