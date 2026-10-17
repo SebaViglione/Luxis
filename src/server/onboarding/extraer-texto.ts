@@ -61,6 +61,10 @@ export async function extraerTexto(nombre: string, buffer: Buffer): Promise<Text
 export function textoDeHtml(html: string): string {
   const $ = cheerio.load(html);
   $('script, style, noscript, svg, iframe, template').remove();
+  // Separar bloques para que "<h1>Productos</h1><p>Ladrillo</p>" no quede "ProductosLadrillo".
+  $('br').replaceWith('\n');
+  $('p, div, li, tr, h1, h2, h3, h4, h5, h6, section, article, header, footer, table, ul, ol').append('\n');
+  $('td, th').append(' ');
   const titulo = $('title').first().text().trim();
   const cuerpo = $('body').text() || $.root().text();
   return limpiarTexto(titulo ? `${titulo}\n${cuerpo}` : cuerpo);

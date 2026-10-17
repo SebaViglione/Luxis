@@ -9,7 +9,15 @@ import { esRutaDeAuth, esRutaProtegida, RUTAS } from '@/server/auth/rutas';
 export async function actualizarSesion(request: NextRequest) {
   let respuesta = NextResponse.next({ request });
 
-  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const clave = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !clave) {
+    // Sin Supabase configurado no rompemos toda la app: solo las páginas que piden sesión fallan.
+    console.warn('[proxy] Faltan NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY en .env.local');
+    return respuesta;
+  }
+
+  const supabase = createServerClient(url, clave, {
     cookies: {
       getAll() {
         return request.cookies.getAll();
