@@ -103,7 +103,9 @@ async function Detalle({ params }: { params: Promise<{ id: string }> }) {
           <PanelFechas detalle={d} ahora={ahora} />
         </TabsContent>
         <TabsContent value="chat" className="pt-4">
-          <ChatPliego idCompra={l.idCompra} />
+          <div data-slot="chat-pliego" className="min-h-64">
+            <ChatPliego idCompra={l.idCompra} />
+          </div>
         </TabsContent>
         <TabsContent value="archivos" className="pt-4">
           <ListaArchivos archivos={d.archivos} aclaraciones={d.aclaraciones} />
