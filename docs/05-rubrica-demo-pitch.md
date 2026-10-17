@@ -26,6 +26,8 @@ Barraca de Las Piedras (Canelones), 12 empleados, entrega en Canelones, Montevid
 
 ## 4. Guion de 3 minutos (quién habla / qué se ve)
 
+Texto completo en primera persona: [`demo-assets/guion-pitch-v1.md`](../demo-assets/guion-pitch-v1.md). Ojo: la empresa demo tiene BSE vigente, así que el documento faltante "alcanzable" del bloque 1:05 tiene que ser otro (garantía de oferta, fichas técnicas, muestras).
+
 | Tiempo | Quién | Dice | Pantalla |
 |---|---|---|---|
 | 0:00–0:25 | maxi | El problema: el Estado compra portland y ladrillos todas las semanas; las barracas chicas no se presentan porque ARCE es inusable, los pliegos son enormes y nadie sabe a qué precio se gana. | Landing |

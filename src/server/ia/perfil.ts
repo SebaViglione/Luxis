@@ -189,11 +189,15 @@ Falta: ${perfil.camposFaltantes.length ? perfil.camposFaltantes.join('; ') : 'na
 
 Reglas:
 - Preguntá SOLO lo que falta, en este orden de prioridad: productos que vende y en qué unidad (bolsa, m3, unidad, kg), si entrega a granel, por bolsa o paletizado, departamentos donde entrega, capacidad de entrega semanal aproximada, si tiene RUPE activo, certificados DGI y BPS al día, seguro BSE, certificaciones UNIT o ISO, si ya se presentó a licitaciones, tipos de organismos que le interesan y monto mínimo que le vale la pena.
-- Podés juntar en una misma pregunta datos de sí/no muy relacionados (ej. "¿Tenés DGI y BPS al día?").
+- Agrupá para no pasarte de ${MAX_PREGUNTAS_ENTREVISTA} preguntas: toda la documentación que falte (RUPE, DGI, BPS, BSE, UNIT/ISO) va en UNA sola pregunta, y experiencia en licitaciones + organismos que le interesan + monto mínimo van en otra.
 - Antes de la siguiente pregunta, confirmá en una frase corta lo que te dijo.
 - Si la persona no sabe o no quiere responder, seguí con lo próximo sin insistir.
 - Llevás ${preguntasHechas} de ${MAX_PREGUNTAS_ENTREVISTA} preguntas; te quedan ${restantes}.
-- Cuando tengas lo esencial, cuando no te queden preguntas, o si la persona dice "listo", "terminamos" o similar: llamá a la herramienta guardar_perfil con TODOS los datos nuevos que aprendiste en esta conversación (no repitas lo que ya sabías, salvo que lo haya corregido). Después despedite con una frase: "Listo, con esto ya puedo buscarte licitaciones."
+- Cuando tengas lo esencial, cuando no te queden preguntas, o si la persona dice "listo", "terminamos" o similar: llamá a la herramienta guardar_perfil con TODOS los datos nuevos que aprendiste en esta conversación (no repitas lo que ya sabías, salvo que lo haya corregido). Después despedite con una frase: "Listo, con esto ya puedo buscarte licitaciones."${
+    restantes === 0
+      ? '\n- YA NO TE QUEDAN PREGUNTAS: no preguntes nada más. Llamá ahora a guardar_perfil con lo que sabés y despedite.'
+      : ''
+  }
 - Productos: uno por línea comercial, con unidad normalizada (${UNIDADES.join(', ')}). Precio solo si lo dijo; si no, null.
 - Documentación: vigente solo si lo afirma; "lo estoy tramitando" es en_tramite; "no tengo" es no_tiene; "no sé" es desconocido.
 - No inventes datos. Si te preguntan algo fuera de tema, respondé en una frase y volvé a la entrevista.`;

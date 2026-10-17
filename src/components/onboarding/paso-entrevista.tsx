@@ -3,7 +3,7 @@
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, getToolName, isToolUIPart, type UIMessage } from 'ai';
 import { Check, SendHorizontal } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, AlertAction, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import type { PerfilEmpresa } from '@/lib/types';
 import { MAX_PREGUNTAS_ENTREVISTA } from '@/server/onboarding/constantes';
 import type { ResultadoGuardarPerfil } from '@/server/onboarding/tipos';
+import { extraerDesdeFuentes } from './leer-eventos';
 
 // Primer mensaje que dispara la entrevista; no se muestra en la conversación.
 const MENSAJE_INICIO = 'Hola, empecemos.';
@@ -28,8 +29,36 @@ interface PasoEntrevistaProps {
 }
 
 export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntrevistaProps) {
+  const alListo = useRef(onListo);
+  useEffect(() => {
+    alListo.current = onListo;
+  });
+
+  // Respaldo: si se pasó del máximo de preguntas o pidió terminar y el modelo no llamó a
+  // guardar_perfil, armamos el perfil desde la transcripción (mismo camino que la entrevista por voz).
+  const pidioTerminar = useRef(false);
+  const [cierre, setCierre] = useState<{ estado: 'no' | 'procesando' | 'error'; mensaje?: string }>({ estado: 'no' });
+
+  const cerrarConTranscript = useCallback(async (mensajes: UIMessage[]) => {
+    setCierre({ estado: 'procesando', mensaje: 'Armando tu perfil con lo que charlamos…' });
+    const formData = new FormData();
+    formData.append('texto', transcriptoDe(mensajes.filter((m, i) => !(i === 0 && textoDe(m) === MENSAJE_INICIO))));
+    const resultado: { perfil?: PerfilEmpresa } = {};
+    await extraerDesdeFuentes(formData, (evento) => {
+      if (evento.tipo === 'progreso') setCierre({ estado: 'procesando', mensaje: evento.mensaje });
+      if (evento.tipo === 'listo') resultado.perfil = evento.perfil;
+      if (evento.tipo === 'error') setCierre({ estado: 'error', mensaje: evento.mensaje });
+    });
+    if (resultado.perfil) alListo.current(resultado.perfil);
+  }, []);
+
   const { messages, sendMessage, status, error, regenerate } = useChat({
     transport: new DefaultChatTransport({ api: '/api/onboarding/entrevista' }),
+    onFinish: ({ messages: todos, isAbort, isError, isDisconnect }) => {
+      if (isAbort || isError || isDisconnect || buscarPerfilGuardado(todos)) return;
+      const turnos = todos.filter((m) => m.role === 'assistant').length;
+      if (turnos > MAX_PREGUNTAS_ENTREVISTA || pidioTerminar.current) void cerrarConTranscript(todos);
+    },
   });
   const [texto, setTexto] = useState('');
   const iniciado = useRef(false);
@@ -47,10 +76,6 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
 
   // Cuando la IA guardó el perfil y terminó de despedirse, pasamos a la revisión (una sola vez).
   const guardado = buscarPerfilGuardado(messages);
-  const alListo = useRef(onListo);
-  useEffect(() => {
-    alListo.current = onListo;
-  });
   useEffect(() => {
     if (!guardado || status !== 'ready') return;
     const espera = setTimeout(() => alListo.current(guardado), 1500);
@@ -63,7 +88,7 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
 
   const enviar = (contenido: string) => {
     const limpio = contenido.trim();
-    if (!limpio || ocupado || guardado) return;
+    if (!limpio || ocupado || guardado || cierre.estado !== 'no') return;
     void sendMessage({ text: limpio });
     setTexto('');
   };
@@ -109,6 +134,21 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
               </AlertAction>
             </Alert>
           )}
+          {cierre.estado === 'procesando' && (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Spinner /> {cierre.mensaje}
+            </p>
+          )}
+          {cierre.estado === 'error' && (
+            <Alert variant="destructive">
+              <AlertDescription>{cierre.mensaje}</AlertDescription>
+              <AlertAction>
+                <Button size="sm" variant="outline" onClick={() => void cerrarConTranscript(messages)}>
+                  Reintentar
+                </Button>
+              </AlertAction>
+            </Alert>
+          )}
           <div ref={finalRef} />
         </div>
 
@@ -132,7 +172,7 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
             aria-label="Tu respuesta"
             rows={2}
             className="min-h-0 resize-none"
-            disabled={Boolean(guardado)}
+            disabled={Boolean(guardado) || cierre.estado !== 'no'}
           />
           <Button type="submit" size="icon" aria-label="Enviar" disabled={ocupado || !texto.trim() || Boolean(guardado)}>
             <SendHorizontal />
@@ -144,7 +184,14 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
         <Button variant="ghost" onClick={onSaltar} disabled={ocupado}>
           Saltar y revisar el perfil
         </Button>
-        <Button variant="outline" onClick={() => enviar(MENSAJE_TERMINAR)} disabled={ocupado || preguntas === 0 || Boolean(guardado)}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            pidioTerminar.current = true;
+            enviar(MENSAJE_TERMINAR);
+          }}
+          disabled={ocupado || preguntas === 0 || Boolean(guardado) || cierre.estado !== 'no'}
+        >
           Terminar entrevista
         </Button>
       </CardFooter>
@@ -195,6 +242,13 @@ function Mensaje({ mensaje }: { mensaje: UIMessage }) {
       })}
     </div>
   );
+}
+
+function transcriptoDe(mensajes: UIMessage[]) {
+  return [
+    'Transcripción de la entrevista por chat con el dueño o encargado de la empresa:',
+    ...mensajes.map((m) => `${m.role === 'assistant' ? 'Luxis' : 'Empresa'}: ${textoDe(m)}`).filter((l) => !l.endsWith(': ')),
+  ].join('\n');
 }
 
 function textoDe(mensaje: UIMessage) {
