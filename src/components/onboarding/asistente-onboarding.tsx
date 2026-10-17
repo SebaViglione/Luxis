@@ -1,15 +1,20 @@
 'use client';
 
 import { Check } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { PerfilEmpresa } from '@/lib/types';
 import { confirmarPerfil } from '@/app/(onboarding)/onboarding/actions';
 import { BotonEntrevistaVoz } from '@/components/voz/entrevista-voz';
+import { aplicarElecciones, detectarContradicciones, type Eleccion, type FuentesPerfil } from './contradicciones';
 import { PasoEmpresa } from './paso-empresa';
 import { PasoEntrevista } from './paso-entrevista';
 import { PasoFuentes } from './paso-fuentes';
 import { ResumenPerfil } from './resumen-perfil';
+import { RevisarContradicciones } from './revisar-contradicciones';
+
+const datosManuales = (p: PerfilEmpresa): Partial<PerfilEmpresa> =>
+  ({ nombre: p.nombre, rut: p.rut, departamento: p.departamento, localidad: p.localidad, web: p.web, telefono: p.telefono });
 
 type Paso = 'empresa' | 'fuentes' | 'entrevista' | 'resumen';
 
@@ -25,10 +30,26 @@ export function AsistenteOnboarding({ perfilInicial }: { perfilInicial: PerfilEm
   // Si vuelve a mitad de camino con productos ya cargados, retoma en la revisión.
   const [paso, setPaso] = useState<Paso>(perfilInicial.productos.length > 0 ? 'resumen' : 'empresa');
   const indiceActual = PASOS.findIndex((p) => p.id === paso);
+  // Lo que dijo cada fuente antes de fusionar: si los documentos contradicen al usuario, se lo mostramos antes de la revisión.
+  const [fuentes, setFuentes] = useState<FuentesPerfil>({});
+  const [resueltas, setResueltas] = useState(false);
+  const contradicciones = useMemo(() => detectarContradicciones(fuentes), [fuentes]);
 
   const avanzar = (siguiente: Paso, nuevoPerfil?: PerfilEmpresa) => {
     if (nuevoPerfil) setPerfil(nuevoPerfil);
     setPaso(siguiente);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const registrar = (fuente: 'documentos' | 'entrevista', extraido?: Partial<PerfilEmpresa>) => {
+    if (!extraido) return;
+    setFuentes((f) => ({ ...f, [fuente]: fuente === 'entrevista' ? { ...f.entrevista, ...extraido } : extraido }));
+    setResueltas(false);
+  };
+
+  const resolver = (elecciones: Record<string, Eleccion>) => {
+    setPerfil((p) => aplicarElecciones(p, contradicciones, elecciones));
+    setResueltas(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -54,25 +75,52 @@ export function AsistenteOnboarding({ perfilInicial }: { perfilInicial: PerfilEm
         })}
       </ol>
 
-      {paso === 'empresa' && <PasoEmpresa perfil={perfil} onListo={(p) => avanzar('fuentes', p)} />}
+      {paso === 'empresa' && (
+        <PasoEmpresa
+          perfil={perfil}
+          onListo={(p) => {
+            setFuentes((f) => ({ ...f, manual: datosManuales(p) }));
+            setResueltas(false);
+            avanzar('fuentes', p);
+          }}
+        />
+      )}
       {paso === 'fuentes' && (
         <PasoFuentes
           web={perfil.web}
           onVolver={() => avanzar('empresa')}
           onSinFuentes={() => avanzar('entrevista')}
-          onListo={(p) => avanzar(p.camposFaltantes.length > 0 ? 'entrevista' : 'resumen', p)}
+          onListo={(p, extraido) => {
+            registrar('documentos', extraido);
+            avanzar(p.camposFaltantes.length > 0 ? 'entrevista' : 'resumen', p);
+          }}
         />
       )}
       {paso === 'entrevista' && (
         <PasoEntrevista
           perfil={perfil}
-          onListo={(p) => avanzar('resumen', p)}
+          onListo={(p, extraido) => {
+            registrar('entrevista', extraido);
+            avanzar('resumen', p);
+          }}
           onSaltar={() => avanzar('resumen')}
-          acciones={<BotonEntrevistaVoz perfil={perfil} onPerfil={(p) => avanzar('resumen', p)} />}
+          acciones={
+            <BotonEntrevistaVoz
+              perfil={perfil}
+              onPerfil={(p, extraido) => {
+                registrar('entrevista', extraido);
+                avanzar('resumen', p);
+              }}
+            />
+          }
         />
       )}
-      {paso === 'resumen' && (
+      {paso === 'resumen' && contradicciones.length > 0 && !resueltas && (
+        <RevisarContradicciones contradicciones={contradicciones} onListo={resolver} onVolver={() => avanzar('entrevista')} />
+      )}
+      {paso === 'resumen' && (contradicciones.length === 0 || resueltas) && (
         <ResumenPerfil
+          key={resueltas ? 'con-contradicciones-resueltas' : 'sin-contradicciones'}
           perfilInicial={perfil}
           modo="onboarding"
           onGuardar={confirmarPerfil}

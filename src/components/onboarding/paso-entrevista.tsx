@@ -23,7 +23,7 @@ const MENSAJE_TERMINAR = 'Listo, con eso alcanza por ahora.';
 
 interface PasoEntrevistaProps {
   perfil: PerfilEmpresa;
-  onListo: (perfil: PerfilEmpresa) => void;
+  onListo: (perfil: PerfilEmpresa, extraido?: Partial<PerfilEmpresa>) => void;
   onSaltar: () => void;
   /** Acciones extra en el encabezado (ej. entrevista por voz). */
   acciones?: React.ReactNode;
@@ -44,13 +44,16 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
     setCierre({ estado: 'procesando', mensaje: 'Armando tu perfil con lo que charlamos…' });
     const formData = new FormData();
     formData.append('texto', transcriptoDe(mensajes.filter((m, i) => !(i === 0 && textoDe(m) === MENSAJE_INICIO))));
-    const resultado: { perfil?: PerfilEmpresa } = {};
+    const resultado: { perfil?: PerfilEmpresa; extraido?: Partial<PerfilEmpresa> } = {};
     await extraerDesdeFuentes(formData, (evento) => {
       if (evento.tipo === 'progreso') setCierre({ estado: 'procesando', mensaje: evento.mensaje });
-      if (evento.tipo === 'listo') resultado.perfil = evento.perfil;
+      if (evento.tipo === 'listo') {
+        resultado.perfil = evento.perfil;
+        resultado.extraido = evento.extraido;
+      }
       if (evento.tipo === 'error') setCierre({ estado: 'error', mensaje: evento.mensaje });
     });
-    if (resultado.perfil) alListo.current(resultado.perfil);
+    if (resultado.perfil) alListo.current(resultado.perfil, resultado.extraido);
   }, []);
 
   const { messages, sendMessage, status, error, regenerate } = useChat({
@@ -81,7 +84,7 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
   const guardado = buscarPerfilGuardado(messages);
   useEffect(() => {
     if (!guardado || status !== 'ready') return;
-    const espera = setTimeout(() => alListo.current(guardado), 1500);
+    const espera = setTimeout(() => alListo.current(guardado.perfil, guardado.extraido), 1500);
     return () => clearTimeout(espera);
   }, [guardado, status]);
 
@@ -281,11 +284,11 @@ function textoDe(mensaje: UIMessage) {
   return mensaje.parts.map((p) => (p.type === 'text' ? p.text : '')).join('');
 }
 
-function buscarPerfilGuardado(mensajes: UIMessage[]): PerfilEmpresa | null {
+function buscarPerfilGuardado(mensajes: UIMessage[]): ResultadoGuardarPerfil | null {
   for (const mensaje of mensajes) {
     for (const parte of mensaje.parts) {
       if (isToolUIPart(parte) && getToolName(parte) === 'guardar_perfil' && parte.state === 'output-available') {
-        return (parte.output as ResultadoGuardarPerfil).perfil;
+        return parte.output as ResultadoGuardarPerfil;
       }
     }
   }

@@ -18,7 +18,7 @@ interface PasoFuentesProps {
   web?: string;
   onVolver: () => void;
   onSinFuentes: () => void;
-  onListo: (perfil: PerfilEmpresa) => void;
+  onListo: (perfil: PerfilEmpresa, extraido?: Partial<PerfilEmpresa>) => void;
 }
 
 type Estado = 'editando' | 'procesando' | 'error';
@@ -62,13 +62,16 @@ export function PasoFuentes({ web, onVolver, onSinFuentes, onListo }: PasoFuente
 
     setEstado('procesando');
     setEventos([]);
-    const resultado: { perfil?: PerfilEmpresa } = {};
+    const resultado: { perfil?: PerfilEmpresa; extraido?: Partial<PerfilEmpresa> } = {};
     await extraerDesdeFuentes(formData, (evento) => {
       setEventos((previos) => [...previos, evento]);
-      if (evento.tipo === 'listo') resultado.perfil = evento.perfil;
+      if (evento.tipo === 'listo') {
+        resultado.perfil = evento.perfil;
+        resultado.extraido = evento.extraido;
+      }
       if (evento.tipo === 'error') setEstado('error');
     });
-    if (resultado.perfil) onListo(resultado.perfil);
+    if (resultado.perfil) onListo(resultado.perfil, resultado.extraido);
   };
 
   const hayFuentes = archivos.length > 0 || url.trim().length > 0;

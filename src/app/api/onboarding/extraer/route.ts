@@ -97,7 +97,7 @@ export async function POST(request: Request) {
 
         enviar({ tipo: 'progreso', mensaje: 'Guardando tu perfil…' });
         await guardarPerfil(sesion.empresaId, perfil, { completo: false });
-        enviar({ tipo: 'listo', perfil });
+        enviar({ tipo: 'listo', perfil, extraido: nuevo });
       } catch (error) {
         console.error('[extraer]', error);
         enviar({ tipo: 'error', mensaje: 'La IA no pudo armar el perfil esta vez. Probá de nuevo en unos segundos.' });
