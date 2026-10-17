@@ -1,0 +1,122 @@
+[
+  {
+    "idCompra": "1375519",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1375519",
+    "relevante": true,
+    "motivo": "Adq. de materiales de construcción para obra en Unidad N.° 22 Rocha: pide pedregullo, arena gruesa, arena fina y otros materiales que una barraca vende directamente"
+  },
+  {
+    "idCompra": "1377866",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1377866",
+    "relevante": true,
+    "motivo": "Compra directa de materiales de construcción con entrega inmediata en Río Negro: varilla de hierro, arena terciada, codos de PVC, típico pedido a barraca"
+  },
+  {
+    "idCompra": "1379503",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1379503",
+    "relevante": true,
+    "motivo": "Materiales para refaccionar columnas en Unidad N.° 7 Canelones: pedregullo y arena fina, ítems de barraca"
+  },
+  {
+    "idCompra": "1380047",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1380047",
+    "relevante": true,
+    "motivo": "Objeto literal 'Materiales de Barraca'; pide fratachos, baldes de albañil y chapa de compensado fenólico"
+  },
+  {
+    "idCompra": "1379507",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1379507",
+    "relevante": true,
+    "motivo": "Materiales para reacondicionar contenedores en Río Negro: tabla para encofrado y caño de hierro cuadrado, productos de barraca"
+  },
+  {
+    "idCompra": "i503606",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/i503606",
+    "relevante": true,
+    "motivo": "Adquisición de 30 camiones de balasto para arreglos tras evento climático: producto que vende una barraca al por mayor"
+  },
+  {
+    "idCompra": "i503656",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/i503656",
+    "relevante": true,
+    "motivo": "Solicitud de membrana líquida impermeabilizante con caucho: producto de catálogo típico de barraca"
+  },
+  {
+    "idCompra": "1379506",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1379506",
+    "relevante": true,
+    "motivo": "Materiales para perímetro de Unidad N.° 14 Colonia: alambre de púa, tejido de alambre galvanizado y columnas de hormigón, todos productos de barraca"
+  },
+  {
+    "idCompra": "1377159",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1377159",
+    "relevante": true,
+    "motivo": "Adquisición de cordones de hormigón prefabricados (escalones de hormigón prefabricado): producto de barraca"
+  },
+  {
+    "idCompra": "1358540",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1358540",
+    "relevante": true,
+    "motivo": "Mantenimiento edilicio: pide esmalte sintético, pintura imprimación y caño de PVC para sanitaria, insumos que vende una barraca"
+  },
+  {
+    "idCompra": "1378380",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1378380",
+    "relevante": false,
+    "motivo": "Suministro de insumos para osteosíntesis (traumatología): instrumental médico, no materiales de construcción"
+  },
+  {
+    "idCompra": "1373590",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1373590",
+    "relevante": false,
+    "motivo": "Reactivos de laboratorio (agar, azul de metileno): rubro salud, sin ningún ítem de construcción"
+  },
+  {
+    "idCompra": "1376165",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1376165",
+    "relevante": false,
+    "motivo": "Instrumentos de física para laboratorio educativo (cinta métrica, dinamómetro): 'alambre' y 'hierro' aparecen en contexto de instrumental, no de materiales"
+  },
+  {
+    "idCompra": "1378881",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1378881",
+    "relevante": false,
+    "motivo": "Pedido de farmacia (medicamentos e insumos médicos): falso positivo típico de la palabra 'hierro' (suplemento) que hay que excluir"
+  },
+  {
+    "idCompra": "1380084",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1380084",
+    "relevante": false,
+    "motivo": "Compra de medicamentos de alto costo (procedimiento especial): rubro salud, sin relación con materiales de construcción"
+  },
+  {
+    "idCompra": "1377845",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1377845",
+    "relevante": false,
+    "motivo": "Adquisición de mobiliario de oficina (mesas y sillas de madera): 'madera' aparece pero es mueble terminado, no materia prima de barraca"
+  },
+  {
+    "idCompra": "1371540",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1371540",
+    "relevante": false,
+    "motivo": "Mobiliario para eventos (mesas y sillas): mismo caso que mobiliario de oficina, mueble terminado y no material"
+  },
+  {
+    "idCompra": "1367149",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1367149",
+    "relevante": false,
+    "motivo": "Tramposo — obra llave en mano: construcción de veredas, drenaje y colectores pluviales como obra de infraestructura completa (mano de obra + materiales + equipos), no una compra de materiales que una barraca pueda simplemente cotizar"
+  },
+  {
+    "idCompra": "1376874",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1376874",
+    "relevante": false,
+    "motivo": "Tramposo — servicio de albañilería: contratación de la obra de reacondicionamiento de baños (mano de obra incluida), no una compra de materiales"
+  },
+  {
+    "idCompra": "1380234",
+    "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1380234",
+    "relevante": false,
+    "motivo": "Tramposo — compra de maquinaria: cizalla y plegadora hidráulica industrial para metales con instalación y capacitación; 'chapa' aparece por la plegadora de chapa, pero el objeto es una máquina, no materiales de barraca"
+  }
+]
