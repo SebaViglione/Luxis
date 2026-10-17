@@ -22,7 +22,7 @@ async function main() {
   verificarIA();
 
   const casos = JSON.parse(await readFile('demo-assets/casos-eval.json', 'utf8')) as Caso[];
-  const [empresa] = await db.select({ id: schema.empresas.id }).from(schema.empresas).where(eq(schema.empresas.rut, '217845320011'));
+  const [empresa] = await db.select({ id: schema.empresas.id }).from(schema.empresas).where(eq(schema.empresas.rut, '213456780012'));
   if (!empresa) throw new Error('Falta la empresa demo: corré npm run seed:demo -- --sin-ia');
   const perfil = (await cargarPerfil(empresa.id))!;
 

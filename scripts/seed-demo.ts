@@ -8,8 +8,8 @@ config({ path: '.env.local', quiet: true }); config({ quiet: true });
  * Los datos son del perfil de la empresa (ficticia, docs/05-rubrica-demo-pitch.md §3), no resultados de IA.
  */
 const EMPRESA = {
-  nombre: 'Barraca Don Aurelio', razonSocial: 'Barraca Don Aurelio S.R.L.', rut: '217845320011',
-  departamento: 'Canelones', localidad: 'Las Piedras', web: 'https://barracadonaurelio.example', telefono: '2364 1234', emailContacto: 'ventas@barracadonaurelio.example',
+  nombre: 'Barraca Don Aurelio', razonSocial: 'Barraca Don Aurelio S.R.L.', rut: '213456780012',
+  departamento: 'Canelones', localidad: 'Las Piedras', web: 'https://www.donaurelio.com.uy', telefono: '2369 4821', emailContacto: 'ventas@donaurelio.com.uy',
   descripcion: 'Barraca familiar de Las Piedras con 12 empleados. Venta de materiales de construcción, hierro y maderas, con reparto propio.',
   zonasEntrega: ['Canelones', 'Montevideo', 'San José', 'Florida'],
   capacidadNotas: '4 camiones por semana; hasta 20 toneladas de áridos o 400 bolsas de portland por entrega.',
