@@ -68,9 +68,9 @@ export async function resumenDashboard(empresaId: string): Promise<{ total: numb
 }
 
 export async function obtenerDetalle(empresaId: string, idCompra: string): Promise<DetalleLicitacion | null> {
-  const [l] = await db.select(COLS_LICITACION).from(schema.licitaciones).where(eq(schema.licitaciones.idCompra, idCompra));
-  if (!l) return null;
-  const [items, archivos, aclaraciones, [an], [m], precios] = await Promise.all([
+  // Las 7 consultas en una sola tanda (antes: licitación primero y después el resto).
+  const [[l], items, archivos, aclaraciones, [an], [m], precios] = await Promise.all([
+    db.select(COLS_LICITACION).from(schema.licitaciones).where(eq(schema.licitaciones.idCompra, idCompra)),
     db.select().from(schema.licitacionItems).where(eq(schema.licitacionItems.idCompra, idCompra)).orderBy(schema.licitacionItems.nroItem),
     db.select({
       id: schema.licitacionArchivos.id, nombre: schema.licitacionArchivos.nombre, url: schema.licitacionArchivos.url, extension: schema.licitacionArchivos.extension,
@@ -83,6 +83,7 @@ export async function obtenerDetalle(empresaId: string, idCompra: string): Promi
     db.select().from(schema.matches).where(and(eq(schema.matches.empresaId, empresaId), eq(schema.matches.idCompra, idCompra))),
     leerPrecios(idCompra),
   ]);
+  if (!l) return null;
   const analisis: AnalisisPliego | null = an ? {
     resumen: an.resumen ?? '', quePiden: an.quePiden ?? '', requisitosDocumentales: an.requisitosDocumentales ?? [], fechasClave: an.fechasClave ?? [],
     condiciones: an.condiciones ?? {}, riesgos: an.riesgos ?? [], confianza: an.confianza ?? 0, basadoEn: an.basadoEn as 'pliego' | 'metadata',

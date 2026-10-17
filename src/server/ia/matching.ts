@@ -82,12 +82,12 @@ Documentación: ${p.documentos.join('; ') || 'no indicada'}`;
 }
 
 /** Evalúa una licitación para una empresa y guarda el match. */
-export async function evaluarLicitacion(perfil: PerfilParaMatch, idCompra: string) {
+export async function evaluarLicitacion(perfil: PerfilParaMatch, idCompra: string, opts: { sinExtras?: boolean } = {}) {
   const ctx = await contextoLicitacion(idCompra);
   if (!ctx) return null;
   const { objeto } = await generarObjeto({
     modelo: modeloRapido, schema: SchemaMatch, system: SYSTEM,
-    prompt: `EMPRESA:\n${textoPerfil(perfil)}\n\nLICITACIÓN:\n${ctx}`, maxOutputTokens: 8000,
+    prompt: `EMPRESA:\n${textoPerfil(perfil)}\n\nLICITACIÓN:\n${ctx}`, maxOutputTokens: 3000,
   });
   const fila = {
     empresaId: perfil.empresaId, idCompra, relevante: objeto.confianza >= 40, confianza: objeto.confianza, razon: objeto.razon,
@@ -97,7 +97,7 @@ export async function evaluarLicitacion(perfil: PerfilParaMatch, idCompra: strin
     target: [schema.matches.empresaId, schema.matches.idCompra],
     set: { relevante: fila.relevante, confianza: fila.confianza, razon: fila.razon, itemsOfertables: fila.itemsOfertables, perfilVersion: fila.perfilVersion, updatedAt: fila.updatedAt },
   });
-  if (fila.relevante) {
+  if (fila.relevante && !opts.sinExtras) {
     await Promise.all([calcularPrecios(idCompra).catch(() => null), calcularGapParaMatch(perfil.empresaId, idCompra).catch(() => null)]);
   }
   return { ...objeto, modelo: nombreModeloRapido };
@@ -117,7 +117,7 @@ export async function evaluarEmpresa(empresaId: string, opts: { todas?: boolean;
     candidatas = candidatas.filter((id) => !vigentes.has(id));
   }
   let relevantes = 0; let errores = 0;
-  await enParalelo(candidatas, opts.concurrencia ?? 5, async (id) => {
+  await enParalelo(candidatas, opts.concurrencia ?? 8, async (id) => {
     try { const r = await evaluarLicitacion(perfil, id); if (r && r.confianza >= 40) relevantes++; }
     catch (e) { errores++; if ((e as Error).name === 'IANoConfigurada') throw e; }
   });

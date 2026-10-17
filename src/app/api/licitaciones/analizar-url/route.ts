@@ -1,9 +1,11 @@
+import { after } from 'next/server';
 import { type NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { scrapeDetalle, idDesdeUrl } from '@/server/arce/scraper';
 import { upsertLlamados } from '@/server/arce/guardar';
 import { procesarArchivos } from '@/server/arce/procesar-archivos';
+import { indexarParrafos } from '@/server/ia/vectores';
 import { analizarLicitacion } from '@/server/ia/analisis-pliego';
 import { cargarPerfil, evaluarLicitacion } from '@/server/ia/matching';
 import { calcularPrecios } from '@/server/ia/precio';
@@ -46,17 +48,19 @@ export async function POST(req: NextRequest) {
             enviar({ etapa: 'buscando', estado: 'aviso', mensaje: 'Esta publicación es una adjudicación: completamos los datos desde la compra original (ya cerrada).' });
           }
         });
-        await etapa('archivos', 'Descargando y leyendo el pliego…', () => procesarArchivos(idCompra));
+        // Precios solo necesita los ítems: arranca ya, en paralelo con la lectura y el análisis del pliego.
+        const precios = calcularPrecios(idCompra).catch(() => null);
+        await etapa('archivos', 'Descargando y leyendo el pliego…', () => procesarArchivos(idCompra, { indexarDespues: true }));
+        // Párrafos + embeddings (para el chat de pliegos grandes) no frenan al usuario.
+        after(() => indexarParrafos(idCompra).catch(() => null));
         await etapa('analizando', 'Analizando el pliego con IA…', () => analizarLicitacion(idCompra, { forzar: true }));
-        if (empresaId) {
-          await etapa('matching', 'Comparando con tus productos…', async () => {
-            const perfil = await cargarPerfil(empresaId);
-            if (perfil) await evaluarLicitacion(perfil, idCompra);
-          });
-        }
+        await etapa('matching', 'Comparando con tus productos…', async () => {
+          const perfil = await cargarPerfil(empresaId);
+          if (perfil) await evaluarLicitacion(perfil, idCompra, { sinExtras: true });
+        });
         await etapa('precios', 'Buscando precios históricos…', async () => {
-          await calcularPrecios(idCompra);
-          if (empresaId) await calcularGapParaMatch(empresaId, idCompra).catch(() => null);
+          await precios;
+          await calcularGapParaMatch(empresaId, idCompra).catch(() => null);
         });
         enviar({ listo: true, idCompra });
       } catch (e) {
