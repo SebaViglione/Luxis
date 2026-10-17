@@ -14,6 +14,12 @@ function descargar(blob: Blob, nombre: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/** PDF A4 con texto seleccionable, listo para firmar (digital o impreso). */
+export async function descargarPdf(documento: DocumentoPostulacion) {
+  const { generarPdf } = await import('./pdf');
+  descargar(await generarPdf(documento), `${documento.nombreArchivo}.pdf`);
+}
+
 /** Word editable (.docx) a partir de los bloques del documento. */
 export async function descargarDocx(documento: DocumentoPostulacion) {
   const d = await import('docx');
