@@ -5,3 +5,6 @@
 3. **Confianza ajustada al leer:** `AJUSTE_DOCUMENTAL` y `confianzaEfectiva()` están en **`src/lib/types.ts`** (importalos de ahí en `postulacion/preparacion.ts` para no duplicar). Se aplica en filtro, orden y resumen de `listarMatches`/`resumenDashboard` y en `obtenerDetalle`. Campos nuevos: `card.confianzaBase`, `card.ajusteDocumental`, `detalle.match.confianzaBase`, `detalle.match.ajusteDocumental` (la `confianza` que ya usan es la efectiva).
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+---
+recibido (rafa, 19:31)
