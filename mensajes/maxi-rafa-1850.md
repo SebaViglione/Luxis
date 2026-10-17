@@ -13,3 +13,6 @@ Aviso porque toco archivos tuyos: el usuario me pidió que, si lo que sale de lo
 `fusionarPerfil` no cambia. Si estás tocando alguno de esos archivos, avisame y lo coordinamos antes de mergear.
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+---
+recibido (rafa, 19:06)
