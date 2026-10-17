@@ -49,20 +49,22 @@ export function Hero() {
               blur={8}
               className="text-5xl leading-[1.02] font-semibold tracking-tighter sm:text-6xl xl:text-7xl"
             />
-            <motion.p {...entrada(0.5)} className="mt-7 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-lg text-muted-foreground md:text-xl">
-              <span>Licitaciones de</span>
-              <RotatingText
-                texts={RUBROS}
-                effect="blur"
-                splitBy="characters"
-                staggerDuration={0.02}
-                rotationInterval={2200}
-                highlight
-                highlightColor="#C4502B"
-                mainClassName="font-medium"
-              />
-              <span>que podés ganar, con precio y papeles.</span>
-            </motion.p>
+            <motion.div {...entrada(0.5)} className="mt-7 text-lg text-muted-foreground md:text-xl">
+              <p className="flex items-center gap-2">
+                <span>Licitaciones de</span>
+                {/* Hueco de ancho fijo: todos los rubros apilados e invisibles reservan el ancho del más largo. */}
+                <span className="inline-grid">
+                  {RUBROS.map((r) => (
+                    <span key={r} aria-hidden className="invisible col-start-1 row-start-1 px-2 py-0.5 font-medium whitespace-nowrap">{r}</span>
+                  ))}
+                  {/* La píldora se ajusta a cada palabra, pero nada la sigue en la línea: no corre texto. */}
+                  <span className="col-start-1 row-start-1 justify-self-start font-medium">
+                    <RotatingText texts={RUBROS} effect="blur" splitBy="characters" staggerDuration={0.02} rotationInterval={2200} highlight highlightColor="#C4502B" />
+                  </span>
+                </span>
+              </p>
+              <p className="mt-1.5">que podés ganar, con precio y papeles.</p>
+            </motion.div>
             <motion.div {...entrada(0.7)} className="mt-10 flex flex-wrap gap-3">
               <Link href="/registro" className={cn(buttonVariants({ size: 'lg' }), 'h-12 px-6 text-base')}>
                 <ShinyText text="Crear cuenta" color="rgba(255,255,255,0.82)" shineColor="#ffffff" speed={2.6} delay={1.2} />

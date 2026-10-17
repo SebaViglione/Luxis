@@ -91,6 +91,7 @@ export function Pasos() {
             </div>
             <div className="hidden lg:block">
               <div className="sticky top-24 flex h-[calc(100vh-8rem)] flex-col justify-center">
+                <div className="h-[34rem]">
                 <div className="mb-6 flex gap-2" aria-hidden>
                   {PASOS.map((p, i) => (
                     <span key={p.numero} className={cn('h-1 flex-1 rounded-full transition-colors duration-500', i <= activo ? 'bg-primary' : 'bg-border')} />
@@ -107,6 +108,7 @@ export function Pasos() {
                     <Visual />
                   </motion.div>
                 </AnimatePresence>
+                </div>
               </div>
             </div>
           </div>

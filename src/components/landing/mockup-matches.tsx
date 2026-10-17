@@ -61,7 +61,7 @@ export function ListaMatches() {
     <div className="space-y-3">
       <div className="flex items-baseline justify-between">
         <p className="flex items-baseline gap-2">
-          <CountUp to={12} duration={1.2} trigger="load" className="text-3xl font-semibold tracking-tight" />
+          <CountUp to={12} duration={1.2} trigger="load" className="inline-block min-w-[2ch] text-3xl font-semibold tracking-tight tabular-nums" />
           <span className="text-base font-semibold tracking-tight">licitaciones para vos</span>
         </p>
         <span className="relative flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">

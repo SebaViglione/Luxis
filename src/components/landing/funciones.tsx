@@ -117,9 +117,9 @@ function EscenarioFijo() {
   return (
     <div ref={pista} className="relative hidden lg:block" style={{ height: `${N * 90}svh` }}>
       <div className="sticky top-16 flex h-[calc(100svh-4rem)] items-center">
-        <div className="mx-auto grid w-full max-w-7xl grid-cols-[15rem_1fr_1.1fr] items-center gap-12 px-8">
+        <div className="mx-auto grid w-full max-w-7xl grid-cols-[15rem_1fr_1.1fr] items-start gap-12 px-8">
           {/* Índice */}
-          <nav aria-label="Funciones" className="relative self-center">
+          <nav aria-label="Funciones" className="relative mt-24">
             <div aria-hidden className="absolute top-0 bottom-0 left-0 w-px bg-border">
               <motion.div style={{ scaleY: avance }} className="absolute inset-0 origin-top bg-primary" />
             </div>
@@ -143,7 +143,7 @@ function EscenarioFijo() {
             </ol>
           </nav>
           {/* Texto */}
-          <div className="relative min-h-[22rem]">
+          <div className="relative h-[28rem]">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activa}
@@ -157,7 +157,7 @@ function EscenarioFijo() {
             </AnimatePresence>
           </div>
           {/* Demo */}
-          <div className="relative [perspective:1400px]">
+          <div className="relative h-[28rem] [perspective:1400px]">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activa}

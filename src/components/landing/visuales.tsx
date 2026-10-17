@@ -40,7 +40,7 @@ export function VisualMatching() {
           <p className="text-xs text-muted-foreground">Compra Directa · cierra en 6 días</p>
         </div>
         <div className="text-right">
-          <CountUp to={92} duration={1.4} trigger="view" className="text-4xl leading-none font-semibold tracking-tight" />
+          <CountUp to={92} duration={1.4} trigger="view" className="inline-block min-w-[2ch] text-right text-4xl leading-none font-semibold tracking-tight tabular-nums" />
           <p className="mt-1 text-xs text-muted-foreground">confianza</p>
         </div>
       </div>
@@ -87,7 +87,7 @@ export function VisualPrecio() {
         </div>
         <div className="text-right">
           <p className="font-mono text-3xl leading-none font-semibold tracking-tight">
-            $ <CountUp to={412} duration={1.2} trigger="view" />
+            $ <CountUp to={412} duration={1.2} trigger="view" className="inline-block min-w-[3ch] tabular-nums" />
           </p>
           <p className="mt-1 text-xs text-muted-foreground">precio sugerido</p>
         </div>

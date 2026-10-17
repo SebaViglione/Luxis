@@ -10,7 +10,7 @@ export function Cifras({ cifras }: { cifras: { valor: number; etiqueta: string }
         <Aparecer key={c.etiqueta} retraso={i * 0.1} className="border-t border-background/20 pt-5">
           <dt className="sr-only">{c.etiqueta}</dt>
           <dd>
-            <CountUp to={c.valor} duration={1.6} separator="." trigger="view" className="font-mono text-4xl font-semibold tracking-tight md:text-5xl" />
+            <CountUp to={c.valor} duration={1.6} separator="." trigger="view" className="font-mono text-4xl font-semibold tracking-tight tabular-nums md:text-5xl" />
             <p className="mt-2 text-sm text-background/70">{c.etiqueta}</p>
           </dd>
         </Aparecer>

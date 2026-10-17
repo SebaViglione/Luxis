@@ -38,9 +38,13 @@ export function DemoAnalisis() {
     <div ref={ref} aria-hidden className="space-y-4">
       <div className="rounded-md border bg-background p-3.5">
         <p className="mb-1.5 font-mono text-[10px] tracking-wide text-muted-foreground uppercase">Resumen</p>
-        <p className="min-h-[3.75rem] text-sm leading-relaxed">
-          {texto}
-          {!listo && <span className="ml-0.5 inline-block h-4 w-px translate-y-0.5 animate-pulse bg-foreground" />}
+        {/* El texto completo invisible reserva el alto; el tipeo va encima y no empuja nada. */}
+        <p className="relative text-sm leading-relaxed">
+          <span className="invisible">{RESUMEN}</span>
+          <span className="absolute inset-0">
+            {texto}
+            {!listo && <span className="ml-0.5 inline-block h-4 w-px translate-y-0.5 animate-pulse bg-foreground" />}
+          </span>
         </p>
       </div>
       <div>
@@ -89,16 +93,24 @@ export function DemoChat() {
         {PREGUNTA}
       </motion.p>
       <div className={cn('max-w-[92%] self-start rounded-lg rounded-bl-sm border bg-background px-3 py-2 text-sm transition-opacity', responder ? 'opacity-100' : 'opacity-0')}>
-        {texto}
-        {listo && (
-          <motion.span
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="ml-1 inline-flex items-center rounded bg-primary/10 px-1.5 font-mono text-[11px] text-primary"
-          >
-            [pliego.pdf, p. 12]
-          </motion.span>
-        )}
+        <span className="relative block">
+          <span className="invisible">
+            {RESPUESTA}
+            <span className="ml-1 inline-flex px-1.5 font-mono text-[11px]">[pliego.pdf, p. 12]</span>
+          </span>
+          <span className="absolute inset-0">
+            {texto}
+            {listo && (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="ml-1 inline-flex items-center rounded bg-primary/10 px-1.5 font-mono text-[11px] text-primary"
+              >
+                [pliego.pdf, p. 12]
+              </motion.span>
+            )}
+          </span>
+        </span>
       </div>
     </div>
   );
