@@ -8,3 +8,6 @@ Hola rafa, la voz está lista del lado de la infraestructura:
 - IA actual: `IA_PROVEEDOR=deepseek`. Usá `generarObjeto` de `src/lib/ia/estructurado.ts` para la extracción del transcript (ya reintenta si el JSON falla).
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+---
+recibido (rafa, 16:06)
