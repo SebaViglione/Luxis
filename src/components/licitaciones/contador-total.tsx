@@ -1,23 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import CountUp from '@/components/reactbits/count-up';
+import Counter from '@/components/reactbits/counter';
 
 const CLAVE = 'luxis:total-dashboard';
 
 /**
- * Total de licitaciones: anima solo la primera vez en la sesión o cuando el número cambia
- * (antes se re-animaba desde 0 en cada navegación y en cada refresh).
+ * Total de licitaciones con los filtros actuales: los dígitos ruedan del valor anterior al nuevo cuando
+ * cambian los filtros, y la entrada se anima una sola vez por sesión (no en cada navegación).
  */
 export function ContadorTotal({ total, className }: { total: number; className?: string }) {
-  const [desde, setDesde] = useState<number | null>(null);
+  const [intro] = useState(() => {
+    try { return typeof window !== 'undefined' && sessionStorage.getItem(CLAVE) === null; } catch { return false; }
+  });
   useEffect(() => {
-    let previo: number | null = null;
-    try { const v = sessionStorage.getItem(CLAVE); previo = v === null ? null : Number(v); } catch { /* sin storage */ }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- lectura de sessionStorage al montar
-    setDesde(previo ?? 0);
-    try { sessionStorage.setItem(CLAVE, String(total)); } catch { /* sin storage */ }
-  }, [total]);
-  if (desde === null || desde === total) return <span className={className}>{total}</span>;
-  return <CountUp key={`${desde}-${total}`} from={desde} to={total} duration={0.6} trigger="load" className={className} />;
+    try { sessionStorage.setItem(CLAVE, '1'); } catch { /* sin storage */ }
+  }, []);
+  return (
+    <span className={className}>
+      <Counter value={total} locale="es-UY" intro={intro} fontSize="inherit" duration={0.6} bounce={0.15} />
+    </span>
+  );
 }

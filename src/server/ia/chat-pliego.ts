@@ -4,7 +4,7 @@ import { and, asc, eq } from 'drizzle-orm';
 import type { SystemModelMessage } from 'ai';
 import { db } from '@/db';
 import { licitacionAclaraciones, licitacionArchivos, licitaciones, licitacionItems } from '@/db/schema';
-import type { CategoriaArchivo } from '@/lib/types';
+import type { CategoriaArchivo, PerfilEmpresa } from '@/lib/types';
 import { PRIORIDAD } from '@/server/arce/clasificar';
 import { buscarParrafos, obtenerParrafo, resumenParrafos } from '@/server/ia/busqueda';
 
@@ -289,8 +289,26 @@ Reglas:
 - Nunca inventes fechas, montos, cantidades ni requisitos. Si un dato es ambiguo, decilo.
 - Si te preguntan algo que no tiene que ver con esta licitación, respondé en una frase que solo podés ayudar con este pliego.`;
 
-/** Mensajes de sistema: reglas + contexto del pliego (con breakpoint de prompt caching de Anthropic). */
-export function instruccionesChatPliego(contexto: ContextoPliego): SystemModelMessage[] {
+const REGLAS_PERFIL = `Además del pliego tenés el PERFIL DE LA EMPRESA que pregunta (lo cargó en Luxis; no es parte del pliego). Usalo para responder qué ítems puede ofertar comparando con sus productos, unidades y zonas de entrega, qué documentos le faltan o si la entrega le queda lejos. Lo que salga del perfil citalo como [Perfil de tu empresa]; lo del pliego, con [archivo, pN]. Nunca digas que la empresa vende algo que no figura en sus productos: si hay un equivalente probable, decí que es un equivalente y que lo confirme.`;
+
+const ESTADO_DOC_TEXTO: Record<string, string> = { vigente: 'vigente', en_tramite: 'en trámite', no_tiene: 'no tiene', vencido: 'vencido', desconocido: 'sin dato' };
+
+function bloquePerfil(perfil: PerfilEmpresa): string {
+  const precio = (p: PerfilEmpresa['productos'][number]) =>
+    p.precioReferencia == null ? 'sin precio de lista' : `${p.moneda === 'USD' ? 'US$' : '$'} ${p.precioReferencia.toLocaleString('es-UY')} sin IVA`;
+  return [
+    '=== PERFIL DE LA EMPRESA QUE PREGUNTA ===',
+    `Empresa: ${perfil.nombre}${perfil.localidad ? ` (${perfil.localidad}${perfil.departamento ? `, ${perfil.departamento}` : ''})` : ''}`,
+    `Entrega en: ${perfil.zonasEntrega.length ? perfil.zonasEntrega.join(', ') : 'sin dato'}`,
+    `Capacidad: ${perfil.capacidadNotas || 'sin dato'}`,
+    `Documentación: ${perfil.documentacion.map((d) => `${d.tipo === 'OTRO' ? d.nombre : d.tipo}: ${ESTADO_DOC_TEXTO[d.estado] ?? d.estado}`).join('; ')}`,
+    `Productos que vende (${perfil.productos.length}), nombre · unidad · precio de lista:`,
+    ...perfil.productos.slice(0, 300).map((p) => `- ${p.nombre} · ${p.unidad || 'sin unidad'} · ${precio(p)}`),
+  ].join('\n');
+}
+
+/** Mensajes de sistema: reglas + contexto del pliego (con breakpoint de prompt caching de Anthropic) + perfil de la empresa. */
+export function instruccionesChatPliego(contexto: ContextoPliego, perfil?: PerfilEmpresa | null): SystemModelMessage[] {
   const avisos: string[] = [];
   if (contexto.basadoEn === 'metadata') {
     avisos.push(
@@ -311,6 +329,7 @@ export function instruccionesChatPliego(contexto: ContextoPliego): SystemModelMe
     );
   }
 
+  // El perfil va después del pliego: así el prefijo cacheado (reglas + pliego) es el mismo para todas las empresas.
   return [
     { role: 'system', content: [REGLAS, ...avisos].join('\n\n') },
     {
@@ -318,5 +337,6 @@ export function instruccionesChatPliego(contexto: ContextoPliego): SystemModelMe
       content: contexto.texto,
       providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
     },
+    ...(perfil ? [{ role: 'system' as const, content: `${REGLAS_PERFIL}\n\n${bloquePerfil(perfil)}` }] : []),
   ];
 }

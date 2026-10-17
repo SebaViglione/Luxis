@@ -1,9 +1,10 @@
-import { BookOpen, CircleCheck, CircleHelp, CircleX, Clock, FileCheck, FilePen, Trophy, type LucideIcon } from 'lucide-react';
+import { CircleCheck, CircleHelp, CircleX, Clock, FileCheck, FilePen, Trophy, type LucideIcon } from 'lucide-react';
 import { EstadoVacio } from '@/components/ui/estado-vacio';
 import type { GapDocumental, RequisitoDocumental } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { esDocumentoDeLaLicitacion } from '@/config/plazos-documentales';
 
-type Grupo = 'tenes' | 'llegas' | 'dificiles' | 'luxis' | 'despues' | 'sinDatos' | 'reglas';
+type Grupo = 'tenes' | 'llegas' | 'dificiles' | 'luxis' | 'despues' | 'sinDatos';
 
 const GRUPOS: Record<Grupo, { titulo: string; ayuda: string; icono: LucideIcon; tono: string }> = {
   dificiles: { titulo: 'Difíciles de conseguir a tiempo', ayuda: 'No llegarías antes del cierre: consultá al organismo si se pueden presentar después.', icono: CircleX, tono: 'text-error' },
@@ -12,12 +13,10 @@ const GRUPOS: Record<Grupo, { titulo: string; ayuda: string; icono: LucideIcon; 
   tenes: { titulo: 'Ya los tenés', ayuda: 'Están vigentes en tu perfil.', icono: CircleCheck, tono: 'text-exito' },
   luxis: { titulo: 'Los prepara Luxis', ayuda: 'Formularios, declaraciones y planilla de precios: los armás en "Preparar mi oferta".', icono: FilePen, tono: 'text-primary' },
   despues: { titulo: 'Se piden después de ganar', ayuda: 'No hacen falta para ofertar.', icono: Trophy, tono: 'text-muted-foreground' },
-  reglas: { titulo: 'Reglas que aceptás al ofertar', ayuda: 'No son papeles para presentar: son las condiciones generales de las compras del Estado (garantías, multas, pagos). Conviene leerlas.', icono: BookOpen, tono: 'text-muted-foreground' },
 };
-const ORDEN: Grupo[] = ['dificiles', 'llegas', 'sinDatos', 'tenes', 'luxis', 'despues', 'reglas'];
+const ORDEN: Grupo[] = ['dificiles', 'llegas', 'sinDatos', 'tenes', 'luxis', 'despues'];
 
 function grupoDe(g: GapDocumental): Grupo {
-  if (/reglas generales/i.test(g.nota)) return 'reglas';
   if (/prepara Luxis/i.test(g.nota)) return 'luxis';
   if (!g.obligatorio && /después de (la )?adjudic|después de ganar|en la entrega/i.test(g.nota)) return 'despues';
   if (g.tiene) return 'tenes';
@@ -26,11 +25,13 @@ function grupoDe(g: GapDocumental): Grupo {
   return 'llegas';
 }
 
-export function PanelDocumentacion({ gap, requisitos }: {
+export function PanelDocumentacion({ gap: gapGuardado, requisitos }: {
   gap: GapDocumental[];
   requisitos: RequisitoDocumental[];
   diasCierre?: number | null;
 }) {
+  // Papeles = entregables. Los análisis viejos listaban el pliego como requisito: se lee, no se presenta.
+  const gap = gapGuardado.filter((g) => !esDocumentoDeLaLicitacion(g.documento) && !/^\s*(el\s+)?pliegos?\b/i.test(g.documento));
   if (!gap.length) {
     return <EstadoVacio icono={FileCheck} titulo="Todavía no sabemos qué papeles piden" descripcion="Cuando leamos el pliego vas a ver acá qué papeles piden y si llegás a tenerlos antes del cierre." />;
   }
@@ -63,7 +64,7 @@ export function PanelDocumentacion({ gap, requisitos }: {
                   <p className="text-sm font-medium">{g.documento}</p>
                   <p className="mt-0.5 text-sm text-muted-foreground">
                     {k === 'llegas' && g.diasEstimados ? `Tarda unos ${g.diasEstimados} días hábiles. ` : ''}
-                    {k === 'luxis' || k === 'tenes' || k === 'reglas' ? '' : g.nota}
+                    {k === 'luxis' || k === 'tenes' ? '' : g.nota}
                   </p>
                   {seccion.get(g.documento) && <p className="mt-1 text-xs text-muted-foreground">Dónde lo piden: {seccion.get(g.documento)}</p>}
                 </li>

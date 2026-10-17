@@ -6,6 +6,7 @@ import { IANoConfigurada, verificarIA } from '@/lib/ia/estructurado';
 import { modeloFuerte } from '@/lib/ia/modelos';
 import { obtenerSesion } from '@/server/auth/sesion';
 import { armarContextoPliego, buscarParrafo, instruccionesChatPliego, resumenContextoPliego } from '@/server/ia/chat-pliego';
+import { leerPerfil } from '@/server/onboarding/guardar-perfil';
 
 export const maxDuration = 60;
 
@@ -46,7 +47,11 @@ export async function POST(request: Request) {
   const preguntasUsuario = messages.filter((m) => m.role === 'user').map(textoDe).filter(Boolean);
   const consulta = preguntasUsuario.slice(-2).join('\n');
 
-  const contexto = await armarContextoPliego(idCompra, consulta);
+  // El perfil deja que el chat diga qué ítems puede ofertar la empresa; si falla, responde solo con el pliego.
+  const [contexto, perfil] = await Promise.all([
+    armarContextoPliego(idCompra, consulta),
+    leerPerfil(sesion.empresaId).catch(() => null),
+  ]);
   if (!contexto) return Response.json({ error: 'No encontramos esa licitación.' }, { status: 404 });
   if (ultimo.role === 'user' && pregunta && trigger !== 'regenerate-message') {
     // Sin await: guardar la pregunta no tiene que demorar la primera palabra de la respuesta.
@@ -59,7 +64,7 @@ export async function POST(request: Request) {
     // DeepSeek V4 razona por defecto: tarda hasta 1 min en escribir y además ignora temperature.
     // Sin razonamiento el primer texto llega en ~5 s y las citas siguen igual de precisas.
     providerOptions: { deepseek: { thinking: { type: 'disabled' } } },
-    instructions: instruccionesChatPliego(contexto),
+    instructions: instruccionesChatPliego(contexto, perfil),
     messages: await convertToModelMessages(messages.slice(-MAX_MENSAJES_HISTORIAL)),
     onFinish: async ({ text, usage }) => {
       console.info(

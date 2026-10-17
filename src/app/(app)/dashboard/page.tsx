@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { cache, Suspense } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { connection } from 'next/server';
@@ -14,12 +14,18 @@ import { EstadoVacio } from '@/components/ui/estado-vacio';
 import { BuscandoLicitaciones } from '@/components/licitaciones/buscando-licitaciones';
 import { db, schema } from '@/db';
 import { requerirSesion } from '@/server/auth/sesion';
-import { listarMatches, listarOrganismos, resumenDashboard, tieneMatches } from '@/server/consultas/licitaciones';
+import { listarMatches, listarOrganismos, tieneMatches } from '@/server/consultas/licitaciones';
 import { ListaConEstado, ProveedorFiltros } from '@/components/licitaciones/estado-filtros';
 import { TituloDashboard } from '@/components/licitaciones/titulo-dashboard';
 import { ListaTarjetas } from '@/components/licitaciones/lista-tarjetas';
+import type { FiltrosDashboard } from '@/lib/types';
 
 export const metadata: Metadata = { title: 'Licitaciones · Luxis' };
+
+type ParametrosUrl = Promise<Record<string, string | string[] | undefined>>;
+
+// El encabezado y la lista piden lo mismo: una sola consulta por request.
+const matchesFiltrados = cache((empresaId: string, filtros: string) => listarMatches(empresaId, JSON.parse(filtros) as FiltrosDashboard));
 
 // Después del onboarding el matching corre en segundo plano 1–2 min (docs/04, pendiente 1).
 async function perfilRecienActualizado(empresaId: string): Promise<boolean> {
@@ -28,19 +34,25 @@ async function perfilRecienActualizado(empresaId: string): Promise<boolean> {
   return Boolean(e?.en);
 }
 
-async function Encabezado() {
+/** El número grande cuenta las licitaciones que cumplen los filtros actuales (pedido de seba). */
+async function Encabezado({ searchParams }: { searchParams: ParametrosUrl }) {
+  const filtros = filtrosDesdeUrl(await searchParams);
   await connection();
   const { empresaId } = await requerirSesion();
-  const [r, [empresa]] = await Promise.all([
-    resumenDashboard(empresaId),
+  const [cards, [empresa]] = await Promise.all([
+    matchesFiltrados(empresaId, JSON.stringify(filtros)),
     db.select({ nombre: schema.empresas.nombre }).from(schema.empresas).where(sql`${schema.empresas.id} = ${empresaId}`),
   ]);
-  const semana = r.cierranSemana === 0 ? 'Ninguna cierra esta semana' : `${r.cierranSemana} ${r.cierranSemana === 1 ? 'cierra' : 'cierran'} esta semana`;
-  const nuevas = r.nuevas24h > 0 ? `${r.nuevas24h} ${r.nuevas24h === 1 ? 'apareció' : 'aparecieron'} hoy` : null;
+  const cierranSemana = cards.filter((c) => c.diasParaCierre !== null && c.diasParaCierre <= 7).length;
+  // eslint-disable-next-line react-hooks/purity -- componente de servidor dinámico (connection()): se evalúa por request
+  const hace24h = Date.now() - 864e5;
+  const nuevas24h = cards.filter((c) => new Date(c.fechaPublicacion).getTime() > hace24h).length;
+  const semana = cierranSemana === 0 ? 'Ninguna cierra esta semana' : `${cierranSemana} ${cierranSemana === 1 ? 'cierra' : 'cierran'} esta semana`;
+  const nuevas = nuevas24h > 0 ? `${nuevas24h} ${nuevas24h === 1 ? 'se publicó' : 'se publicaron'} en las últimas 24 horas` : null;
   return (
     <header className="space-y-2">
       {empresa?.nombre && <p className="text-sm text-muted-foreground">Hola, {empresa.nombre}</p>}
-      <TituloDashboard total={r.total} />
+      <TituloDashboard total={cards.length} />
       <p className="flex flex-wrap items-center gap-x-2 text-muted-foreground">
         <span>{semana}.</span>
         {nuevas && <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-1.5 rounded-full bg-primary" />{nuevas}.</span>}
@@ -66,11 +78,11 @@ async function FiltrosConOpciones() {
   return <Filtros organismos={organismos} />;
 }
 
-async function Lista({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+async function Lista({ searchParams }: { searchParams: ParametrosUrl }) {
   const filtros = filtrosDesdeUrl(await searchParams);
   await connection();
   const { empresaId } = await requerirSesion();
-  const cards = await listarMatches(empresaId, filtros);
+  const cards = await matchesFiltrados(empresaId, JSON.stringify(filtros));
 
   if (!cards.length) {
     const hayAlguna = await tieneMatches(empresaId);
@@ -88,9 +100,7 @@ async function Lista({ searchParams }: { searchParams: Promise<Record<string, st
 
   return (
     <section aria-labelledby="titulo-lista" className="space-y-3">
-      <h2 id="titulo-lista" className="text-sm font-normal text-muted-foreground">
-        {cards.length === 1 ? 'Te mostramos 1 licitación' : `Te mostramos ${cards.length} licitaciones`}
-      </h2>
+      <h2 id="titulo-lista" className="sr-only">Licitaciones con los filtros actuales</h2>
       <ListaTarjetas cards={cards} />
     </section>
   );
@@ -114,7 +124,7 @@ export default function DashboardPage({ searchParams }: PageProps<'/dashboard'>)
         <div aria-hidden className="pointer-events-none absolute inset-0 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:linear-gradient(to_right,black,transparent_70%)]" />
         <div data-guia="resumen" className="relative">
           <Suspense fallback={<EncabezadoCargando />}>
-            <Encabezado />
+            <Encabezado searchParams={searchParams} />
           </Suspense>
         </div>
         <div data-guia="analizar-url" className="relative">

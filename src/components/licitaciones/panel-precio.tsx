@@ -1,6 +1,12 @@
 import { Info } from 'lucide-react';
-import type { ItemLicitacion, PrecioHistorico } from '@/lib/types';
+import type { ItemLicitacion, Moneda, PrecioHistorico } from '@/lib/types';
+import type { HistorialItem } from '@/server/precios/historial';
 import { cantidad, fecha, monto, suavizarMayusculas } from './formato';
+import { GraficoPrecios } from './grafico-precios';
+
+const NOMBRE_MONEDA: Record<Moneda, string> = {
+  UYU: 'pesos uruguayos', USD: 'dólares', UI: 'unidades indexadas', UR: 'unidades reajustables', OTRA: 'otra moneda',
+};
 
 function Banda({ p }: { p: PrecioHistorico }) {
   if (p.minimo === null || p.maximo === null || p.p25 === null || p.p75 === null || p.maximo <= p.minimo) return null;
@@ -15,14 +21,18 @@ function Banda({ p }: { p: PrecioHistorico }) {
   );
 }
 
-
-function TarjetaPrecio({ p, item }: { p: PrecioHistorico; item: ItemLicitacion | undefined }) {
+function TarjetaPrecio({ p, item, historial, mostrarMoneda }: { p: PrecioHistorico; item: ItemLicitacion | undefined; historial: HistorialItem | undefined; mostrarMoneda: boolean }) {
   const unidad = p.unidad.toLowerCase();
   return (
     <article className="space-y-4 rounded-md border bg-card p-4 sm:p-5">
       <header className="space-y-0.5">
         <h3 className="text-base leading-snug font-semibold">{suavizarMayusculas(p.descripcion)}</h3>
-        {item && <p className="text-sm text-muted-foreground">Piden <span className="font-mono">{cantidad(item.cantidad)}</span> {item.unidad.toLowerCase()}</p>}
+        {item && Number.isFinite(item.cantidad) && (
+          <p className="text-sm text-muted-foreground">
+            Piden <span className="font-mono">{cantidad(item.cantidad)}</span> {item.unidad.toLowerCase()}
+            {mostrarMoneda && <> · en {NOMBRE_MONEDA[p.moneda]}</>}
+          </p>
+        )}
       </header>
 
       {p.n === 0 ? (
@@ -36,9 +46,12 @@ function TarjetaPrecio({ p, item }: { p: PrecioHistorico; item: ItemLicitacion |
             <p className="text-sm text-muted-foreground">Para ganar, cotizá cerca de</p>
             <p className="font-mono text-3xl font-semibold tabular-nums">{monto(p.precioSugerido, p.moneda)} <span className="font-sans text-sm font-normal text-muted-foreground">por {unidad}</span></p>
           </div>
+          {historial && historial.puntos.length > 0 && (
+            <GraficoPrecios puntos={historial.puntos} n={p.n} precioSugerido={p.precioSugerido} moneda={p.moneda} unidad={unidad} descripcion={suavizarMayusculas(p.descripcion)} />
+          )}
           {p.p25 !== null && p.p75 !== null && (
             <div className="space-y-2">
-              <Banda p={p} />
+              {!(historial && historial.puntos.length > 0) && <Banda p={p} />}
               <p className="text-sm text-muted-foreground">
                 La mitad de las ofertas que ganaron estuvo entre <span className="font-mono text-foreground">{monto(p.p25, p.moneda)}</span> y <span className="font-mono text-foreground">{monto(p.p75, p.moneda)}</span>.
                 {' '}Lo calculamos con {p.n} {p.n === 1 ? 'compra' : 'compras'} del Estado.
@@ -71,21 +84,35 @@ function TarjetaPrecio({ p, item }: { p: PrecioHistorico; item: ItemLicitacion |
   );
 }
 
-export function PanelPrecio({ precios, items }: { precios: PrecioHistorico[]; items: ItemLicitacion[] }) {
+export function PanelPrecio({ precios, items, historial = {}, monedaSupuesta = false }: {
+  precios: PrecioHistorico[];
+  items: ItemLicitacion[];
+  /** Serie de precios ganadores en el tiempo por ítem (src/server/precios/historial.ts). */
+  historial?: Record<number, HistorialItem>;
+  /** La moneda no vino de ARCE (ítems leídos del pliego sin moneda informada). */
+  monedaSupuesta?: boolean;
+}) {
   const porNro = new Map(items.map((i) => [i.nroItem, i]));
   if (!precios.length) {
     return <p className="text-sm text-muted-foreground">Esta licitación no tiene productos de tu lista, así que no calculamos precios.</p>;
   }
+  const monedas = [...new Set(precios.map((p) => p.moneda))];
+  const variasMonedas = monedas.length > 1;
+  const aclaracion = variasMonedas
+    ? 'Precios sin IVA, en la moneda de cada producto, de compras del Estado de los últimos 2 años.'
+    : `Precios en ${NOMBRE_MONEDA[monedas[0]]}, sin IVA, de compras del Estado de los últimos 2 años.${monedaSupuesta ? ' ARCE no informó la moneda: asumimos pesos.' : ''}`;
   return (
     <section className="space-y-3" aria-labelledby="titulo-precios">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="titulo-precios" className="text-lg font-semibold">A qué precio ganan las ofertas</h2>
         <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <Info aria-hidden className="size-4" /> Precios sin IVA de compras del Estado de los últimos 2 años.
+          <Info aria-hidden className="size-4" /> {aclaracion}
         </p>
       </div>
       <div className="grid gap-3 lg:grid-cols-2">
-        {precios.map((p) => <TarjetaPrecio key={p.nroItem} p={p} item={porNro.get(p.nroItem)} />)}
+        {precios.map((p) => (
+          <TarjetaPrecio key={p.nroItem} p={p} item={porNro.get(p.nroItem)} historial={historial[p.nroItem]} mostrarMoneda={variasMonedas} />
+        ))}
       </div>
     </section>
   );
