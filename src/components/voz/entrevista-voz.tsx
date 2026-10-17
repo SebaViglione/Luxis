@@ -26,8 +26,11 @@ export function BotonEntrevistaVoz({ perfil, onPerfil }: { perfil: PerfilEmpresa
   const [abierto, setAbierto] = useState(false);
   return (
     <>
-      <Button size="sm" variant="outline" onClick={() => setAbierto(true)}>
-        <Mic /> Hablar con Luxis
+      <Button size="sm" variant="outline" className="group h-8 rounded-full pr-3.5 pl-1.5" onClick={() => setAbierto(true)}>
+        <span aria-hidden className="relative flex size-5 items-center justify-center rounded-full bg-[radial-gradient(circle_at_35%_30%,#F6D3C2_0%,#E07A55_45%,#C4502B_75%)] shadow-[0_4px_10px_-4px_rgba(196,80,43,0.8)] transition-transform group-hover:scale-110">
+          <Mic className="size-2.5 text-white" />
+        </span>
+        Hablar con Luxis
       </Button>
       <Dialog open={abierto} onOpenChange={(abrir) => !abrir && setAbierto(false)}>
         <DialogContent

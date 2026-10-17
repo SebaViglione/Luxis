@@ -1,9 +1,10 @@
-// Wordmark mínimo para las pantallas de auth y onboarding (fuera del layout de maxi).
-// Cuando exista src/components/marca/logo.tsx, reemplazar por ese componente.
+import { LogoMarca } from '@/components/marca/logo';
+
+// Wordmark para auth y onboarding cuando ya está dentro de un link. Misma marca que <Logo /> (docs/07-marca.md §2).
 export function Marca() {
   return (
-    <span className="inline-flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
-      <span aria-hidden className="size-3 rounded-[2px] bg-primary" />
+    <span className="inline-flex items-center gap-2 text-xl font-semibold tracking-tighter text-foreground">
+      <LogoMarca className="size-6" />
       Luxis
     </span>
   );
