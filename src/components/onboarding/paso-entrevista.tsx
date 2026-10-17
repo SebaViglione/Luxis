@@ -61,13 +61,13 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
     },
   });
   const [texto, setTexto] = useState('');
-  const iniciado = useRef(false);
   const finalRef = useRef<HTMLDivElement>(null);
 
+  // useChat corta la petición en curso al desmontarse; en desarrollo (StrictMode) el montaje se
+  // simula dos veces, así que diferimos el primer mensaje y lo cancelamos en la limpieza.
   useEffect(() => {
-    if (iniciado.current) return;
-    iniciado.current = true;
-    void sendMessage({ text: MENSAJE_INICIO });
+    const inicio = setTimeout(() => void sendMessage({ text: MENSAJE_INICIO }), 0);
+    return () => clearTimeout(inicio);
   }, [sendMessage]);
 
   useEffect(() => {
