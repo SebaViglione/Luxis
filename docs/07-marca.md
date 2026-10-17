@@ -54,7 +54,7 @@ Papel, tinta y un único acento ladrillo. Los tokens ya están en `src/app/globa
 
 - **Proporción:** alrededor de 80 % papel y arena, 15 % tinta y 5 % ladrillo. Si el ladrillo aparece en más de dos cosas por pantalla, deja de marcar lo importante.
 - **Bandas de color completas:** solo en la landing, con una en tinta (los datos) y otra en ladrillo (el llamado final). En la app no hay bandas.
-- **Sin modo oscuro.** Sin degradés de color: lo único permitido es el fundido a transparente de los fondos animados.
+- **Sin modo oscuro.** Sin degradés de color: lo único permitido es el fundido a transparente de los fondos animados y la bola de voz (§9).
 
 ## 4. Tipografía
 
@@ -114,7 +114,7 @@ El movimiento explica algo (que llegan licitaciones, que se calcula un precio); 
   
   Sin partículas, auroras ni degradés.
 - **Texto animado (reactbits):** `BlurText` para el titular, `RotatingText` con resaltado ladrillo para el rubro, `ShinyText` en el CTA principal y `CountUp` para cifras reales.
-- **En la app:** solo transiciones de estado y `CountUp` en el encabezado del dashboard. Nada de fondos animados.
+- **En la app:** solo transiciones de estado y `CountUp` en el encabezado del dashboard. Nada de fondos animados, salvo el panel de marca de las pantallas de login y registro (hilos ladrillo sobre tinta).
 
 ## 9. Patrones reutilizables
 
@@ -129,3 +129,26 @@ El movimiento explica algo (que llegan licitaciones, que se calcula un precio); 
   - el principal es `Button` default (ladrillo), con "Crear cuenta" y flecha;
   - el secundario es `outline`, con "Ingresar" o "Ya tengo cuenta";
   - sobre ladrillo, el principal pasa a ser papel con texto tinta.
+- **Componentes de marca ya hechos (reusar, no rehacer):**
+  - `LogoMarca` / `Logo` en `src/components/marca/logo.tsx`;
+  - `BolaVoz` en `src/components/marca/bola-voz.tsx`: la esfera que reacciona al volumen en la entrevista por voz. Es el único degradé de la marca;
+  - `LadrillosCargando` en `src/components/marca/ladrillos-cargando.tsx`, usado por `Cargando`;
+  - `EstadoVacio` y `EstadoError` en `src/components/ui/`;
+  - `ListaCargando` en `src/components/licitaciones/lista-cargando.tsx`, el esqueleto de la lista de licitaciones;
+  - la guía inicial en `src/components/guia/guia-inicial.tsx`. Sus anclas son atributos `data-guia` en el dashboard: si movés esos bloques, mantené el atributo.
+- **Cargas:** para contenido con forma conocida (listas, tarjetas, filtros) se usan esqueletos con la misma forma, así no hay saltos. `Cargando` (el logo animado) queda para cargas sin forma previa. No apilar varias cargas distintas en una misma pantalla.
+- **Listas largas en columnas laterales** (como "Próximos 14 días" del calendario): alto acotado con scroll propio y fundido; nunca dejar que estiren la página.
+
+## 10. Estructura del sitio y nombres
+
+Para evitar ambigüedades con nombres parecidos:
+
+- **"Cómo funciona" en la landing:** es la sección de los tres pasos (Encontrá, Cotizá, Presentate), con ancla `#como-funciona` en `src/components/landing/pasos.tsx`. Queda.
+- **Página "Cómo funciona la IA" de la app (`/como-funciona`):** se **eliminó** el 17/10/2026 por decisión de seba (no aportaba). No está en el menú, no está en la guía inicial y la ruta da 404. No volver a crearla ni enlazarla.
+  - Lo que explicaba ahora vive así:
+    - la transparencia sobre la IA, en el FAQ de la landing ("¿La IA decide por mí?");
+    - las fuentes, en las citas `[archivo, p. N]` del chat;
+    - la confianza, en el badge de cada licitación.
+  - La evaluación del matching sigue en `demo-assets/eval-resultado.json` y `npm run eval:matching`, por si hace falta mostrarla en la demo.
+- **Secciones de la app:** el menú lateral tiene Licitaciones (`/dashboard` y el detalle `/licitaciones/[id]`), Calendario, Notificaciones y Cuenta, más "Ver la guía" al pie. No sumar ítems sin acordarlo.
+- **Secciones de la landing:** Hero, Organismos, Cómo funciona (pasos), Funciones, Datos (cifras reales), Preguntas y CTA final.
