@@ -115,3 +115,9 @@
     @apply rounded-sm outline-2 outline-offset-2 outline-ring;
   }
 }
+
+/* Barra de progreso indeterminada (filtros del dashboard y navegación). */
+@keyframes luxis-barra {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}

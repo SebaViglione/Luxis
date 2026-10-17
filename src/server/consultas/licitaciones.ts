@@ -110,3 +110,20 @@ export async function obtenerDetalle(empresaId: string, idCompra: string): Promi
     precios,
   };
 }
+
+/** Organismos con al menos un match de la empresa (para el filtro): una consulta liviana en vez de traer 200 filas. */
+export async function listarOrganismos(empresaId: string): Promise<string[]> {
+  const filas = await db.execute<{ organismo: string }>(sql`
+    select distinct l.organismo from matches m join licitaciones l on l.id_compra = m.id_compra
+    where m.empresa_id = ${empresaId} and l.organismo is not null and l.fecha_tope_ofertas > now()
+    order by l.organismo`);
+  return [...filas].map((f) => f.organismo);
+}
+
+/** ¿La empresa tiene algún match abierto? (para distinguir "sin resultados con estos filtros" de "todavía nada"). */
+export async function tieneMatches(empresaId: string): Promise<boolean> {
+  const [f] = await db.execute<{ hay: boolean }>(sql`
+    select exists (select 1 from matches m join licitaciones l on l.id_compra = m.id_compra
+      where m.empresa_id = ${empresaId} and l.fecha_tope_ofertas > now()) as hay`);
+  return Boolean(f?.hay);
+}

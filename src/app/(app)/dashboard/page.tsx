@@ -8,7 +8,6 @@ import { AnalizarUrl } from '@/components/licitaciones/analizar-url';
 import { CardLicitacion } from '@/components/licitaciones/card-licitacion';
 import { Filtros } from '@/components/licitaciones/filtros';
 import { filtrosDesdeUrl } from '@/components/licitaciones/filtros-url';
-import CountUp from '@/components/reactbits/count-up';
 import { buttonVariants } from '@/components/ui/button';
 import { ListaCargando } from '@/components/licitaciones/lista-cargando';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,7 +15,9 @@ import { EstadoVacio } from '@/components/ui/estado-vacio';
 import { BuscandoLicitaciones } from '@/components/licitaciones/buscando-licitaciones';
 import { db, schema } from '@/db';
 import { requerirSesion } from '@/server/auth/sesion';
-import { listarMatches, resumenDashboard } from '@/server/consultas/licitaciones';
+import { listarMatches, listarOrganismos, resumenDashboard, tieneMatches } from '@/server/consultas/licitaciones';
+import { ListaConEstado, ProveedorFiltros } from '@/components/licitaciones/estado-filtros';
+import { ContadorTotal } from '@/components/licitaciones/contador-total';
 
 export const metadata: Metadata = { title: 'Licitaciones · Luxis' };
 
@@ -34,7 +35,7 @@ async function Encabezado() {
   return (
     <header className="space-y-1">
       <h1 aria-label={`${r.total} ${r.total === 1 ? 'licitación' : 'licitaciones'} para vos`} className="flex flex-wrap items-baseline gap-x-3">
-        <CountUp to={r.total} duration={0.8} trigger="load" className="text-5xl font-semibold tracking-tight" />
+        <ContadorTotal total={r.total} className="text-5xl font-semibold tracking-tight" />
         <span className="text-2xl font-semibold tracking-tight">{r.total === 1 ? 'licitación' : 'licitaciones'} para vos</span>
       </h1>
       <p className="text-muted-foreground">
@@ -56,8 +57,7 @@ function EncabezadoCargando() {
 async function FiltrosConOpciones() {
   await connection();
   const { empresaId } = await requerirSesion();
-  const todas = await listarMatches(empresaId, { estado: 'todas', confianzaMin: 0 });
-  const organismos = [...new Set(todas.map((c) => c.organismo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+  const organismos = await listarOrganismos(empresaId);
   return <Filtros organismos={organismos} />;
 }
 
@@ -68,7 +68,7 @@ async function Lista({ searchParams }: { searchParams: Promise<Record<string, st
   const cards = await listarMatches(empresaId, filtros);
 
   if (!cards.length) {
-    const hayAlguna = (await listarMatches(empresaId, { estado: 'todas', confianzaMin: 0 })).length > 0;
+    const hayAlguna = await tieneMatches(empresaId);
     if (!hayAlguna && (await perfilRecienActualizado(empresaId))) return <BuscandoLicitaciones />;
     return hayAlguna ? (
       <EstadoVacio icono={SearchX} titulo="No hay licitaciones con estos filtros"
@@ -93,6 +93,15 @@ async function Lista({ searchParams }: { searchParams: Promise<Record<string, st
   );
 }
 
+function FiltrosYListaCargando() {
+  return (
+    <>
+      <Skeleton className="h-[9.5rem] w-full rounded-md" />
+      <div className="min-h-[24rem] pt-2"><ListaCargando /></div>
+    </>
+  );
+}
+
 export default function DashboardPage({ searchParams }: PageProps<'/dashboard'>) {
   return (
     <div className="space-y-6">
@@ -105,16 +114,22 @@ export default function DashboardPage({ searchParams }: PageProps<'/dashboard'>)
       <div data-guia="analizar-url">
         <AnalizarUrl />
       </div>
-      <div data-guia="filtros">
-        <Suspense fallback={<Skeleton className="h-[9.5rem] w-full rounded-md" />}>
-          <FiltrosConOpciones />
-        </Suspense>
-      </div>
-      <div data-guia="lista">
-        <Suspense fallback={<ListaCargando />}>
-          <Lista searchParams={searchParams} />
-        </Suspense>
-      </div>
+      <Suspense fallback={<FiltrosYListaCargando />}>
+      <ProveedorFiltros>
+        <div data-guia="filtros">
+          <Suspense fallback={<Skeleton className="h-[9.5rem] w-full rounded-md" />}>
+            <FiltrosConOpciones />
+          </Suspense>
+        </div>
+        <div data-guia="lista" className="pt-2">
+          <ListaConEstado>
+            <Suspense fallback={<ListaCargando />}>
+              <Lista searchParams={searchParams} />
+            </Suspense>
+          </ListaConEstado>
+        </div>
+      </ProveedorFiltros>
+      </Suspense>
     </div>
   );
 }

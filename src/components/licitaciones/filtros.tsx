@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ChevronsUpDown, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -11,6 +11,7 @@ import { Slider } from '@/components/ui/slider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { TIPOS_COMPRA } from '@/lib/types';
 import { CONFIANZA_POR_DEFECTO } from './filtros-url';
+import { BarraBuscando, useEstadoFiltros } from './estado-filtros';
 
 const TIPOS = ['LA', 'LP', 'CR', 'CD', 'CE'];
 const ESTADOS = [
@@ -36,12 +37,13 @@ function Etiqueta({ children, id }: { children: React.ReactNode; id?: string }) 
 }
 
 export function Filtros({ organismos }: { organismos: string[] }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const sp = useSearchParams();
-  const [pendiente, iniciar] = useTransition();
+  const urlReal = useSearchParams();
+  const { params: sp, pendiente, aplicar: actualizar } = useEstadoFiltros();
+  // Valor local SOLO mientras se arrastra; se suelta recién cuando la URL real ya tiene el valor nuevo (sin rebote).
   const [arrastre, setArrastre] = useState<number | null>(null);
   const [abierto, setAbierto] = useState(false);
+  const confianzaUrl = urlReal.get('confianza');
+  useEffect(() => { setArrastre(null); }, [confianzaUrl]);
 
   const confianza = arrastre ?? Number(sp.get('confianza') ?? CONFIANZA_POR_DEFECTO);
   const tipos = sp.get('tipo')?.split(',').filter(Boolean) ?? [];
@@ -51,23 +53,14 @@ export function Filtros({ organismos }: { organismos: string[] }) {
   const orden = sp.get('orden') ?? 'cierre';
   const hayFiltros = sp.size > 0;
 
-  const actualizar = (cambios: Record<string, string | null>) => {
-    const p = new URLSearchParams(sp.toString());
-    for (const [k, v] of Object.entries(cambios)) {
-      if (v) p.set(k, v);
-      else p.delete(k);
-    }
-    const qs = p.toString();
-    iniciar(() => router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false }));
-  };
-
   return (
-    <section aria-label="Filtros" aria-busy={pendiente} className="flex flex-wrap items-end gap-x-6 gap-y-4 rounded-md border bg-card p-4">
+    <section aria-label="Filtros" aria-busy={pendiente} className="relative flex flex-wrap items-end gap-x-6 gap-y-4 rounded-md border bg-card p-4">
+      <BarraBuscando activa={pendiente} />
       <div className="flex w-44 flex-col gap-2">
         <Etiqueta id="f-confianza">Confianza mínima: <span className="font-mono text-foreground">{confianza}</span></Etiqueta>
         <Slider aria-labelledby="f-confianza" min={0} max={100} step={5} value={[confianza]}
           onValueChange={(v) => setArrastre(Array.isArray(v) ? v[0] : v)}
-          onValueCommitted={(v) => { setArrastre(null); actualizar({ confianza: String(Array.isArray(v) ? v[0] : v) }); }} />
+          onValueCommitted={(v) => actualizar({ confianza: String(Array.isArray(v) ? v[0] : v) })} />
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -131,7 +124,7 @@ export function Filtros({ organismos }: { organismos: string[] }) {
       </div>
 
       {hayFiltros && (
-        <Button variant="ghost" size="sm" onClick={() => iniciar(() => router.replace(pathname, { scroll: false }))}>
+        <Button variant="ghost" size="sm" onClick={() => actualizar('limpiar')}>
           <RotateCcw aria-hidden /> Limpiar filtros
         </Button>
       )}
