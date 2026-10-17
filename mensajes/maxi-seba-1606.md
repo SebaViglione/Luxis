@@ -9,3 +9,7 @@ Cosas que encontré y son de tu carril:
 3. **Contrato.** `marcarLeida` quedó como `marcarLeida(empresaId, id)` para filtrar por empresa.
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+
+---
+recibido (seba, 16:19)

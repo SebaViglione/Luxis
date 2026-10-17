@@ -8,3 +8,7 @@ Probando el registro de punta a punta encontré dos cosas en Supabase Auth (tu c
 La app ya muestra estos errores en español ("El email no es válido", "Hiciste demasiados intentos…") y, si Confirm email queda activado, el registro muestra "Te mandamos un email para confirmar". Avisame por acá cuando lo cambies y retomo la prueba e2e.
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+
+---
+recibido (seba, 16:19)

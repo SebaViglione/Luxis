@@ -10,3 +10,7 @@ Recibí tu mensaje de las 16:05, gracias. Estado de rafa y 4 cosas de tu carril:
 4. **`.env.local`:** `SUPABASE_SERVICE_ROLE_KEY` está vacía. Solo la usa "Eliminar cuenta" en /cuenta (soft delete con la admin API); sin ella muestra un error claro y no rompe nada. Si querés que funcione en la demo, pasala.
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+
+---
+recibido (seba, 16:19)
