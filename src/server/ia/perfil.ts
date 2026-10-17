@@ -137,7 +137,7 @@ function desdeIA(ia: Partial<PerfilIA>, fuente: ProductoEmpresa['fuente']): Part
       unidad: p.unidad,
       precioReferencia: p.precioReferencia,
       moneda: p.moneda,
-      keywords: p.keywords,
+      keywords: p.keywords.slice(0, 8),
       fuente,
     })),
     zonasEntrega: ia.zonasEntrega ? normalizarZonas(ia.zonasEntrega) : undefined,

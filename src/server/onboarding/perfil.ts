@@ -11,7 +11,7 @@ export const esquemaProducto = z.object({
   unidad: z.string().trim().min(1, 'Indicá la unidad.').max(30),
   precioReferencia: z.number().nonnegative().nullable(),
   moneda: z.enum(['UYU', 'USD', 'UI', 'UR', 'OTRA']),
-  keywords: z.array(z.string().trim().max(60)).max(15),
+  keywords: z.array(z.string().trim().max(60)).max(40),
   fuente: z.enum(['documento', 'entrevista', 'manual']),
 });
 
@@ -39,7 +39,7 @@ export const esquemaPerfilEmpresa = z.object({
   telefono: textoOpcional,
   emailContacto: z.email('Email inválido.').optional().or(z.literal('').transform(() => undefined)),
   descripcion: z.string().trim().max(2000),
-  productos: z.array(esquemaProducto).max(300),
+  productos: z.array(esquemaProducto).max(2000),
   zonasEntrega: z.array(z.string()).max(19),
   capacidadNotas: textoOpcional,
   montoMinimo: z.number().nonnegative().nullable().optional(),
