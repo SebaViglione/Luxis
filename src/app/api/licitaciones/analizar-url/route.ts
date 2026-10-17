@@ -11,6 +11,8 @@ import { calcularGapParaMatch } from '@/server/ia/gap-documental';
 import { empresaIdActual } from '@/server/consultas/empresa-actual';
 
 export const maxDuration = 300;
+// ARCE corta conexiones desde datacenters de EE. UU.; São Paulo es la región de Vercel más cercana a Uruguay.
+export const preferredRegion = 'gru1';
 
 /**
  * Analiza cualquier llamado de ARCE a partir de su URL o id.
@@ -58,7 +60,12 @@ export async function POST(req: NextRequest) {
         });
         enviar({ listo: true, idCompra });
       } catch (e) {
-        enviar({ error: (e as Error).message });
+        const err = e as Error & { cause?: { code?: string; message?: string } };
+        const causa = err.cause?.code ?? err.cause?.message;
+        console.error('[analizar-url]', idCompra, err.message, causa ?? '');
+        enviar({ error: /fetch failed|ECONNRESET|ETIMEDOUT|UND_ERR/i.test(`${err.message} ${causa}`)
+          ? `No pudimos conectarnos con ARCE desde el servidor (${causa ?? err.message}). Probá de nuevo en un momento.`
+          : err.message });
       } finally {
         ctrl.close();
       }

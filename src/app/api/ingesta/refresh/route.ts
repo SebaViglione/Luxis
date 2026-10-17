@@ -9,6 +9,8 @@ import { enParalelo } from '@/lib/ia/estructurado';
 import { empresaIdActual } from '@/server/consultas/empresa-actual';
 
 export const maxDuration = 300;
+// ARCE corta conexiones desde datacenters de EE. UU.; São Paulo es la región de Vercel más cercana a Uruguay.
+export const preferredRegion = 'gru1';
 
 /**
  * Refresh incremental de ARCE. Lo llaman el cron de Vercel (GET con Bearer CRON_SECRET) y el botón "Actualizar" (POST con sesión).

@@ -7,6 +7,8 @@ import { calcularGapParaMatch } from '@/server/ia/gap-documental';
 import { empresaIdActual } from '@/server/consultas/empresa-actual';
 
 export const maxDuration = 300;
+// ARCE corta conexiones desde datacenters de EE. UU.; São Paulo es la región de Vercel más cercana a Uruguay.
+export const preferredRegion = 'gru1';
 
 /** Analiza el pliego. `?forzar=1` recalcula con el modelo fuerte. */
 export async function POST(req: NextRequest, ctx: RouteContext<'/api/licitaciones/[id]/analizar'>) {
