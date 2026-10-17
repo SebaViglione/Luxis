@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { PerfilEmpresa } from '@/lib/types';
 import { confirmarPerfil } from '@/app/(onboarding)/onboarding/actions';
+import { BotonEntrevistaVoz } from '@/components/voz/entrevista-voz';
 import { PasoEmpresa } from './paso-empresa';
 import { PasoEntrevista } from './paso-entrevista';
 import { PasoFuentes } from './paso-fuentes';
@@ -75,6 +76,7 @@ export function AsistenteOnboarding({ perfilInicial }: { perfilInicial: PerfilEm
           perfil={perfil}
           onListo={(p) => avanzar('resumen', p)}
           onSaltar={() => avanzar('resumen')}
+          acciones={<BotonEntrevistaVoz perfil={perfil} onPerfil={(p) => avanzar('resumen', p)} />}
         />
       )}
       {paso === 'resumen' && (
