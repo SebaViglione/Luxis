@@ -10,7 +10,7 @@ export type TipoPublicacion = 'lv' | 'l' | 'a';
 const URL_REPORTE = 'https://www.comprasestatales.gub.uy/comprasenlinea/jboss/generarReporte';
 export const UA_NAVEGADOR = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const MAX_DIAS_VENTANA = 10;
-const TIMEOUT_MS = 90_000;
+const TIMEOUT_MS = Number(process.env.ARCE_TIMEOUT_MS ?? 90_000);
 
 const TAGS_ARRAY = new Set(['compra', 'item', 'adjudicacion', 'oferente', 'aclaracion', 'mod_llamado', 'atributo_item', 'atributo_adjudicacion', 'valor_atributo_item']);
 
