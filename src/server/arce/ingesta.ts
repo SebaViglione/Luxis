@@ -21,27 +21,39 @@ export async function ingestarVigentes(desde: Date, hasta: Date, log: Log = () =
   }
 }
 
-/** Adjudicaciones publicadas en [desde, hasta], guardando ventana por ventana para no perder progreso. */
-export async function ingestarAdjudicaciones(desde: Date, hasta: Date, log: Log = () => {}) {
+/** Adjudicaciones publicadas en [desde, hasta]. Ventanas de 10 días, `concurrencia` en paralelo, de la más reciente a la más vieja. */
+export async function ingestarAdjudicaciones(desde: Date, hasta: Date, log: Log = () => {}, concurrencia = 1) {
   const t0 = Date.now();
-  const tot = { compras: 0, adjudicaciones: 0, oferentes: 0 };
-  let ini = desde;
-  try {
-    while (ini < hasta) {
-      const fin = new Date(Math.min(ini.getTime() + 10 * DIA - 1000, hasta.getTime()));
-      const t = Date.now();
-      const compras = await generarReporte('a', ini, fin);
-      const r = await upsertAdjudicaciones(compras);
-      tot.compras += r.compras; tot.adjudicaciones += r.adjudicaciones; tot.oferentes += r.oferentes;
-      log(`  adjudicaciones ${fmt(ini)}→${fmt(fin)}: ${compras.length} compras, ${r.adjudicaciones} filas del rubro (${Date.now() - t} ms) · total ${tot.adjudicaciones}`);
-      ini = new Date(fin.getTime() + 1000);
-    }
-    await registrarCorrida({ tipo: 'adjudicaciones', desde, hasta, compras: tot.compras, adjudicaciones: tot.adjudicaciones, duracionMs: Date.now() - t0 });
-    return tot;
-  } catch (e) {
-    await registrarCorrida({ tipo: 'adjudicaciones', desde, hasta: ini, compras: tot.compras, adjudicaciones: tot.adjudicaciones, estado: 'error', error: (e as Error).message, duracionMs: Date.now() - t0 });
-    throw e;
+  const tot = { compras: 0, adjudicaciones: 0, oferentes: 0, errores: 0 };
+  const vs: Array<{ desde: Date; hasta: Date }> = [];
+  for (let ini = desde; ini < hasta; ) {
+    const fin = new Date(Math.min(ini.getTime() + 10 * DIA - 1000, hasta.getTime()));
+    vs.push({ desde: ini, hasta: fin });
+    ini = new Date(fin.getTime() + 1000);
   }
+  vs.reverse();
+  let k = 0;
+  const trabajador = async () => {
+    while (k < vs.length) {
+      const v = vs[k++];
+      const t = Date.now();
+      try {
+        const compras = await generarReporte('a', v.desde, v.hasta);
+        const r = await upsertAdjudicaciones(compras);
+        tot.compras += r.compras; tot.adjudicaciones += r.adjudicaciones; tot.oferentes += r.oferentes;
+        log(`  adjudicaciones ${fmt(v.desde)}→${fmt(v.hasta)}: ${compras.length} compras, ${r.adjudicaciones} filas del rubro (${Date.now() - t} ms) · total ${tot.adjudicaciones}`);
+      } catch (e) {
+        tot.errores++;
+        log(`  ✗ ventana ${fmt(v.desde)}→${fmt(v.hasta)}: ${(e as Error).message}`);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(1, concurrencia) }, trabajador));
+  await registrarCorrida({
+    tipo: 'adjudicaciones', desde, hasta, compras: tot.compras, adjudicaciones: tot.adjudicaciones, duracionMs: Date.now() - t0,
+    estado: tot.errores ? 'parcial' : 'ok', error: tot.errores ? `${tot.errores} ventanas con error` : null,
+  });
+  return tot;
 }
 
 /** Refresh incremental: últimos `dias` de vigentes y adjudicaciones. */
