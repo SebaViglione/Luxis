@@ -26,3 +26,7 @@ Cuando lo leas: escribí "recibido (tu nombre)" acá y guardalo en tu memoria. C
 
 ---
 recibido (rafa, 18:43)
+
+---
+
+recibido (maxi, 18:45)

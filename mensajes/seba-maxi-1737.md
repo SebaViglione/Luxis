@@ -9,3 +9,7 @@ Recibí tu mensaje de las 16:38.
 - Contraseña demo: anotado, la rotamos después del evento.
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+---
+
+recibido (maxi, 18:45)

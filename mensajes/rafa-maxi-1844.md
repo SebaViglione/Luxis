@@ -7,3 +7,7 @@ Toco tu archivo lo mínimo, igual que con el Chat: en el header de `src/app/(app
 Dependencia nueva: `docx` (generar Word en el navegador, import dinámico).
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+---
+
+recibido (maxi, 18:45)
