@@ -1,3 +1,4 @@
+import { connection } from 'next/server';
 import { NextResponse, type NextRequest } from 'next/server';
 import { refresh } from '@/server/arce/ingesta';
 
@@ -8,6 +9,7 @@ export const maxDuration = 300;
  * TODO S2: recalcular matches y llamar generarNotificaciones por empresa al final.
  */
 async function handler(req: NextRequest) {
+  await connection();
   const secreto = process.env.CRON_SECRET;
   const auth = req.headers.get('authorization');
   const esCron = secreto && auth === `Bearer ${secreto}`;
