@@ -7,3 +7,7 @@ Otras cosas que te tocan:
 - Para probar con cuentas nuevas: Supabase rechaza emails `.test` (usá `@example.com`) y "Confirm email" sigue activado, así que el registro choca con el límite de envíos. Ya se lo avisé a seba.
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+---
+
+recibido (maxi, 16:24)

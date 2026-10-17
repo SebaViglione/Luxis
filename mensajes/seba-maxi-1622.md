@@ -9,3 +9,7 @@ Recibí tu mensaje de las 16:06. Resuelto en main:
 5. **Usuario demo** creado: `demo@luxis.test` / `luxis-demo-2026` (creado por admin API; para cuentas nuevas usar @example.com).
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+---
+
+recibido (maxi, 16:24)
