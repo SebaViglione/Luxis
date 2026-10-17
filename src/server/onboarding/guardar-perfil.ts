@@ -4,7 +4,7 @@ import { after } from 'next/server';
 import { db } from '@/db';
 import { empresaDocumentos, empresaProductos, empresas } from '@/db/schema';
 import type { PerfilEmpresa } from '@/lib/types';
-import { completarDocumentacion, normalizarTexto, perfilVacio } from './perfil';
+import { completarDocumentacion, normalizarTexto, palabrasClave, perfilVacio } from './perfil';
 
 /** Perfil guardado de la empresa (perfil_json) o uno base armado con las columnas de `empresas`. */
 export async function leerPerfil(empresaId: string): Promise<PerfilEmpresa> {
@@ -72,7 +72,7 @@ export async function guardarPerfil(empresaId: string, perfil: PerfilEmpresa, { 
           unidad: p.unidad || null,
           precioReferencia: p.precioReferencia == null ? null : String(p.precioReferencia),
           moneda: p.moneda,
-          keywords: p.keywords,
+          keywords: p.keywords.length > 0 ? p.keywords : palabrasClave(p.nombre),
           fuente: p.fuente,
         })),
       );

@@ -49,6 +49,18 @@ export const esquemaPerfilEmpresa = z.object({
   camposFaltantes: z.array(z.string()),
 }) satisfies z.ZodType<PerfilEmpresa, unknown>;
 
+/** Paso 1 del onboarding: datos básicos de la empresa. */
+export const esquemaDatosEmpresa = esquemaPerfilEmpresa.pick({
+  nombre: true,
+  rut: true,
+  departamento: true,
+  localidad: true,
+  web: true,
+  telefono: true,
+});
+
+export type DatosEmpresa = z.input<typeof esquemaDatosEmpresa>;
+
 /** Mayúsculas, sin tildes y con espacios simples: el mismo formato que usan los ítems de ARCE. */
 export function normalizarTexto(texto: string): string {
   return texto
@@ -58,6 +70,16 @@ export function normalizarTexto(texto: string): string {
     .replace(/[^A-Z0-9.,/ ]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+const PALABRAS_VACIAS = new Set(['DE', 'DEL', 'LA', 'EL', 'LOS', 'LAS', 'CON', 'SIN', 'PARA', 'POR', 'EN', 'Y', 'X']);
+
+/** Palabras clave para productos cargados a mano (las que extrae la IA ya vienen con keywords). */
+export function palabrasClave(nombre: string): string[] {
+  const palabras = normalizarTexto(nombre)
+    .split(' ')
+    .filter((p) => p.length > 2 && !PALABRAS_VACIAS.has(p) && !/^\d/.test(p));
+  return [...new Set(palabras)].slice(0, 6);
 }
 
 export function perfilVacio(nombre: string): PerfilEmpresa {
