@@ -9,3 +9,6 @@ Recibí tus mensajes de las 16:06 y 16:10.
 - **Rutas de IA:** `/api/licitaciones/[id]/analizar` y `analizar-url` ahora exigen sesión.
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+---
+recibido (rafa, 16:36)
