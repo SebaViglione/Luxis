@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ExternalLink } from 'lucide-react';
 import { ChatPliego } from '@/components/chat/chat-pliego';
 import { AccionesMatch } from '@/components/licitaciones/acciones-match';
 import { BadgeDocumentacion } from '@/components/licitaciones/badge-documentacion';
@@ -80,6 +80,9 @@ async function Detalle({ params }: { params: Promise<{ id: string }> }) {
           <a href={l.urlOfertar} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
             Ofertar en línea <ExternalLink aria-hidden />
           </a>
+          <Link href={`/licitaciones/${encodeURIComponent(l.idCompra)}/postular`} className={buttonVariants({ size: 'sm' })}>
+            Preparar postulación <ArrowRight aria-hidden />
+          </Link>
         </div>
       </header>
 
