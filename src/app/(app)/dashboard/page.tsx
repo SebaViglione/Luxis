@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { cache, Suspense } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { connection } from 'next/server';
@@ -15,11 +15,17 @@ import { EstadoVacio } from '@/components/ui/estado-vacio';
 import { BuscandoLicitaciones } from '@/components/licitaciones/buscando-licitaciones';
 import { db, schema } from '@/db';
 import { requerirSesion } from '@/server/auth/sesion';
-import { listarMatches, listarOrganismos, resumenDashboard, tieneMatches } from '@/server/consultas/licitaciones';
+import { listarMatches, listarOrganismos, tieneMatches } from '@/server/consultas/licitaciones';
 import { ListaConEstado, ProveedorFiltros } from '@/components/licitaciones/estado-filtros';
 import { ContadorTotal } from '@/components/licitaciones/contador-total';
+import type { FiltrosDashboard } from '@/lib/types';
 
 export const metadata: Metadata = { title: 'Licitaciones · Luxis' };
+
+type ParametrosUrl = Promise<Record<string, string | string[] | undefined>>;
+
+// El encabezado y la lista piden lo mismo: una sola consulta por request.
+const matchesFiltrados = cache((empresaId: string, filtros: string) => listarMatches(empresaId, JSON.parse(filtros) as FiltrosDashboard));
 
 // Después del onboarding el matching corre en segundo plano 1–2 min (docs/04, pendiente 1).
 async function perfilRecienActualizado(empresaId: string): Promise<boolean> {
@@ -28,18 +34,21 @@ async function perfilRecienActualizado(empresaId: string): Promise<boolean> {
   return Boolean(e?.en);
 }
 
-async function Encabezado() {
+async function Encabezado({ searchParams }: { searchParams: ParametrosUrl }) {
+  const filtros = filtrosDesdeUrl(await searchParams);
   await connection();
   const { empresaId } = await requerirSesion();
-  const r = await resumenDashboard(empresaId);
+  const cards = await matchesFiltrados(empresaId, JSON.stringify(filtros));
+  const total = cards.length;
+  const cierranSemana = cards.filter((c) => c.diasParaCierre !== null && c.diasParaCierre <= 7).length;
   return (
     <header className="space-y-1">
-      <h1 aria-label={`${r.total} ${r.total === 1 ? 'licitación' : 'licitaciones'} para vos`} className="flex flex-wrap items-baseline gap-x-3">
-        <ContadorTotal total={r.total} className="text-5xl font-semibold tracking-tight" />
-        <span className="text-2xl font-semibold tracking-tight">{r.total === 1 ? 'licitación' : 'licitaciones'} para vos</span>
+      <h1 aria-label={`${total} ${total === 1 ? 'licitación' : 'licitaciones'} para vos`} className="flex flex-wrap items-baseline gap-x-3">
+        <ContadorTotal total={total} className="text-5xl font-semibold tracking-tight" />
+        <span className="text-2xl font-semibold tracking-tight">{total === 1 ? 'licitación' : 'licitaciones'} para vos</span>
       </h1>
       <p className="text-muted-foreground">
-        {r.cierranSemana === 0 ? 'Ninguna cierra esta semana.' : `${r.cierranSemana} ${r.cierranSemana === 1 ? 'cierra' : 'cierran'} esta semana.`}
+        {cierranSemana === 0 ? 'Ninguna cierra esta semana.' : `${cierranSemana} ${cierranSemana === 1 ? 'cierra' : 'cierran'} esta semana.`}
       </p>
     </header>
   );
@@ -61,11 +70,11 @@ async function FiltrosConOpciones() {
   return <Filtros organismos={organismos} />;
 }
 
-async function Lista({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+async function Lista({ searchParams }: { searchParams: ParametrosUrl }) {
   const filtros = filtrosDesdeUrl(await searchParams);
   await connection();
   const { empresaId } = await requerirSesion();
-  const cards = await listarMatches(empresaId, filtros);
+  const cards = await matchesFiltrados(empresaId, JSON.stringify(filtros));
 
   if (!cards.length) {
     const hayAlguna = await tieneMatches(empresaId);
@@ -83,9 +92,7 @@ async function Lista({ searchParams }: { searchParams: Promise<Record<string, st
 
   return (
     <section aria-labelledby="titulo-lista" className="space-y-3">
-      <h2 id="titulo-lista" className="text-sm font-normal text-muted-foreground">
-        {cards.length} {cards.length === 1 ? 'licitación' : 'licitaciones'} con los filtros actuales
-      </h2>
+      <h2 id="titulo-lista" className="sr-only">Licitaciones con los filtros actuales</h2>
       <ul className="space-y-3">
         {cards.map((c) => <li key={c.idCompra}><CardLicitacion lic={c} /></li>)}
       </ul>
@@ -108,7 +115,7 @@ export default function DashboardPage({ searchParams }: PageProps<'/dashboard'>)
       {/* data-guia: anclas de la guía inicial (src/components/guia/guia-inicial.tsx). */}
       <div data-guia="resumen">
         <Suspense fallback={<EncabezadoCargando />}>
-          <Encabezado />
+          <Encabezado searchParams={searchParams} />
         </Suspense>
       </div>
       <div data-guia="analizar-url">

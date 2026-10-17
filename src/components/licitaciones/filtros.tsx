@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ChevronsUpDown, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -40,12 +40,13 @@ export function Filtros({ organismos }: { organismos: string[] }) {
   const urlReal = useSearchParams();
   const { params: sp, pendiente, aplicar: actualizar } = useEstadoFiltros();
   // Valor local SOLO mientras se arrastra; se suelta recién cuando la URL real ya tiene el valor nuevo (sin rebote).
-  const [arrastre, setArrastre] = useState<number | null>(null);
+  // Se guarda con la URL en la que empezó: cuando la URL cambia, el arrastre deja de valer solo (sin efecto que lo resetee).
+  const [arrastre, setArrastre] = useState<{ valor: number; url: string | null } | null>(null);
   const [abierto, setAbierto] = useState(false);
   const confianzaUrl = urlReal.get('confianza');
-  useEffect(() => { setArrastre(null); }, [confianzaUrl]);
+  const arrastreVigente = arrastre && arrastre.url === confianzaUrl ? arrastre.valor : null;
 
-  const confianza = arrastre ?? Number(sp.get('confianza') ?? CONFIANZA_POR_DEFECTO);
+  const confianza = arrastreVigente ?? Number(sp.get('confianza') ?? CONFIANZA_POR_DEFECTO);
   const tipos = sp.get('tipo')?.split(',').filter(Boolean) ?? [];
   const organismo = sp.get('organismo') ?? '';
   const cierre = sp.get('cierre') ?? 'cualquiera';
@@ -59,7 +60,7 @@ export function Filtros({ organismos }: { organismos: string[] }) {
       <div className="flex w-44 flex-col gap-2">
         <Etiqueta id="f-confianza">Confianza mínima: <span className="font-mono text-foreground">{confianza}</span></Etiqueta>
         <Slider aria-labelledby="f-confianza" min={0} max={100} step={5} value={[confianza]}
-          onValueChange={(v) => setArrastre(Array.isArray(v) ? v[0] : v)}
+          onValueChange={(v) => setArrastre({ valor: Array.isArray(v) ? v[0] : v, url: confianzaUrl })}
           onValueCommitted={(v) => actualizar({ confianza: String(Array.isArray(v) ? v[0] : v) })} />
       </div>
 

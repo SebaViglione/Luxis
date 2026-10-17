@@ -14,12 +14,21 @@ export function diasHabilesHasta(fecha: Date, desde = new Date()): number {
 
 const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
 
+/**
+ * El pliego (\u00fanico, de condiciones generales o particulares) lo publica el organismo: no es algo que el
+ * oferente presente. Solo cuenta cuando el requisito ES el pliego; "Formulario \u2026 aceptaci\u00f3n del pliego" s\u00ed se presenta.
+ */
+export function esPliegoDelLlamado(documento: string): boolean {
+  return /^\s*(EL\s+)?PLIEGOS?\b/.test(norm(documento));
+}
+
 export function calcularGap(
-  requisitos: RequisitoDocumental[],
+  requisitosConPliego: RequisitoDocumental[],
   documentos: { tipo: string; nombre: string; estado: string }[],
   cierre: Date | null,
   fechas: FechaClave[] = [],
 ): { gap: GapDocumental[]; estado: EstadoDocumental } {
+  const requisitos = requisitosConPliego.filter((r) => !esPliegoDelLlamado(r.documento));
   if (!requisitos.length) return { gap: [], estado: 'desconocido' };
   const habiles = cierre ? diasHabilesHasta(cierre) : null;
   const visitaVencida = fechas.some((f) => f.tipo === 'visita' && f.obligatoria && f.fecha && new Date(f.fecha).getTime() < Date.now());

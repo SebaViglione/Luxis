@@ -17,15 +17,53 @@ import { PanelPrecio } from '@/components/licitaciones/panel-precio';
 import { ResumenIa } from '@/components/licitaciones/resumen-ia';
 import { TablaItems } from '@/components/licitaciones/tabla-items';
 import { buttonVariants } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type { DetalleLicitacion } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { requerirSesion } from '@/server/auth/sesion';
 import { obtenerDetalle } from '@/server/consultas/licitaciones';
+import { historialPrecios, itemsDesdeOfertables, monedaDeTexto, precioDesdeHistorial } from '@/server/precios/historial';
 
 export const metadata: Metadata = { title: 'Licitación · Luxis' };
 
 function decodificar(id: string) {
   try { return decodeURIComponent(id); } catch { return id; }
+}
+
+// Precio e historial solo para los ítems que la empresa puede ofertar. Si ARCE no publicó ítems (p. ej. IM), se arman desde el pliego.
+async function ItemsYPrecio({ d }: { d: DetalleLicitacion }) {
+  const ofertables = d.match?.itemsOfertables ?? [];
+  const vendibles = new Set(ofertables.filter((o) => o.puedeOfertar).map((o) => o.nroItem));
+  const segunPliego = d.items.length === 0 && ofertables.length > 0;
+  const monedaPliego = monedaDeTexto(d.analisis?.condiciones.moneda);
+  const items = segunPliego ? itemsDesdeOfertables(ofertables, monedaPliego ?? 'UYU') : d.items;
+  const conPrecioSeba = new Map(d.precios.map((p) => [p.nroItem, p]));
+  // Sin precio de seba: ítems del pliego, o ítems de ARCE a los que todavía no se les calculó.
+  const calcularAca = (nroItem: number) => segunPliego || !conPrecioSeba.has(nroItem);
+  const aConsultar = items.filter((i) => vendibles.has(i.nroItem) && (calcularAca(i.nroItem) || (conPrecioSeba.get(i.nroItem)?.n ?? 0) > 0));
+  const historial = await historialPrecios(d.licitacion.idCompra, aConsultar);
+  const precios = items
+    .filter((i) => vendibles.has(i.nroItem))
+    .map((i) => (calcularAca(i.nroItem) ? precioDesdeHistorial(i, historial[i.nroItem]) : conPrecioSeba.get(i.nroItem)!));
+  return (
+    <>
+      <PanelPrecio precios={precios} items={items} historial={historial} monedaSupuesta={segunPliego && !monedaPliego} />
+      <TablaItems items={items} ofertables={ofertables} segunPliego={segunPliego} />
+    </>
+  );
+}
+
+function ItemsYPrecioCargando() {
+  return (
+    <div aria-hidden className="space-y-3">
+      <Skeleton className="h-5 w-48" />
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Skeleton className="h-72" />
+        <Skeleton className="h-72" />
+      </div>
+    </div>
+  );
 }
 
 function Dato({ etiqueta, children, destacado }: { etiqueta: string; children: React.ReactNode; destacado?: boolean }) {
@@ -101,8 +139,9 @@ async function Detalle({ params }: { params: Promise<{ id: string }> }) {
           <ResumenIa analisis={d.analisis} match={d.match} accionAnalizar={<BotonAnalizar idCompra={l.idCompra} />} />
         </TabsContent>
         <TabsContent value="items" className="space-y-8 pt-4">
-          <PanelPrecio precios={d.precios} items={d.items} />
-          <TablaItems items={d.items} ofertables={d.match?.itemsOfertables ?? []} />
+          <Suspense fallback={<ItemsYPrecioCargando />}>
+            <ItemsYPrecio d={d} />
+          </Suspense>
         </TabsContent>
         <TabsContent value="documentacion" className="pt-4">
           <PanelDocumentacion gap={d.match?.gapDocumental ?? []} requisitos={d.analisis?.requisitosDocumentales ?? []} diasCierre={diasCierre} />

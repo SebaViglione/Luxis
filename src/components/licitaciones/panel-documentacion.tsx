@@ -2,6 +2,7 @@ import { CircleCheck, CircleHelp, CircleX, Clock, FileCheck } from 'lucide-react
 import { EstadoVacio } from '@/components/ui/estado-vacio';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { GapDocumental, RequisitoDocumental } from '@/lib/types';
+import { esPliegoDelLlamado } from '@/server/ia/gap-documental';
 
 function Llegada({ g, diasCierre }: { g: GapDocumental; diasCierre: number | null }) {
   if (g.tiene) return <span className="inline-flex items-center gap-1.5 text-exito"><CircleCheck aria-hidden className="size-4" /> Ya lo tenés</span>;
@@ -14,11 +15,13 @@ function Llegada({ g, diasCierre }: { g: GapDocumental; diasCierre: number | nul
     : <span className="inline-flex items-center gap-1.5 text-exito"><CircleCheck aria-hidden className="size-4" /> Sí{dias}</span>;
 }
 
-export function PanelDocumentacion({ gap, requisitos, diasCierre }: {
+export function PanelDocumentacion({ gap: gapGuardado, requisitos, diasCierre }: {
   gap: GapDocumental[];
   requisitos: RequisitoDocumental[];
   diasCierre: number | null;
 }) {
+  // Los análisis viejos listaban el pliego como requisito: el oferente no lo presenta.
+  const gap = gapGuardado.filter((g) => !esPliegoDelLlamado(g.documento));
   if (!gap.length) {
     return <EstadoVacio icono={FileCheck} titulo="Sin requisitos documentales detectados" descripcion="Cuando leamos el pliego vas a ver acá qué papeles piden y si llegás a tenerlos antes del cierre." />;
   }

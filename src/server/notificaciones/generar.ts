@@ -2,6 +2,7 @@ import { and, eq, gt, gte, inArray, ne, sql } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import type { Notificacion } from '@/lib/types';
 import { fechaCorta, fechaHora, suavizarMayusculas } from '@/components/licitaciones/formato';
+import { actualizarResultados } from '@/server/estadisticas/resultados';
 
 const HORA = 36e5;
 
@@ -23,6 +24,12 @@ const dia = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/M
 export async function generarNotificaciones(empresaId: string): Promise<number> {
   const M = schema.matches, L = schema.licitaciones, A = schema.analisisLicitacion;
   const ahora = new Date();
+  // Primero los resultados: cada presentada que ARCE ya adjudicó pasa a ganada o perdida y avisa (tipo sistema).
+  const resultados = await actualizarResultados(empresaId).catch((e) => {
+    console.error('[notificaciones] resultados', e);
+    return { ganadas: 0, perdidas: 0 };
+  });
+  const resueltas = resultados.ganadas + resultados.perdidas;
 
   const filas = await db.select({
     idCompra: M.idCompra, confianza: M.confianza, estado: M.estadoUsuario, gap: M.gapDocumental, creado: M.createdAt,
@@ -82,10 +89,10 @@ export async function generarNotificaciones(empresaId: string): Promise<number> 
     }
   }
 
-  if (!nuevas.length) return 0;
+  if (!nuevas.length) return resueltas;
   const creadas = await db.insert(schema.notificaciones)
     .values(nuevas.map((n) => ({ empresaId, tipo: n.tipo, titulo: n.titulo, cuerpo: n.cuerpo, idCompra: n.idCompra, claveDedupe: n.clave })))
     .onConflictDoNothing({ target: [schema.notificaciones.empresaId, schema.notificaciones.claveDedupe] })
     .returning({ id: schema.notificaciones.id });
-  return creadas.length;
+  return resueltas + creadas.length;
 }

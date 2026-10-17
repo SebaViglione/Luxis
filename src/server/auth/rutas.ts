@@ -17,6 +17,8 @@ const PREFIJOS_PROTEGIDOS = [
   '/onboarding',
   '/dashboard',
   '/licitaciones',
+  '/en-curso',
+  '/estadisticas',
   '/calendario',
   '/notificaciones',
   '/cuenta',
