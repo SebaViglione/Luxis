@@ -15,8 +15,8 @@ const SchemaMatch = z.object({
     descripcion: z.string(),
     puedeOfertar: z.boolean(),
     productoEmpresa: z.string().nullable().describe('nombre del producto de la empresa que corresponde, o null'),
-    nota: z.string().describe('breve: por qué sí o por qué no'),
-  })),
+    nota: z.string().describe('muy breve, máximo 12 palabras'),
+  })).describe('SOLO los ítems que la empresa puede ofertar (máximo 40); los que no aparecen se entienden como no ofertables'),
 });
 
 const SYSTEM = `Sos el analista de licitaciones de una barraca de materiales de construcción en Uruguay. Decidís si una licitación del Estado es una oportunidad REAL para esta empresa.
@@ -29,6 +29,7 @@ Reglas:
 - Obras llave en mano, servicios de mano de obra, mantenimiento, maquinaria, medicamentos, mobiliario, electricidad o herramientas NO son oportunidad aunque mencionen materiales.
 - Si no hay ítems publicados, decidí por el objeto y lo que diga el pliego; tope de confianza 70.
 - Calibración: 85-100 la mayoría de los ítems (o los principales) son productos que vende y la zona es alcanzable; 65-84 puede ofertar ítems relevantes con algún reparo (zona, volumen, ítems ajenos); 40-64 solo pocos ítems menores o reparos fuertes; menos de 40 no es para esta empresa.
+- En "items" devolvé SOLO los ítems que la empresa puede ofertar (máximo 40, los más importantes primero). No listes los que no puede.
 - No inventes ítems ni productos. Usá solo los nroItem que aparecen.`;
 
 export interface PerfilParaMatch {
@@ -80,11 +81,11 @@ export async function evaluarLicitacion(perfil: PerfilParaMatch, idCompra: strin
   if (!ctx) return null;
   const { objeto } = await generarObjeto({
     modelo: modeloRapido, schema: SchemaMatch, system: SYSTEM,
-    prompt: `EMPRESA:\n${textoPerfil(perfil)}\n\nLICITACIÓN:\n${ctx}`, maxOutputTokens: 3000,
+    prompt: `EMPRESA:\n${textoPerfil(perfil)}\n\nLICITACIÓN:\n${ctx}`, maxOutputTokens: 8000,
   });
   const fila = {
     empresaId: perfil.empresaId, idCompra, relevante: objeto.confianza >= 40, confianza: objeto.confianza, razon: objeto.razon,
-    itemsOfertables: objeto.items, perfilVersion: perfil.perfilActualizadoEn ?? new Date(), updatedAt: new Date(),
+    itemsOfertables: objeto.items.filter((i) => i.puedeOfertar), perfilVersion: perfil.perfilActualizadoEn ?? new Date(), updatedAt: new Date(),
   };
   await db.insert(schema.matches).values(fila).onConflictDoUpdate({
     target: [schema.matches.empresaId, schema.matches.idCompra],
