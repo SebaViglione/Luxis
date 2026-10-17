@@ -42,8 +42,8 @@ export async function scrapeDetalle(idCompra: string): Promise<CompraNormalizada
   })();
   const campo = (etiqueta: RegExp) => {
     let v: string | null = null;
-    $('.buy-detail-list li, .well li').each((_, li) => {
-      const t = $(li).text().replace(/\s+/g, ' ').trim();
+    $('ul.buy-detail-list').each((_, ul) => {
+      const t = $(ul).text().replace(/\s+/g, ' ').trim();
       const m = etiqueta.exec(t);
       if (m && !v) v = textoONull(t.slice(m.index + m[0].length));
     });
@@ -52,7 +52,7 @@ export async function scrapeDetalle(idCompra: string): Promise<CompraNormalizada
   const recepcion = /Recepci[oó]n de ofertas hasta:\s*([\d/]+\s+[\d:]+)/i.exec(cuerpo)?.[1] ?? null;
   const publicacion = /Fecha Publicaci[oó]n:\s*([\d/]+\s+[\d:]+)/i.exec(cuerpo)?.[1] ?? null;
   const apertura = campo(/Acto de Apertura:/i);
-  const email = /[\w.+-]+@[\w-]+\.[\w.-]+/.exec(campo(/Informaci[oó]n de contacto:/i) ?? '')?.[0] ?? null;
+  const email = /[\w.+-]+@[\w-]+\.[\w.-]*\w/.exec(campo(/Informaci[oó]n de contacto:/i) ?? cuerpo.split(/Informaci[oó]n de contacto:/i)[1] ?? '')?.[0] ?? null;
 
   const items: ItemNormalizado[] = [];
   $('.row.item .desc-item').each((_, el) => {
@@ -101,6 +101,7 @@ export async function scrapeDetalle(idCompra: string): Promise<CompraNormalizada
     nombrePliego: hrefPliego ? decodeURIComponent(hrefPliego.split('/').pop()!) : null,
     urlDetalle: url, aperturaElectronica: /apertura electr[oó]nica/i.test(cuerpo), fuente: 'scrape',
     fechaPubAdj: null, montoAdj: null, items, aclaraciones, adjudicaciones: [], oferentes: [],
-    raw: { titulo, organismoTexto: inc?.[1] ?? null, unidadTexto: mt?.[5] ?? null },
+    organismo: inc?.[1] ?? null, unidadEjecutora: mt?.[5] && mt[5] !== inc?.[1] ? mt[5] : null,
+    raw: { titulo },
   };
 }
