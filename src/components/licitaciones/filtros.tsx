@@ -97,13 +97,14 @@ export function Filtros({ organismos }: { organismos: string[] }) {
         </div>
       </div>
 
-      <div className="grid gap-4 border-t pt-4 md:grid-cols-2">
-        <div className="flex flex-col gap-2">
+      {/* Fila que baja a dos renglones solo cuando los dos selectores no entran juntos: un selector nunca se parte. */}
+      <div className="flex flex-wrap gap-x-10 gap-y-4 border-t pt-4">
+        <div className="flex w-full flex-col gap-2 sm:w-auto">
           <Pregunta>Coincidencia con lo que vendés</Pregunta>
           <Segmentado className="self-start" id="calce" etiqueta="Coincidencia con lo que vendés" opciones={CALCE} valor={calce}
             onCambio={(v) => aplicar({ confianza: v !== '40' ? v : null })} />
         </div>
-        <div className="flex flex-col gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto">
           <Pregunta>Fecha de cierre</Pregunta>
           <Segmentado className="self-start" id="cierre" etiqueta="Cuándo cierran" opciones={CIERRE} valor={cierre}
             onCambio={(v) => aplicar({ cierre: v !== 'cualquiera' ? v : null })} />

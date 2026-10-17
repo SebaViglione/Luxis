@@ -12,7 +12,8 @@ export interface OpcionSegmentada<T extends string> {
 
 /**
  * Selector de una opción con resaltado que se desliza (mismo gesto que el menú de la landing).
- * Pensado para pocas opciones con texto llano.
+ * Pensado para pocas opciones con texto llano. Nunca se parte en dos renglones: con 4 opciones o más,
+ * en pantallas angostas se muestra como grilla de 2 columnas.
  */
 export function Segmentado<T extends string>({
   opciones, valor, onCambio, id, etiqueta, className,
@@ -25,8 +26,13 @@ export function Segmentado<T extends string>({
   etiqueta: string;
   className?: string;
 }) {
+  const grilla = opciones.length >= 4;
   return (
-    <div role="radiogroup" aria-label={etiqueta} className={cn('inline-flex flex-wrap gap-1 rounded-full border bg-background p-1', className)}>
+    <div role="radiogroup" aria-label={etiqueta} className={cn(
+      'gap-1 border bg-background p-1',
+      grilla ? 'grid w-full grid-cols-2 rounded-2xl sm:inline-flex sm:w-auto sm:flex-nowrap sm:rounded-full' : 'inline-flex flex-nowrap rounded-full',
+      className,
+    )}>
       {opciones.map((o) => {
         const activo = o.valor === valor;
         return (
@@ -38,7 +44,8 @@ export function Segmentado<T extends string>({
             title={o.ayuda}
             onClick={() => !activo && onCambio(o.valor)}
             className={cn(
-              'relative rounded-full px-3 py-1 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              'relative px-3 py-1 text-sm whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              grilla ? 'rounded-xl sm:rounded-full' : 'rounded-full',
               activo ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground',
             )}
           >
@@ -46,7 +53,7 @@ export function Segmentado<T extends string>({
               <motion.span
                 layoutId={`seg-${id}`}
                 transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-                className="absolute inset-0 rounded-full border bg-card shadow-xs"
+                className={cn('absolute inset-0 border bg-card shadow-xs', grilla ? 'rounded-xl sm:rounded-full' : 'rounded-full')}
                 aria-hidden
               />
             )}
