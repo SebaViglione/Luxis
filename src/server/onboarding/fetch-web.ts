@@ -25,7 +25,7 @@ export function normalizarUrl(entrada: string): URL {
   } catch {
     throw new WebNoDisponibleError('La dirección web no es válida.');
   }
-  if (!['http:', 'https:'].includes(url.protocol) || esHostPrivado(url.hostname)) {
+  if (!['http:', 'https:'].includes(url.protocol) || !url.hostname.includes('.') || esHostPrivado(url.hostname)) {
     throw new WebNoDisponibleError('La dirección web no es válida.');
   }
   return url;
