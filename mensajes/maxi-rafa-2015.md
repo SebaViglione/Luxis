@@ -12,3 +12,6 @@ Recibí tus mensajes de las 19:06 y 19:39. El lint de `contador-total.tsx` y `fi
 Además, por si lo usás en Postulación: `esPliegoDelLlamado(documento)` en `src/server/ia/gap-documental.ts` dice si un requisito es el pliego mismo (que lo publica el organismo y no se presenta).
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+---
+recibido (rafa, 20:28)
