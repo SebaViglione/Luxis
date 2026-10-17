@@ -44,3 +44,14 @@ Tres personas, tres carriles, cuatro puntos de sincronización. Cada uno ejecuta
 - Canal único del equipo (WhatsApp/Discord). Mensajes cortos: "PR R1 abierto", "necesito columna X en matches", "bloqueado por Y".
 - `.env.local` y claves solo por mensaje directo, nunca en el repo ni en capturas.
 - Horario de ElevenLabs: nadie hace pruebas de voz de más de 2 minutos; se reservan 20 minutos para la demo.
+
+## Pendientes de integración detectados a las 15:45 (no estaban en el plan)
+
+| # | Qué | Dueño | Cuándo |
+|---|---|---|---|
+| 1 | Tras confirmar el onboarding, el matching corre en segundo plano 1–2 min: el dashboard debe mostrar "Buscando licitaciones para tu barraca…" (si la empresa tiene 0 matches y el perfil se actualizó hace < 5 min) y refrescar solo cada 10 s (`router.refresh()`), en vez de "no hay licitaciones" | maxi (M2) | antes de 19:00 |
+| 2 | Botón "Actualizar" de la topbar: `POST /api/ingesta/refresh` y después `generarNotificaciones(empresaId)`; mostrar progreso (tarda 30–90 s) | maxi (M2) | antes de 19:00 |
+| 3 | `.wasm` de RAR incluido en el bundle de Vercel (`outputFileTracingIncludes`) | seba | hecho |
+| 4 | Prueba de punta a punta con cuenta nueva: registro → onboarding (docs y entrevista) → dashboard → detalle (precio, documentación, fechas) → chat → Analizar por URL → calendario → notificaciones. Anotar fallas en el canal | los 3 | 19:00 |
+| 5 | Decisiones de demo: proveedor de IA (DeepSeek o Claude), zona de reparto de la barraca demo, refresh de ARCE antes de presentar | seba | antes de 20:00 |
+| 6 | Vercel: proyecto creado, variables de entorno cargadas, Site URL de Supabase Auth con la URL de producción | seba | antes de 20:00 |
