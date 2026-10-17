@@ -1,7 +1,8 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, ExternalLink, MessagesSquare } from 'lucide-react';
+import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ChatPliego } from '@/components/chat/chat-pliego';
 import { AccionesMatch } from '@/components/licitaciones/acciones-match';
 import { BadgeDocumentacion } from '@/components/licitaciones/badge-documentacion';
 import { fecha, fechaHora, suavizarMayusculas, textoCierre } from '@/components/licitaciones/formato';
@@ -13,7 +14,6 @@ import { ResumenIa } from '@/components/licitaciones/resumen-ia';
 import { TablaItems } from '@/components/licitaciones/tabla-items';
 import { buttonVariants } from '@/components/ui/button';
 import { Cargando } from '@/components/ui/cargando';
-import { EstadoVacio } from '@/components/ui/estado-vacio';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { empresaActual, obtenerDetalle } from '@/lib/mocks/consultas';
 import { cn } from '@/lib/utils';
@@ -97,10 +97,8 @@ async function Detalle({ params }: { params: Promise<{ id: string }> }) {
           <PanelFechas detalle={d} ahora={ahora} />
         </TabsContent>
         <TabsContent value="chat" className="pt-4">
-          {/* rafa monta aquí <ChatPliego idCompra={l.idCompra} /> */}
           <div data-slot="chat-pliego" className="min-h-64">
-            <EstadoVacio icono={MessagesSquare} titulo="Chat con el pliego"
-              descripcion="Acá vas a poder preguntarle al pliego y recibir la respuesta con la cita exacta del documento." />
+            <ChatPliego idCompra={l.idCompra} />
           </div>
         </TabsContent>
         <TabsContent value="archivos" className="pt-4">
