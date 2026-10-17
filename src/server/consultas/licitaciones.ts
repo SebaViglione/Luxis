@@ -1,7 +1,7 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import {
-  ESTADOS_COMPRA, TIPOS_COMPRA, monedaDesdeId,
+  ESTADOS_COMPRA, TIPOS_COMPRA, monedaDesdeId, confianzaEfectiva,
   type AnalisisPliego, type ArchivoLicitacion, type CategoriaArchivo, type DetalleLicitacion, type EstadoDocumental,
   type EstadoExtraccion, type EstadoUsuarioMatch, type FiltrosDashboard, type LicitacionCard,
 } from '@/lib/types';
@@ -22,19 +22,22 @@ const COLS_LICITACION = {
 const iso = (d: Date | null | undefined) => (d ? d.toISOString() : null);
 const numero = (l: { numCompra: string | null; anioCompra: number | null }) => `${l.numCompra ?? '?'}/${l.anioCompra ?? ''}`;
 
+/** Confianza efectiva en SQL (mismos valores que AJUSTE_DOCUMENTAL en lib/types). */
+const CONF_EF = sql`(${schema.matches.confianza} - case ${schema.matches.estadoDocumental} when 'dificil' then 25 when 'alcanzable' then 10 else 0 end)`;
+
 /** Licitaciones con match para el dashboard. */
 export async function listarMatches(empresaId: string, filtros: FiltrosDashboard = {}): Promise<LicitacionCard[]> {
   const L = schema.licitaciones, M = schema.matches, A = schema.analisisLicitacion;
   const estado = filtros.estado ?? 'nuevas';
   const conds = [eq(M.empresaId, empresaId), sql`${L.fechaTopeOfertas} > now()`];
-  conds.push(sql`${M.confianza} >= ${filtros.confianzaMin ?? 40}`);
+  conds.push(sql`${CONF_EF} >= ${filtros.confianzaMin ?? 40}`);
   if (estado === 'nuevas') conds.push(sql`${M.estadoUsuario} not in ('descartada')`);
   if (estado === 'guardadas') conds.push(sql`${M.estadoUsuario} in ('guardada','presentada')`);
   if (estado === 'descartadas') conds.push(eq(M.estadoUsuario, 'descartada'));
   if (filtros.tipos?.length) conds.push(sql`${L.tipoCompra} in (${sql.join(filtros.tipos.map((t) => sql`${t}`), sql`, `)})`);
   if (filtros.organismo) conds.push(sql`${L.organismo} ilike ${'%' + filtros.organismo + '%'}`);
   if (filtros.cierreDias) conds.push(sql`${L.fechaTopeOfertas} < now() + make_interval(days => ${filtros.cierreDias})`);
-  const orden = filtros.orden === 'confianza' ? [desc(M.confianza), L.fechaTopeOfertas] : [L.fechaTopeOfertas, desc(M.confianza)];
+  const orden = filtros.orden === 'confianza' ? [desc(CONF_EF), L.fechaTopeOfertas] : [L.fechaTopeOfertas, desc(CONF_EF)];
 
   // Monto estimado = Σ cantidad × precio sugerido de los ítems (subconsulta correlacionada: un solo viaje a la base).
   const monto = sql<string | null>`(select sum(i.cant_pedida * p.precio_sugerido)::text from licitacion_items i
@@ -49,7 +52,8 @@ export async function listarMatches(empresaId: string, filtros: FiltrosDashboard
     idCompra: l.idCompra, objeto: l.objeto ?? '(sin objeto)', organismo: l.organismo ?? '', tipoCompra: l.tipoCompra,
     tipoCompraNombre: TIPOS_COMPRA[l.tipoCompra] ?? l.tipoCompra, numero: numero(l),
     fechaTopeOfertas: iso(l.fechaTopeOfertas), diasParaCierre: l.fechaTopeOfertas ? Math.ceil((l.fechaTopeOfertas.getTime() - Date.now()) / DIA) : null,
-    fechaPublicacion: iso(l.fechaPublicacion) ?? iso(l.createdAt)!, confianza: m.confianza, razon: m.razon ?? '', resumen: resumen ?? null,
+    fechaPublicacion: iso(l.fechaPublicacion) ?? iso(l.createdAt)!, ...(() => { const e = confianzaEfectiva(m.confianza, m.estadoDocumental); return { confianza: e.confianza, confianzaBase: m.confianza, ajusteDocumental: e.ajuste }; })(),
+    razon: m.razon ?? '', resumen: resumen ?? null,
     itemsOfertables: m.itemsOfertables ?? [], estadoDocumental: m.estadoDocumental as EstadoDocumental, estadoUsuario: m.estadoUsuario as EstadoUsuarioMatch,
     tieneVisita: (fechas ?? []).some((f) => f.tipo === 'visita'), montoEstimado: montos.get(l.idCompra) ?? null, moneda: 'UYU',
   }));
@@ -63,7 +67,8 @@ export async function resumenDashboard(empresaId: string): Promise<{ total: numb
       count(*) filter (where l.fecha_tope_ofertas < now() + interval '7 days')::int as semana,
       count(*) filter (where m.created_at > now() - interval '24 hours')::int as nuevas
     from matches m join licitaciones l on l.id_compra = m.id_compra
-    where m.empresa_id = ${empresaId} and m.confianza >= 40 and m.estado_usuario <> 'descartada' and l.fecha_tope_ofertas > now()`);
+    where m.empresa_id = ${empresaId} and (m.confianza - case m.estado_documental when 'dificil' then 25 when 'alcanzable' then 10 else 0 end) >= 40
+      and m.estado_usuario <> 'descartada' and l.fecha_tope_ofertas > now()`);
   return { total: r?.total ?? 0, cierranSemana: r?.semana ?? 0, nuevas24h: r?.nuevas ?? 0 };
 }
 
@@ -105,7 +110,8 @@ export async function obtenerDetalle(empresaId: string, idCompra: string): Promi
     aclaraciones: aclaraciones.map((a) => ({ fecha: iso(a.fecha) ?? '', texto: a.texto ?? '', url: a.url })),
     analisis,
     match: m ? {
-      confianza: m.confianza, razon: m.razon ?? '', itemsOfertables: m.itemsOfertables ?? [], gapDocumental: m.gapDocumental ?? [],
+      ...(() => { const e = confianzaEfectiva(m.confianza, m.estadoDocumental); return { confianza: e.confianza, confianzaBase: m.confianza, ajusteDocumental: e.ajuste }; })(),
+      razon: m.razon ?? '', itemsOfertables: m.itemsOfertables ?? [], gapDocumental: m.gapDocumental ?? [],
       estadoDocumental: m.estadoDocumental as EstadoDocumental, estadoUsuario: m.estadoUsuario as EstadoUsuarioMatch,
     } : null,
     precios,
