@@ -12,7 +12,7 @@ Leé: `docs/01-prd.md`, `docs/02-datos-arce.md` (fuente de verdad de datos), `do
 
 1. Branch nueva antes de tocar nada: `git checkout main && git pull && git checkout -b <branch>`. Excepción: integrar PRs ajenos en `main`.
 2. Carpetas propias: `src/db/**`, `src/lib/types.ts`, `src/lib/ia/**`, `src/server/arce/**`, `src/server/ia/{modelos,matching,precio,analisis-pliego,gap-documental}.ts`, `src/server/consultas/**`, `src/config/plazos-documentales.ts`, `src/app/api/{ingesta,empresas,licitaciones}/**`, `scripts/**`, `drizzle.config.ts`, `vercel.json`, `CLAUDE.md`, `docs/**`.
-3. Lo masivo con el modelo rápido (Haiku 5.5); el fuerte (Sonnet 5.5) solo on-demand. Salidas estructuradas con `generateObject` + zod. `temperature: 0`.
+3. Lo masivo con el modelo rápido (Haiku 5.5); el fuerte (Sonnet 5.5) solo on-demand. Salidas estructuradas con `generarObjeto` (AI SDK 7) + zod. `temperature: 0`.
 4. Nada simulado. Nada de nombres de modelo fuera de `src/lib/ia/modelos.ts`. Secretos solo en `.env.local`.
 5. `npm run lint && npm run build` antes de mergear. Commits convencionales en español.
 6. Para librerías (Next 16, AI SDK 7, Drizzle, Supabase SSR, fast-xml-parser, node-unrar-js) consultar docs actuales con Context7 antes de escribir código: las APIs cambian.
@@ -88,7 +88,7 @@ select categoria, estado_extraccion, count(*) from licitacion_archivos group by 
 
 ### Archivos
 ```
-src/server/ia/matching.ts           # evaluarEmpresa(empresaId, { soloNuevas }): candidatas = es_rubro ∧ abiertas ∧ (sin match ∨ perfil_version < perfil_actualizado_en); concurrencia 5; generateObject(modeloRapido, schema Match); upsert matches; luego calcularPrecios(idCompra) y gap documental si hay análisis
+src/server/ia/matching.ts           # evaluarEmpresa(empresaId, { soloNuevas }): candidatas = es_rubro ∧ abiertas ∧ (sin match ∨ perfil_version < perfil_actualizado_en); concurrencia 5; generarObjeto(modeloRapido, schema Match); upsert matches; luego calcularPrecios(idCompra) y gap documental si hay análisis
 src/server/ia/precio.ts             # calcularPrecios(idCompra): por ítem, SQL con percentile_cont sobre adjudicaciones (mismo id_articulo, o similarity(desc_normalizada) ≥ 0.6 si id_articulo=0), misma moneda y unidad, 24 meses; competidores = top 3 por veces adjudicado en ese artículo + veces ofertó (oferentes); precioSugerido = p25 ≤ x ≤ mediana (usar (p25+mediana)/2 si n ≥ 5, mediana si 2–4, null si < 2); explicación de 1 párrafo con modeloRapido; upsert precios_sugeridos
 src/server/consultas/licitaciones.ts# implementar listarMatches, resumenDashboard, obtenerDetalle con joins reales
 src/server/consultas/acciones.ts    # actualizarEstadoMatch
@@ -117,7 +117,7 @@ Reglas: evaluá ítem por ítem si la empresa vende ese producto o uno equivalen
 
 ### Archivos
 ```
-src/server/ia/analisis-pliego.ts    # analizarLicitacion(idCompra, { forzar, modelo: 'rapido'|'fuerte' }): arma contexto (metadata + archivos relevantes ≤ 350k chars, orden por categoría), generateObject(schema AnalisisPliego); si no hay texto → basadoEn 'metadata', confianza ≤ 50; upsert analisis_licitacion
+src/server/ia/analisis-pliego.ts    # analizarLicitacion(idCompra, { forzar, modelo: 'rapido'|'fuerte' }): arma contexto (metadata + archivos relevantes ≤ 350k chars, orden por categoría), generarObjeto(schema AnalisisPliego); si no hay texto → basadoEn 'metadata', confianza ≤ 50; upsert analisis_licitacion
 src/server/ia/gap-documental.ts     # calcularGap(requisitos, documentosEmpresa, fechaCierre) → GapDocumental[] + estadoDocumental (usa config/plazos-documentales.ts y días hábiles)
 src/app/api/licitaciones/[id]/analizar/route.ts   # POST (?forzar=1 usa modelo fuerte)
 src/app/api/licitaciones/analizar-url/route.ts    # POST { url } → extraer id → si no existe: scrapeDetalle → guardar → procesarArchivos → analizar → evaluarEmpresa(solo esa) → calcularPrecios → { idCompra }. Responder progreso por etapas (streaming de texto JSON por líneas o polling de estado en licitaciones.raw.etapa)

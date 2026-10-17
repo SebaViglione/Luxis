@@ -160,12 +160,13 @@ Hasta que existan, maxi implementa las **mismas firmas** en `src/lib/mocks/consu
 |---|---|
 | Cambiar estado de un match | `actualizarEstadoMatch(empresaId, idCompra, estado: EstadoUsuarioMatch)` |
 | Recalcular matches de la empresa actual | `POST /api/empresas/matching` → `{ evaluadas, relevantes }` (usa la sesión) |
-| Refresh de datos | `POST /api/ingesta/refresh?dias=2` (header `Authorization: Bearer CRON_SECRET` o sesión) → `{ compras, items, adjudicaciones }`; al final llama `generarNotificaciones` de cada empresa |
+| Refresh de datos | `POST /api/ingesta/refresh?dias=2` (cron: `Authorization: Bearer CRON_SECRET`; botón: sesión del usuario) → `{ ok, vigentes, adjudicaciones, pliegosProcesados, matching }`. Trae datos, procesa pliegos nuevos y recalcula matches. **No** genera notificaciones: el botón "Actualizar" llama después a `generarNotificaciones(empresaId)` (maxi). |
 | Analizar una licitación ya ingestada | `POST /api/licitaciones/{idCompra}/analizar` → `AnalisisPliego` (idempotente; `?forzar=1` recalcula) |
-| Analizar por URL o id nuevo | `POST /api/licitaciones/analizar-url` body `{ url }` → `{ idCompra }` (scrapea, guarda, procesa archivos, analiza, matchea para la empresa actual, calcula precios). Puede tardar 20–60 s: la UI muestra etapas. |
+| Analizar por URL o id nuevo | `POST /api/licitaciones/analizar-url` body `{ url }` → **stream NDJSON**: una línea JSON por evento `{ etapa, estado: "en_curso"\|"ok", mensaje? }` con etapas `buscando → archivos → analizando → matching → precios`; última línea `{ listo: true, idCompra }` o `{ error }`. Leer con `res.body.getReader()` + `TextDecoder`, partir por `\n`. Tarda 20–90 s. |
 | Precio de un ítem | `GET /api/licitaciones/{idCompra}/precio` → `PrecioHistorico[]` (se calcula en matching; esta ruta solo lee/recalcula) |
 
 ### Sesión (rafa → todos) — `src/server/auth/sesion.ts`
+- Mientras no exista, las rutas de seba usan `empresaIdActual()` de `src/server/consultas/empresa-actual.ts` (lee la cookie de Supabase y `perfiles_usuario.empresa_id`). rafa: cuando crees `sesion.ts`, asegurate de que el registro inserte en `perfiles_usuario` con `empresa_id`.
 - `obtenerSesion(): Promise<{ usuarioId: string; email: string; empresaId: string; estadoOnboarding: string } | null>`
 - `requerirSesion()`: igual pero redirige a `/login` si no hay sesión, y a `/onboarding` si el onboarding no está completo (salvo en rutas de onboarding).
 
@@ -183,13 +184,13 @@ Hasta que existan, maxi implementa las **mismas firmas** en `src/lib/mocks/consu
 |---|---|---|---|---|---|
 | 1 | Perfil de empresa | fuerte | textos de archivos/web (≤ 150k chars) o transcript | `PerfilEmpresa` | rafa |
 | 2 | Entrevista | fuerte, `streamText` + tool `guardar_perfil` | perfil parcial + faltantes + mensajes | texto + llamada a tool | rafa |
-| 3 | Matching | rápido, `generateObject`, concurrencia 5 | perfil resumido (productos, zonas, capacidad, documentación) + licitación (objeto, organismo, tipo, fechas, lugar de entrega, ítems con cantidades, `que_piden` del análisis si existe) | `{ relevante, confianza 0–100, razon, items: ItemOfertable[] }` | seba |
+| 3 | Matching | rápido, `generarObjeto`, concurrencia 5 | perfil resumido (productos, zonas, capacidad, documentación) + licitación (objeto, organismo, tipo, fechas, lugar de entrega, ítems con cantidades, `que_piden` del análisis si existe) | `{ relevante, confianza 0–100, razon, items: ItemOfertable[] }` | seba |
 | 4 | Análisis de pliego | rápido (masivo) / fuerte (`?forzar=1` desde el detalle) | metadata + archivos relevantes (≤ 350k chars) | `AnalisisPliego` | seba |
 | 5 | Gap documental | sin LLM: `requisitosDocumentales` × `empresa_documentos` × `config/plazos-documentales.ts` × días al cierre | `GapDocumental[]`, `estadoDocumental` | seba |
 | 6 | Precio histórico | SQL (`percentile_cont`) + rápido para 1 párrafo de explicación | adjudicaciones mismo `id_articulo` (o `desc_normalizada` similar ≥ 0.6 trgm), misma moneda y unidad, 24 meses | `PrecioHistorico` | seba |
 | 7 | Chat con el pliego | fuerte, `streamText`, prompt caching | metadata + archivos relevantes + historial | texto con citas `[archivo, pN]` | rafa |
 
-Reglas comunes: `temperature 0` en extracción; siempre `generateObject` con zod para salidas estructuradas; nunca inventar (el prompt lo dice y el schema permite `null`); guardar `modelo` usado; loguear tokens.
+Reglas comunes: `temperature 0` en extracción; siempre `generarObjeto` (`src/lib/ia/estructurado.ts`: AI SDK 7 `generateText` + `Output.object`) con zod para salidas estructuradas; nunca inventar (el prompt lo dice y el schema permite `null`); guardar `modelo` usado; loguear tokens.
 
 Calibración de **confianza** (matching): 90–100 todos los ítems principales son productos que la empresa vende y la zona es alcanzable; 70–89 la mayoría de los ítems; 40–69 parcial o dudas de zona/capacidad; < 40 no es para esta empresa. `relevante = confianza ≥ 40`.
 

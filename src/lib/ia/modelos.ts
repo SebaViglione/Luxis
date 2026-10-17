@@ -1,21 +1,31 @@
 import { anthropic } from '@ai-sdk/anthropic';
 import { google } from '@ai-sdk/google';
+import { deepseek } from '@ai-sdk/deepseek';
+import type { LanguageModel } from 'ai';
 
 /**
- * Único lugar donde se nombran modelos.
- * rápido  → matching, extracción estructurada masiva, explicaciones cortas.
- * fuerte  → chat con el pliego, entrevista, análisis on-demand.
+ * Único lugar donde se nombran modelos. IA_PROVEEDOR = anthropic | deepseek | google.
+ * rápido → matching, extracción estructurada masiva, explicaciones cortas.
+ * fuerte → chat con el pliego, entrevista, análisis on-demand.
  */
-const proveedor = process.env.IA_PROVEEDOR ?? 'anthropic';
+export type Proveedor = 'anthropic' | 'deepseek' | 'google';
+export const proveedor = (process.env.IA_PROVEEDOR ?? 'anthropic') as Proveedor;
 
 export const MODELOS = {
   anthropic: { rapido: 'claude-haiku-5-5', fuerte: 'claude-sonnet-5-5' },
+  deepseek: { rapido: 'deepseek-v4-flash', fuerte: 'deepseek-v4-pro' },
   google: { rapido: 'gemini-2.5-flash', fuerte: 'gemini-2.5-pro' },
 } as const;
 
-const ids = proveedor === 'google' ? MODELOS.google : MODELOS.anthropic;
+export const CLAVE_POR_PROVEEDOR: Record<Proveedor, string> = {
+  anthropic: 'ANTHROPIC_API_KEY', deepseek: 'DEEPSEEK_API_KEY', google: 'GOOGLE_GENERATIVE_AI_API_KEY',
+};
 
-export const modeloRapido = proveedor === 'google' ? google(ids.rapido) : anthropic(ids.rapido);
-export const modeloFuerte = proveedor === 'google' ? google(ids.fuerte) : anthropic(ids.fuerte);
+const ids = MODELOS[proveedor] ?? MODELOS.anthropic;
+const crear = (id: string): LanguageModel =>
+  proveedor === 'google' ? google(id) : proveedor === 'deepseek' ? deepseek(id) : anthropic(id);
+
+export const modeloRapido = crear(ids.rapido);
+export const modeloFuerte = crear(ids.fuerte);
 export const nombreModeloRapido = `${proveedor}/${ids.rapido}`;
 export const nombreModeloFuerte = `${proveedor}/${ids.fuerte}`;
