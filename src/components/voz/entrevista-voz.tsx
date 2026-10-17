@@ -112,8 +112,10 @@ function SesionVoz({
 
   const conversacion = useConversation({
     onMessage: ({ message, role }) => {
-      if (!message.trim()) return;
-      transcript.current.push({ rol: role === 'user' ? 'empresa' : 'luxis', texto: message });
+      // Las voces expresivas de ElevenLabs agregan etiquetas de emoción ("[happy]") al texto del agente.
+      const texto = message.replace(/\[[a-z][a-z _-]*\]\s*/gi, '').trim();
+      if (!texto) return;
+      transcript.current.push({ rol: role === 'user' ? 'empresa' : 'luxis', texto });
       if (montado.current) setLineas([...transcript.current]);
     },
     onError: (mensaje) => {
@@ -125,7 +127,10 @@ function SesionVoz({
   const { startSession, endSession } = conversacion;
 
   useEffect(() => {
+    // En desarrollo (StrictMode) el efecto corre dos veces: la limpieza del primero marca todo como
+    // terminado, así que el segundo arranca de cero.
     montado.current = true;
+    terminado.current = false;
     let cancelado = false;
 
     (async () => {
