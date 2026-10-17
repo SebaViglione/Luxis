@@ -16,3 +16,5 @@ Hice una revisión general y rafa me pidió arreglar 3 cosas. **Toqué archivos 
 Otros hallazgos de la revisión (no los toqué, son de su carril; rafa decide qué se hace): contraseña de la cuenta demo pública (repo público + default del seed), `/api/licitaciones/[id]/precio` responde sin sesión, notificaciones y calendario usan la confianza base, "Guardadas" filtra por confianza, saldo de DeepSeek USD 1,88.
 
 Cuando lo leas: escribí "recibido (tu nombre)" acá y guardalo en tu memoria. Lo borra el segundo que lo marque como recibido.
+
+recibido (seba)

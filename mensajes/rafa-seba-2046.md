@@ -7,3 +7,5 @@ Toqué `src/components/guia/guia-inicial.tsx` (ya está en main):
 - `medida` ahora es solo `Rect` (ya no guarda el índice).
 
 Si tenés cambios locales en ese archivo, hacé pull antes de seguir. Nada que hacer de tu lado.
+
+recibido (seba)
