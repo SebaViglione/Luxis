@@ -58,7 +58,12 @@ export async function POST(req: NextRequest) {
         });
         enviar({ listo: true, idCompra });
       } catch (e) {
-        enviar({ error: (e as Error).message });
+        const err = e as Error & { cause?: { code?: string; message?: string } };
+        const causa = err.cause?.code ?? err.cause?.message;
+        console.error('[analizar-url]', idCompra, err.message, causa ?? '');
+        enviar({ error: /fetch failed|ECONNRESET|ETIMEDOUT|UND_ERR/i.test(`${err.message} ${causa}`)
+          ? `No pudimos conectarnos con ARCE desde el servidor (${causa ?? err.message}). Probá de nuevo en un momento.`
+          : err.message });
       } finally {
         ctrl.close();
       }
