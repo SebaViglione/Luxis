@@ -1,14 +1,13 @@
 import { generateText, Output, type LanguageModel } from 'ai';
 import type { z } from 'zod';
+import { proveedor, CLAVE_POR_PROVEEDOR } from './modelos';
 
 export class IANoConfigurada extends Error {
-  constructor() { super('Falta configurar la IA: agregá ANTHROPIC_API_KEY (o GOOGLE_GENERATIVE_AI_API_KEY con IA_PROVEEDOR=google) en .env.local'); }
+  constructor() { super(`Falta configurar la IA: agregá ${CLAVE_POR_PROVEEDOR[proveedor]} en .env.local (IA_PROVEEDOR=${proveedor}).`); this.name = 'IANoConfigurada'; }
 }
 
 export function verificarIA() {
-  const prov = process.env.IA_PROVEEDOR ?? 'anthropic';
-  const key = prov === 'google' ? process.env.GOOGLE_GENERATIVE_AI_API_KEY : process.env.ANTHROPIC_API_KEY;
-  if (!key) throw new IANoConfigurada();
+  if (!process.env[CLAVE_POR_PROVEEDOR[proveedor]]) throw new IANoConfigurada();
 }
 
 /** Salida estructurada validada con zod (AI SDK 7: generateText + Output.object). */
