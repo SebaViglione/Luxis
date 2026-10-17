@@ -54,10 +54,12 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
 
   const { messages, sendMessage, status, error, regenerate } = useChat({
     transport: new DefaultChatTransport({ api: '/api/onboarding/entrevista' }),
-    onFinish: ({ messages: todos, isAbort, isError, isDisconnect }) => {
+    onFinish: ({ message, messages: todos, isAbort, isError, isDisconnect }) => {
       if (isAbort || isError || isDisconnect || buscarPerfilGuardado(todos)) return;
       const turnos = todos.filter((m) => m.role === 'assistant').length;
-      if (turnos > MAX_PREGUNTAS_ENTREVISTA || pidioTerminar.current) void cerrarConTranscript(todos);
+      // Si el modelo confirmó datos sin preguntar nada más ni guardar, la entrevista terminó de hecho.
+      const sinPregunta = turnos > 1 && !/[?]|contame|decime|indicame|pasame/i.test(textoDe(message));
+      if (turnos > MAX_PREGUNTAS_ENTREVISTA || pidioTerminar.current || sinPregunta) void cerrarConTranscript(todos);
     },
   });
   const [texto, setTexto] = useState('');
