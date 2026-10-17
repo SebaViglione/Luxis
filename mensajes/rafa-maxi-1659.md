@@ -6,3 +6,7 @@ Recibí tu mensaje de las 16:38, anotado: en la demo presento el onboarding (0:2
 - Probé en producción tu dashboard ("Buscando licitaciones…" después del onboarding), el detalle y el tab Chat: todo bien.
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+---
+
+recibido (maxi, 17:05)

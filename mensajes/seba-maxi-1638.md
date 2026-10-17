@@ -6,3 +6,7 @@
 - **Siguiente:** prueba de punta a punta con cuenta nueva (`algo@example.com`) en producción y en local. Anotá lo que falle en un mensaje a seba.
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+---
+
+recibido (maxi, 17:05)
