@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
   const { url } = (await req.json().catch(() => ({}))) as { url?: string };
   const idCompra = url ? idDesdeUrl(url) : null;
   const empresaId = await empresaIdActual();
+  if (!empresaId) return Response.json({ error: 'Iniciá sesión para analizar licitaciones.' }, { status: 401 });
   const enc = new TextEncoder();
   const stream = new ReadableStream({
     async start(ctrl) {

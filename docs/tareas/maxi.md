@@ -24,7 +24,7 @@ npm run dev                       # http://localhost:3000
 
 - Trabajás **contra la misma base de datos** que seba y el resto: todo lo que insertes lo ven todos. No borres datos de otros.
 - **Nunca corras `npm run db:push`** ni edites `src/db/schema.ts`: el schema lo cambia solo seba. Si necesitás una columna o tabla, pedísela.
-- Usuarios de prueba: creá los tuyos desde `/registro` con un email tipo `rafa+1@luxis.test` (la confirmación de email está desactivada en Supabase).
+- Usuarios de prueba: creá los tuyos desde `/registro` con un email tipo `rafa+1@example.com` (la confirmación de email está desactivada en Supabase).
 - Si usás **Claude Code**: abrí el repo y decile "leé `docs/tareas/<tu nombre>.md` y ejecutá la tarea X siguiendo las reglas". `CLAUDE.md` ya tiene el contexto. Si usás **Kiro**: `.kiro/steering/luxis.md` carga el contexto solo; pegá el bloque de la tarea.
 
 ---

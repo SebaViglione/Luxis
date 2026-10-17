@@ -1,5 +1,6 @@
-'use server';
+import 'server-only';
 
+/** Solo para uso en el servidor: el empresaId debe venir de la sesión, nunca del cliente. */
 import { eq, and } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import type { EstadoUsuarioMatch } from '@/lib/types';

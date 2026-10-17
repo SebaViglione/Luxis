@@ -36,9 +36,9 @@ function Bloque({ titulo, children }: { titulo: string; children: React.ReactNod
   );
 }
 
-export function ResumenIa({ analisis, match }: { analisis: AnalisisPliego | null; match: DetalleLicitacion['match'] }) {
+export function ResumenIa({ analisis, match, accionAnalizar }: { analisis: AnalisisPliego | null; match: DetalleLicitacion['match']; accionAnalizar?: React.ReactNode }) {
   if (!analisis && !match) {
-    return <EstadoVacio icono={FileSearch} titulo="Todavía no analizamos esta licitación" descripcion="Cuando leamos el pliego vas a ver acá el resumen, lo que piden, los riesgos y por qué te conviene o no." />;
+    return <EstadoVacio icono={FileSearch} titulo="Todavía no analizamos esta licitación" descripcion="Cuando leamos el pliego vas a ver acá el resumen, lo que piden, los riesgos y por qué te conviene o no." accion={accionAnalizar} />;
   }
   const escala = match ? ESCALA.find((e) => match.confianza >= e.desde) : null;
   const condiciones = analisis ? CONDICIONES.map((c) => ({ ...c, valor: valorCondicion(analisis.condiciones, c.clave) })).filter((c) => c.valor) : [];
@@ -47,6 +47,12 @@ export function ResumenIa({ analisis, match }: { analisis: AnalisisPliego | null
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
       <div className="space-y-6">
+        {!analisis && (
+          <div className="space-y-3 rounded-md border border-dashed bg-card p-4 text-center">
+            <p className="text-sm text-muted-foreground">Todavía no leímos el pliego: el motivo de abajo sale solo de los datos publicados en ARCE.</p>
+            {accionAnalizar}
+          </div>
+        )}
         {analisis?.basadoEn === 'metadata' && (
           <p className="flex items-start gap-2 rounded-md bg-alerta-suave px-3 py-2 text-sm text-alerta-fuerte">
             <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-alerta" />
