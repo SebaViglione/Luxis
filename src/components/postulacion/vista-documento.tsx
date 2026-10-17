@@ -1,11 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import type { Bloque, DocumentoPostulacion } from '@/server/postulacion/documentos';
 
-/** Hoja A4 con los bloques del documento: vista previa en pantalla y contenido al imprimir. */
+/** Vista previa del documento en pantalla (el PDF y el Word salen de los mismos bloques). */
 export function VistaDocumento({ documento, className }: { documento: DocumentoPostulacion; className?: string }) {
   return (
     <article className={cn('space-y-4 bg-card text-sm leading-relaxed text-foreground', className)}>
@@ -81,49 +79,4 @@ function BloqueVista({ bloque: b }: { bloque: Bloque }) {
         </div>
       );
   }
-}
-
-const ESTILO_IMPRESION = `
-#documento-para-imprimir { display: none; }
-@media print {
-  body > *:not(#documento-para-imprimir) { display: none !important; }
-  #documento-para-imprimir { display: block !important; }
-  @page { size: A4; margin: 18mm; }
-}`;
-
-/**
- * "Descargar PDF": monta el documento solo para impresión y abre el diálogo del navegador
- * (Guardar como PDF). Así no hace falta generar el PDF en el servidor.
- */
-export function useImprimirDocumento() {
-  const [documento, setDocumento] = useState<DocumentoPostulacion | null>(null);
-
-  useEffect(() => {
-    if (!documento) return;
-    const tituloOriginal = document.title;
-    document.title = documento.nombreArchivo; // nombre sugerido del PDF
-    const alTerminar = () => {
-      document.title = tituloOriginal;
-      setDocumento(null);
-    };
-    window.addEventListener('afterprint', alTerminar, { once: true });
-    const espera = setTimeout(() => window.print(), 50);
-    return () => {
-      clearTimeout(espera);
-      window.removeEventListener('afterprint', alTerminar);
-      document.title = tituloOriginal;
-    };
-  }, [documento]);
-
-  const elemento =
-    documento && typeof document !== 'undefined'
-      ? createPortal(
-          <div id="documento-para-imprimir">
-            <VistaDocumento documento={documento} />
-          </div>,
-          document.body,
-        )
-      : null;
-
-  return { imprimir: setDocumento, elemento: [<style key="estilo">{ESTILO_IMPRESION}</style>, elemento] };
 }

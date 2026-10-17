@@ -170,7 +170,7 @@ export function armarChecklist(
     });
   }
 
-  return { checklist: items, resumen: resumir(items) };
+  return { checklist: items, resumen: resumir(items, d.match) };
 }
 
 function itemDeGap(g: GapDocumental, seccion: string | null): ItemChecklist | null {
@@ -230,15 +230,14 @@ function itemVisita(fechaVisita: string | null, obligatoria: boolean, descripcio
   };
 }
 
-function resumir(items: ItemChecklist[]): ResumenPreparacion {
+function resumir(items: ItemChecklist[], match: DetalleLicitacion['match']): ResumenPreparacion {
   const riesgos = items.filter((i) => i.estado === 'riesgo').length;
   const pendientes = items.filter((i) => i.estado === 'pendiente').length;
   const nivel = riesgos > 0 ? 'dificil' : pendientes > 0 ? 'falta-poco' : 'lista';
-  // El ajuste sale de este checklist (lo que realmente frena la oferta), no del gap crudo,
-  // que todavía cuenta como faltantes cosas que arma Luxis o que se piden recién al adjudicar.
-  const estadoDocumental = nivel === 'dificil' ? 'dificil' : nivel === 'falta-poco' ? 'alcanzable' : 'cumple';
-  const ajuste = ajusteConfianza(estadoDocumental);
-  const explicacionAjuste = textoAjuste(estadoDocumental);
+  // El ajuste es el mismo que ya descuenta la confianza del match en el dashboard y el detalle.
+  const estadoDocumental = match?.estadoDocumental ?? null;
+  const ajuste = match?.ajusteDocumental ?? ajusteConfianza(estadoDocumental);
+  const explicacionAjuste = textoAjuste(estadoDocumental, ajuste);
   const titulo =
     nivel === 'lista'
       ? 'Estás para presentarte'
