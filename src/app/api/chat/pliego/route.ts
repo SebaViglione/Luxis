@@ -2,6 +2,7 @@ import { convertToModelMessages, streamText, type UIMessage } from 'ai';
 import { and, asc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { chatMensajes } from '@/db/schema';
+import { IANoConfigurada, verificarIA } from '@/lib/ia/estructurado';
 import { modeloFuerte } from '@/lib/ia/modelos';
 import { obtenerSesion } from '@/server/auth/sesion';
 import { armarContextoPliego, buscarParrafo, instruccionesChatPliego } from '@/server/ia/chat-pliego';
@@ -20,6 +21,13 @@ interface CuerpoChat {
 export async function POST(request: Request) {
   const sesion = await obtenerSesion();
   if (!sesion) return Response.json({ error: 'Tu sesión venció. Ingresá de nuevo.' }, { status: 401 });
+
+  try {
+    verificarIA();
+  } catch (error) {
+    if (error instanceof IANoConfigurada) return Response.json({ error: error.message }, { status: 503 });
+    throw error;
+  }
 
   let cuerpo: CuerpoChat;
   try {
