@@ -1,4 +1,5 @@
-import { FileSearch, Info, TriangleAlert } from 'lucide-react';
+import { BookOpen, FileSearch, Info, TriangleAlert } from 'lucide-react';
+import { esDocumentoDeLaLicitacion } from '@/config/plazos-documentales';
 import { EstadoVacio } from '@/components/ui/estado-vacio';
 import type { AnalisisPliego, Condiciones, DetalleLicitacion } from '@/lib/types';
 
@@ -54,6 +55,16 @@ export function ResumenIa({ analisis, match, accionAnalizar }: { analisis: Anali
             <Bloque titulo="En pocas palabras"><p className="leading-relaxed">{analisis.resumen}</p></Bloque>
             <Bloque titulo="Qué compran"><p className="leading-relaxed">{analisis.quePiden}</p></Bloque>
           </>
+        )}
+        {analisis && analisis.requisitosDocumentales.some((r) => esDocumentoDeLaLicitacion(r.documento)) && (
+          <Bloque titulo="Reglas que rigen esta compra">
+            <ul className="space-y-1.5">
+              {analisis.requisitosDocumentales.filter((r) => esDocumentoDeLaLicitacion(r.documento)).map((r) => (
+                <li key={r.documento} className="flex items-start gap-2"><BookOpen aria-hidden className="mt-1 size-4 shrink-0 text-muted-foreground" /><span>{r.documento}</span></li>
+              ))}
+            </ul>
+            <p className="text-sm text-muted-foreground">No son papeles para entregar: al presentar tu oferta aceptás estas condiciones. Conviene leerlas (garantías, multas, forma de pago).</p>
+          </Bloque>
         )}
         {match && <Bloque titulo="Por qué te la mostramos"><p className="leading-relaxed">{match.razon}</p></Bloque>}
         {analisis && analisis.riesgos.length > 0 && (

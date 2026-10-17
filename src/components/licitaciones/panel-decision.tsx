@@ -25,7 +25,7 @@ function resumenPapeles(match: NonNullable<DetalleLicitacion['match']>) {
   const faltan = match.gapDocumental.filter((g) => g.obligatorio && !g.tiene);
   const dificiles = faltan.filter((g) => g.alcanzableAntesCierre === false).length;
   if (!match.gapDocumental.length) return { titulo: 'Sin revisar todavía', detalle: 'Cuando leamos el pliego te decimos qué papeles piden.', tono: 'text-muted-foreground' };
-  if (!faltan.length) return { titulo: 'Tenés todo lo que piden', detalle: 'Los formularios y declaraciones los arma Luxis.', tono: 'text-exito' };
+  if (!faltan.length) return { titulo: 'Tenés todo lo que piden', detalle: 'Los formularios y la planilla de precios los armás con Luxis.', tono: 'text-exito' };
   if (dificiles) return { titulo: `Te ${dificiles === 1 ? 'falta 1 papel difícil' : `faltan ${dificiles} papeles difíciles`}`, detalle: 'No llegarías a conseguirlo antes del cierre.', tono: 'text-error' };
   return { titulo: `Te ${faltan.length === 1 ? 'falta 1 papel' : `faltan ${faltan.length} papeles`}`, detalle: 'Llegás a conseguirlo antes del cierre.', tono: 'text-alerta-fuerte' };
 }

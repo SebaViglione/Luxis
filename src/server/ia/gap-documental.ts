@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
-import { buscarPlazo } from '@/config/plazos-documentales';
+import { buscarPlazo, esDocumentoDeLaLicitacion } from '@/config/plazos-documentales';
 import type { EstadoDoc, EstadoDocumental, FechaClave, GapDocumental, RequisitoDocumental, TipoDoc } from '@/lib/types';
 
 /** Días hábiles (lunes a viernes) entre hoy y una fecha. */
@@ -20,6 +20,8 @@ export function calcularGap(
   cierre: Date | null,
   fechas: FechaClave[] = [],
 ): { gap: GapDocumental[]; estado: EstadoDocumental } {
+  // Papeles = entregables. El pliego y demás documentos de la propia licitación se leen, no se entregan.
+  requisitos = requisitos.filter((r) => !esDocumentoDeLaLicitacion(r.documento));
   if (!requisitos.length) return { gap: [], estado: 'desconocido' };
   const habiles = cierre ? diasHabilesHasta(cierre) : null;
   const visitaVencida = fechas.some((f) => f.tipo === 'visita' && f.obligatoria && f.fecha && new Date(f.fecha).getTime() < Date.now());
@@ -31,6 +33,8 @@ export function calcularGap(
       : documentos.find((d) => norm(r.documento).includes(norm(d.nombre)) || norm(d.nombre).includes(norm(r.documento)));
     const estadoEmpresa = (propio?.estado ?? (tipo === 'OTRO' ? 'desconocido' : 'no_tiene')) as EstadoDoc;
     const base = { documento: r.documento, tipo, estadoEmpresa };
+    // Reglas generales (Pliego Único, TOCAF): no es un papel, se aceptan al ofertar.
+    if (plazo.reglasGenerales) return { ...base, obligatorio: false, tiene: true, diasEstimados: 0, alcanzableAntesCierre: true, nota: plazo.nota };
     // Lo arma Luxis en Postulación (formularios, DJ, planilla, especificación): cuenta como que se tiene.
     if (plazo.preparaLuxis) return { ...base, obligatorio: r.obligatorio, tiene: true, diasEstimados: 0, alcanzableAntesCierre: true, nota: plazo.nota };
     // Garantía de (fiel) cumplimiento: se pide después de adjudicar, no frena la oferta.
