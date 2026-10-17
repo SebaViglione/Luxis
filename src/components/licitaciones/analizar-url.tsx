@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Circle, CircleCheck, LoaderCircle, ScanSearch, TriangleAlert } from 'lucide-react';
+import { Circle, CircleCheck, Info, LoaderCircle, ScanSearch, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -16,18 +16,24 @@ const ETAPAS = [
 ] as const;
 
 type EstadoEtapa = 'pendiente' | 'en_curso' | 'ok';
-type Evento = { etapa?: string; estado?: 'en_curso' | 'ok'; mensaje?: string; listo?: boolean; idCompra?: string; error?: string };
+// 'aviso' es informativo (p. ej. la URL era una adjudicación y se completó desde la compra original): no cambia la etapa.
+type Evento = { etapa?: string; estado?: 'en_curso' | 'ok' | 'aviso'; mensaje?: string; listo?: boolean; idCompra?: string; error?: string };
 
 export function AnalizarUrl() {
   const router = useRouter();
   const [url, setUrl] = useState('');
   const [estados, setEstados] = useState<Record<string, EstadoEtapa> | null>(null);
   const [mensaje, setMensaje] = useState('');
+  const [notas, setNotas] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [enCurso, setEnCurso] = useState(false);
 
   const aplicar = (ev: Evento) => {
     if (ev.error) throw new Error(ev.error);
+    if (ev.estado === 'aviso') {
+      if (ev.mensaje) setNotas((prev) => [...prev, ev.mensaje!]);
+      return;
+    }
     if (ev.etapa && ev.estado) {
       setEstados((prev) => ({ ...prev, [ev.etapa!]: ev.estado! }));
       if (ev.mensaje) setMensaje(ev.mensaje);
@@ -42,6 +48,7 @@ export function AnalizarUrl() {
     e.preventDefault();
     if (!url.trim() || enCurso) return;
     setError(null);
+    setNotas([]);
     setEnCurso(true);
     setEstados(Object.fromEntries(ETAPAS.map((x) => [x.id, 'pendiente'])));
     setMensaje('Conectando…');
@@ -97,6 +104,11 @@ export function AnalizarUrl() {
               );
             })}
           </ol>
+          {notas.map((n) => (
+            <p key={n} className="flex items-start gap-2 text-sm text-muted-foreground">
+              <Info aria-hidden className="mt-0.5 size-4 shrink-0" /> {n}
+            </p>
+          ))}
           {!error && mensaje && <p className="text-sm text-muted-foreground">{mensaje}</p>}
         </div>
       )}
