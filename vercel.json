@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/ingesta/refresh?dias=2", "schedule": "0 9 * * *" }
+  ]
+}
