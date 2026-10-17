@@ -215,8 +215,9 @@ export function herramientasEntrevista(alGuardar: (datos: Partial<PerfilEmpresa>
         'Guarda en el perfil de la empresa los datos nuevos obtenidos en la entrevista. Llamala una sola vez, al final de la entrevista.',
       inputSchema: datosEntrevista,
       execute: async (datos) => {
-        const perfil = await alGuardar(desdeIA(datos, 'entrevista'));
-        return { listo: true as const, perfil };
+        const extraido = desdeIA(datos, 'entrevista');
+        const perfil = await alGuardar(extraido);
+        return { listo: true as const, perfil, extraido };
       },
     }),
   };

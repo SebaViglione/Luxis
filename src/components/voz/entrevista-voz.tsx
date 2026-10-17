@@ -22,7 +22,7 @@ interface Linea {
 }
 
 /** Botón "Hablar con Luxis": entrevista por voz con ElevenLabs que termina en el mismo perfil que el chat. */
-export function BotonEntrevistaVoz({ perfil, onPerfil }: { perfil: PerfilEmpresa; onPerfil: (perfil: PerfilEmpresa) => void }) {
+export function BotonEntrevistaVoz({ perfil, onPerfil }: { perfil: PerfilEmpresa; onPerfil: (perfil: PerfilEmpresa, extraido?: Partial<PerfilEmpresa>) => void }) {
   const [abierto, setAbierto] = useState(false);
   return (
     <>
@@ -46,9 +46,9 @@ export function BotonEntrevistaVoz({ perfil, onPerfil }: { perfil: PerfilEmpresa
               <SesionVoz
                 perfil={perfil}
                 onCerrar={() => setAbierto(false)}
-                onPerfil={(p) => {
+                onPerfil={(p, extraido) => {
                   setAbierto(false);
-                  onPerfil(p);
+                  onPerfil(p, extraido);
                 }}
               />
             </ConversationProvider>
@@ -68,7 +68,7 @@ function SesionVoz({
 }: {
   perfil: PerfilEmpresa;
   onCerrar: () => void;
-  onPerfil: (perfil: PerfilEmpresa) => void;
+  onPerfil: (perfil: PerfilEmpresa, extraido?: Partial<PerfilEmpresa>) => void;
 }) {
   const [etapa, setEtapa] = useState<Etapa>('preparando');
   const [error, setError] = useState<string | null>(null);
@@ -107,13 +107,16 @@ function SesionVoz({
     const formData = new FormData();
     formData.append('texto', texto);
 
-    const resultado: { perfil?: PerfilEmpresa } = {};
+    const resultado: { perfil?: PerfilEmpresa; extraido?: Partial<PerfilEmpresa> } = {};
     await extraerDesdeFuentes(formData, (evento: EventoExtraccion) => {
       if (evento.tipo === 'progreso' && montado.current) setProgreso(evento.mensaje);
-      if (evento.tipo === 'listo') resultado.perfil = evento.perfil;
+      if (evento.tipo === 'listo') {
+        resultado.perfil = evento.perfil;
+        resultado.extraido = evento.extraido;
+      }
       if (evento.tipo === 'error') fallar(`${evento.mensaje} Seguimos por chat.`);
     });
-    if (resultado.perfil && montado.current) onPerfil(resultado.perfil);
+    if (resultado.perfil && montado.current) onPerfil(resultado.perfil, resultado.extraido);
   }, [fallar, onPerfil]);
 
   const conversacion = useConversation({

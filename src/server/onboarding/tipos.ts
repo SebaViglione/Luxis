@@ -4,7 +4,8 @@ import type { PerfilEmpresa } from '@/lib/types';
 export type EventoExtraccion =
   | { tipo: 'progreso'; mensaje: string }
   | { tipo: 'aviso'; mensaje: string }
-  | { tipo: 'listo'; perfil: PerfilEmpresa }
+  // `extraido`: lo que salió de esta fuente antes de fusionar, para detectar contradicciones en el cliente.
+  | { tipo: 'listo'; perfil: PerfilEmpresa; extraido?: Partial<PerfilEmpresa> }
   | { tipo: 'error'; mensaje: string };
 
 /** Resultado de las server actions del onboarding y de la cuenta. */
@@ -16,4 +17,5 @@ export type ResultadoAccion<T = undefined> =
 export interface ResultadoGuardarPerfil {
   listo: true;
   perfil: PerfilEmpresa;
+  extraido?: Partial<PerfilEmpresa>;
 }
