@@ -77,7 +77,7 @@ async function Lista({ searchParams }: { searchParams: Promise<Record<string, st
     if (!hayAlguna && (await perfilRecienActualizado(empresaId))) return <BuscandoLicitaciones />;
     return hayAlguna ? (
       <EstadoVacio icono={SearchX} titulo="Ninguna licitación coincide con estos filtros"
-        descripcion="Probá con “Todas” en qué tan bien te calzan, elegí “Cuando sea” en cuándo cierran o mirá las guardadas."
+        descripcion="Probá con “Todas” en coincidencia, “Cuando sea” en fecha de cierre o mirá las guardadas."
         accion={<Link href="/dashboard" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Limpiar filtros</Link>} />
     ) : (
       <EstadoVacio icono={SearchX} titulo="Todavía no encontramos licitaciones para tu empresa"

@@ -30,9 +30,9 @@ const MOSTRAR: OpcionSegmentada<string>[] = [
 
 /** Mismos cortes que nivelConfianza: media ≥ 50, alta ≥ 75. */
 const CALCE: OpcionSegmentada<string>[] = [
-  { valor: '40', texto: 'Todas', ayuda: 'Incluye las que te calzan poco' },
-  { valor: '50', texto: 'Buenas y muy buenas', ayuda: 'Puntaje 50 o más' },
-  { valor: '75', texto: 'Solo muy buenas', ayuda: 'Puntaje 75 o más' },
+  { valor: '40', texto: 'Todas', ayuda: 'Incluye las de coincidencia baja' },
+  { valor: '50', texto: 'Media y alta', ayuda: 'Puntaje de 50 o más' },
+  { valor: '75', texto: 'Solo alta', ayuda: 'Puntaje de 75 o más' },
 ];
 
 const CIERRE: OpcionSegmentada<string>[] = [
@@ -43,9 +43,9 @@ const CIERRE: OpcionSegmentada<string>[] = [
 ];
 
 const ORDENES = [
-  { value: 'cierre', label: 'Las que cierran antes' },
-  { value: 'confianza', label: 'Las que mejor te calzan' },
-  { value: 'monto', label: 'Las de mayor monto' },
+  { value: 'cierre', label: 'Cierre más próximo' },
+  { value: 'confianza', label: 'Mayor coincidencia' },
+  { value: 'monto', label: 'Mayor monto' },
 ];
 
 /** Lleva cualquier valor viejo de la URL (p. ej. 60 del slider) al corte más cercano por debajo. */
@@ -75,8 +75,8 @@ export function Filtros({ organismos }: { organismos: string[] }) {
 
   // Pastillas de lo que está aplicado (lo que no es el valor por defecto), cada una se saca con ✕.
   const activos: { clave: string; texto: string; quitar: () => void }[] = [
-    ...(calce !== '40' ? [{ clave: 'calce', texto: CALCE.find((c) => c.valor === calce)!.texto, quitar: () => aplicar({ confianza: null }) }] : []),
-    ...(cierre !== 'cualquiera' ? [{ clave: 'cierre', texto: `Cierran ${CIERRE.find((c) => c.valor === cierre)?.texto.toLowerCase() ?? ''}`, quitar: () => aplicar({ cierre: null }) }] : []),
+    ...(calce !== '40' ? [{ clave: 'calce', texto: `Coincidencia: ${CALCE.find((c) => c.valor === calce)!.texto.toLowerCase()}`, quitar: () => aplicar({ confianza: null }) }] : []),
+    ...(cierre !== 'cualquiera' ? [{ clave: 'cierre', texto: `Cierre: ${CIERRE.find((c) => c.valor === cierre)?.texto.toLowerCase() ?? ''}`, quitar: () => aplicar({ cierre: null }) }] : []),
     ...tipos.map((t) => ({ clave: `tipo-${t}`, texto: TIPOS.find((x) => x.valor === t)?.nombre ?? t, quitar: () => alternarTipo(t) })),
     ...(organismo ? [{ clave: 'org', texto: organismo, quitar: () => aplicar({ organismo: null }) }] : []),
   ];
@@ -99,20 +99,20 @@ export function Filtros({ organismos }: { organismos: string[] }) {
 
       <div className="grid gap-4 border-t pt-4 md:grid-cols-2">
         <div className="flex flex-col gap-2">
-          <Pregunta>¿Qué tan bien te calzan?</Pregunta>
-          <Segmentado id="calce" etiqueta="Qué tan bien te calzan" opciones={CALCE} valor={calce}
+          <Pregunta>Coincidencia con lo que vendés</Pregunta>
+          <Segmentado className="self-start" id="calce" etiqueta="Coincidencia con lo que vendés" opciones={CALCE} valor={calce}
             onCambio={(v) => aplicar({ confianza: v !== '40' ? v : null })} />
         </div>
         <div className="flex flex-col gap-2">
-          <Pregunta>¿Cuándo cierran?</Pregunta>
-          <Segmentado id="cierre" etiqueta="Cuándo cierran" opciones={CIERRE} valor={cierre}
+          <Pregunta>Fecha de cierre</Pregunta>
+          <Segmentado className="self-start" id="cierre" etiqueta="Cuándo cierran" opciones={CIERRE} valor={cierre}
             onCambio={(v) => aplicar({ cierre: v !== 'cualquiera' ? v : null })} />
         </div>
       </div>
 
       <div>
         <Button variant="ghost" size="sm" onClick={() => setMasAbierto((a) => !a)} aria-expanded={masAbierto} className="-ml-2">
-          <SlidersHorizontal aria-hidden /> Tipo de compra y quién compra
+          <SlidersHorizontal aria-hidden /> Tipo de compra y organismo
           {extras > 0 && <span className="rounded-full bg-secondary px-1.5 font-mono text-xs">{extras}</span>}
           <ChevronDown aria-hidden className={cn('transition-transform duration-200', masAbierto && 'rotate-180')} />
         </Button>
@@ -124,7 +124,7 @@ export function Filtros({ organismos }: { organismos: string[] }) {
             >
               <div className="grid gap-4 pt-3 lg:grid-cols-[1fr_18rem]">
                 <fieldset className="flex flex-col gap-2">
-                  <legend className="mb-2"><Pregunta>¿Qué tipo de compra?</Pregunta> <span className="text-sm text-muted-foreground">Podés elegir varios.</span></legend>
+                  <legend className="mb-2"><Pregunta>Tipo de compra</Pregunta> <span className="text-sm text-muted-foreground">Podés elegir varios.</span></legend>
                   <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                     {TIPOS.map((t) => {
                       const activo = tipos.includes(t.valor);
@@ -145,7 +145,7 @@ export function Filtros({ organismos }: { organismos: string[] }) {
                   </div>
                 </fieldset>
                 <div className="flex flex-col gap-2">
-                  <Pregunta id="f-organismo">¿Quién compra?</Pregunta>
+                  <Pregunta id="f-organismo">Organismo que compra</Pregunta>
                   <Popover open={abiertoOrganismo} onOpenChange={setAbiertoOrganismo}>
                     <PopoverTrigger render={<Button variant="outline" aria-labelledby="f-organismo" className="w-full justify-between font-normal" />}>
                       <span className="truncate">{organismo || 'Cualquier organismo del Estado'}</span>
