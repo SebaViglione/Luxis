@@ -68,9 +68,9 @@ export async function resumenDashboard(empresaId: string): Promise<{ total: numb
 }
 
 export async function obtenerDetalle(empresaId: string, idCompra: string): Promise<DetalleLicitacion | null> {
-  const [l] = await db.select(COLS_LICITACION).from(schema.licitaciones).where(eq(schema.licitaciones.idCompra, idCompra));
-  if (!l) return null;
-  const [items, archivos, aclaraciones, [an], [m], precios] = await Promise.all([
+  // Las 7 consultas en una sola tanda (antes: licitación primero y después el resto).
+  const [[l], items, archivos, aclaraciones, [an], [m], precios] = await Promise.all([
+    db.select(COLS_LICITACION).from(schema.licitaciones).where(eq(schema.licitaciones.idCompra, idCompra)),
     db.select().from(schema.licitacionItems).where(eq(schema.licitacionItems.idCompra, idCompra)).orderBy(schema.licitacionItems.nroItem),
     db.select({
       id: schema.licitacionArchivos.id, nombre: schema.licitacionArchivos.nombre, url: schema.licitacionArchivos.url, extension: schema.licitacionArchivos.extension,
@@ -83,6 +83,7 @@ export async function obtenerDetalle(empresaId: string, idCompra: string): Promi
     db.select().from(schema.matches).where(and(eq(schema.matches.empresaId, empresaId), eq(schema.matches.idCompra, idCompra))),
     leerPrecios(idCompra),
   ]);
+  if (!l) return null;
   const analisis: AnalisisPliego | null = an ? {
     resumen: an.resumen ?? '', quePiden: an.quePiden ?? '', requisitosDocumentales: an.requisitosDocumentales ?? [], fechasClave: an.fechasClave ?? [],
     condiciones: an.condiciones ?? {}, riesgos: an.riesgos ?? [], confianza: an.confianza ?? 0, basadoEn: an.basadoEn as 'pliego' | 'metadata',
@@ -109,4 +110,21 @@ export async function obtenerDetalle(empresaId: string, idCompra: string): Promi
     } : null,
     precios,
   };
+}
+
+/** Organismos con al menos un match de la empresa (para el filtro): una consulta liviana en vez de traer 200 filas. */
+export async function listarOrganismos(empresaId: string): Promise<string[]> {
+  const filas = await db.execute<{ organismo: string }>(sql`
+    select distinct l.organismo from matches m join licitaciones l on l.id_compra = m.id_compra
+    where m.empresa_id = ${empresaId} and l.organismo is not null and l.fecha_tope_ofertas > now()
+    order by l.organismo`);
+  return [...filas].map((f) => f.organismo);
+}
+
+/** ¿La empresa tiene algún match abierto? (para distinguir "sin resultados con estos filtros" de "todavía nada"). */
+export async function tieneMatches(empresaId: string): Promise<boolean> {
+  const [f] = await db.execute<{ hay: boolean }>(sql`
+    select exists (select 1 from matches m join licitaciones l on l.id_compra = m.id_compra
+      where m.empresa_id = ${empresaId} and l.fecha_tope_ofertas > now()) as hay`);
+  return Boolean(f?.hay);
 }

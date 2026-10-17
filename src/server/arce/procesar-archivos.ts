@@ -32,7 +32,7 @@ async function seguirStubHtml(buf: Buffer): Promise<{ urls: string[]; link: stri
 export interface ResultadoArchivos { archivos: number; ok: number; noSoportados: number; errores: number }
 
 /** Descarga pliego y aclaraciones de una licitación, extrae texto, clasifica y guarda en licitacion_archivos. */
-export async function procesarArchivos(idCompra: string): Promise<ResultadoArchivos> {
+export async function procesarArchivos(idCompra: string, opts: { indexarDespues?: boolean } = {}): Promise<ResultadoArchivos> {
   const [l] = await db.select().from(schema.licitaciones).where(eq(schema.licitaciones.idCompra, idCompra));
   if (!l) throw new Error(`Licitación ${idCompra} no encontrada`);
   const acl = await db.select().from(schema.licitacionAclaraciones).where(eq(schema.licitacionAclaraciones.idCompra, idCompra));
@@ -82,7 +82,7 @@ export async function procesarArchivos(idCompra: string): Promise<ResultadoArchi
   }
   await db.update(schema.licitaciones).set({ archivosProcesados: true, updatedAt: new Date() }).where(eq(schema.licitaciones.idCompra, idCompra));
   // Párrafos + embeddings para la búsqueda híbrida (si falla, el texto completo sigue disponible).
-  await indexarParrafos(idCompra).catch((e) => console.warn('[indexarParrafos]', idCompra, (e as Error).message));
+  if (!opts.indexarDespues) await indexarParrafos(idCompra).catch((e) => console.warn('[indexarParrafos]', idCompra, (e as Error).message));
   return {
     archivos: clasificados.length, ok: clasificados.filter((x) => x.estado === 'ok').length,
     noSoportados: clasificados.filter((x) => x.estado === 'no_soportado').length, errores: clasificados.filter((x) => x.estado === 'error').length,

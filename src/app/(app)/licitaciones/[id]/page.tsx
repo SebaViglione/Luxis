@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { DetalleCargando } from '@/components/licitaciones/detalle-cargando';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -16,7 +17,6 @@ import { PanelPrecio } from '@/components/licitaciones/panel-precio';
 import { ResumenIa } from '@/components/licitaciones/resumen-ia';
 import { TablaItems } from '@/components/licitaciones/tabla-items';
 import { buttonVariants } from '@/components/ui/button';
-import { Cargando } from '@/components/ui/cargando';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { requerirSesion } from '@/server/auth/sesion';
@@ -107,7 +107,7 @@ async function Detalle({ params }: { params: Promise<{ id: string }> }) {
         <TabsContent value="fechas" className="pt-4">
           <PanelFechas detalle={d} ahora={ahora} />
         </TabsContent>
-        <TabsContent value="chat" className="pt-4">
+        <TabsContent value="chat" keepMounted className="pt-4 [&[hidden]]:hidden">
           <div data-slot="chat-pliego" className="min-h-64">
             <ChatPliego idCompra={l.idCompra} />
           </div>
@@ -122,7 +122,7 @@ async function Detalle({ params }: { params: Promise<{ id: string }> }) {
 
 export default function DetalleLicitacionPage({ params }: PageProps<'/licitaciones/[id]'>) {
   return (
-    <Suspense fallback={<Cargando texto="Cargando la licitación…" />}>
+    <Suspense fallback={<DetalleCargando />}>
       <Detalle params={params} />
     </Suspense>
   );

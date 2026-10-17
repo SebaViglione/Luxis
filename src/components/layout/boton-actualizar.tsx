@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { generarMisNotificaciones } from '@/components/notificaciones/acciones';
 
 type Estado = { tipo: 'inactivo' } | { tipo: 'trabajando'; texto: string; desde: number } | { tipo: 'listo'; texto: string } | { tipo: 'error'; texto: string };
 
 export function BotonActualizar() {
+  const router = useRouter();
   const [estado, setEstado] = useState<Estado>({ tipo: 'inactivo' });
   const [segundos, setSegundos] = useState(0);
   const trabajando = estado.tipo === 'trabajando';
@@ -25,12 +26,15 @@ export function BotonActualizar() {
     setSegundos(0);
     setEstado({ tipo: 'trabajando', texto: 'Buscando novedades en ARCE…', desde: inicio });
     try {
+      // Una sola llamada: novedades de ARCE + matching de lo nuevo + avisos. Adjudicaciones y pliegos siguen en segundo plano.
       const res = await fetch('/api/ingesta/refresh?dias=2', { method: 'POST' });
-      const datos = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      const datos = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; notificaciones?: number; vigentes?: { omitido?: boolean } };
       if (!res.ok || datos.ok === false) throw new Error(datos.error ?? `Error ${res.status}`);
-      setEstado({ tipo: 'trabajando', texto: 'Generando avisos…', desde: inicio });
-      const creadas = await generarMisNotificaciones();
-      setEstado({ tipo: 'listo', texto: creadas ? `${creadas} ${creadas === 1 ? 'aviso nuevo' : 'avisos nuevos'}` : 'Todo al día' });
+      setEstado({ tipo: 'trabajando', texto: 'Mostrando novedades…', desde: inicio });
+      router.refresh();
+      const creadas = datos.notificaciones ?? 0;
+      setEstado({ tipo: 'listo', texto: creadas ? `${creadas} ${creadas === 1 ? 'aviso nuevo' : 'avisos nuevos'}` : datos.vigentes?.omitido ? 'Ya estaba al día' : 'Todo al día' });
+      window.setTimeout(() => setEstado((e) => (e.tipo === 'listo' ? { tipo: 'inactivo' } : e)), 6000);
     } catch {
       setEstado({ tipo: 'error', texto: 'No se pudo actualizar. ARCE puede estar lento: probá de nuevo en unos minutos.' });
     }
@@ -38,11 +42,11 @@ export function BotonActualizar() {
 
   return (
     <div className="flex items-center gap-2">
-      <span role="status" aria-live="polite" className={estado.tipo === 'error' ? 'max-w-56 text-xs text-error' : 'hidden text-xs text-muted-foreground md:inline'}>
+      <span role="status" aria-live="polite" className={estado.tipo === 'error' ? 'max-w-56 text-xs text-error' : 'max-w-40 truncate text-xs text-muted-foreground sm:max-w-none'}>
         {estado.tipo === 'inactivo' ? '' : estado.texto}
         {trabajando && <span className="ml-1 font-mono">{segundos} s</span>}
       </span>
-      <Button variant="outline" size="sm" onClick={actualizar} disabled={trabajando} title="Trae novedades de ARCE (tarda entre 30 y 90 segundos)">
+      <Button variant="outline" size="sm" onClick={actualizar} disabled={trabajando} title="Trae novedades de ARCE (suele tardar entre 10 y 30 segundos)">
         <RefreshCw aria-hidden className={trabajando ? 'animate-spin motion-reduce:animate-none' : undefined} />
         <span className="hidden sm:inline">{trabajando ? 'Actualizando…' : 'Actualizar'}</span>
         <span className="sr-only sm:hidden">Actualizar</span>

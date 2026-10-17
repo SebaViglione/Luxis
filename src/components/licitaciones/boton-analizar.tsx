@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 export function BotonAnalizar({ idCompra }: { idCompra: string }) {
   const router = useRouter();
   const [trabajando, setTrabajando] = useState(false);
-  const [, iniciar] = useTransition();
+  const [refrescando, iniciar] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   const analizar = async () => {
@@ -28,8 +28,9 @@ export function BotonAnalizar({ idCompra }: { idCompra: string }) {
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <Button onClick={analizar} disabled={trabajando}>
-        <FileSearch aria-hidden /> {trabajando ? 'Leyendo y analizando el pliego…' : 'Analizar el pliego ahora'}
+      <Button onClick={analizar} disabled={trabajando || refrescando}>
+        <FileSearch aria-hidden className={trabajando || refrescando ? 'animate-pulse' : undefined} />
+        {trabajando ? 'Leyendo y analizando el pliego…' : refrescando ? 'Mostrando el análisis…' : 'Analizar el pliego ahora'}
       </Button>
       <p aria-live="polite" className="text-xs text-muted-foreground">{trabajando ? 'Puede tardar hasta un minuto.' : ''}</p>
       {error && <p role="alert" className="text-sm text-error">{error}</p>}

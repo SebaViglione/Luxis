@@ -1,4 +1,6 @@
 import { generarReporte } from './xml';
+import { sql } from 'drizzle-orm';
+import { db } from '@/db';
 import { upsertLlamados, upsertAdjudicaciones, registrarCorrida } from './guardar';
 
 const DIA = 24 * 3600 * 1000;
@@ -6,10 +8,11 @@ type Log = (msg: string) => void;
 const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
 /** Llamados vigentes publicados o modificados en [desde, hasta]. */
-export async function ingestarVigentes(desde: Date, hasta: Date, log: Log = () => {}) {
+export async function ingestarVigentes(desde: Date, hasta: Date, log: Log = () => {}, red: { timeoutMs?: number; intentos?: number } = {}) {
   const t0 = Date.now();
   try {
     const compras = await generarReporte('lv', desde, hasta, {
+      ...red,
       onVentana: (v) => log(`  vigentes ${fmt(v.desde)}→${fmt(v.hasta)}: ${v.compras} compras (${v.ms} ms)`),
     });
     const r = await upsertLlamados(compras);
@@ -65,4 +68,23 @@ export async function refresh(dias = 2, log: Log = () => {}) {
   const a = await ingestarAdjudicaciones(desde, hasta, log);
   await registrarCorrida({ tipo: 'refresh', desde, hasta, compras: v.compras, items: v.items, adjudicaciones: a.adjudicaciones, duracionMs: Date.now() - t0 });
   return { vigentes: v, adjudicaciones: a };
+}
+
+/**
+ * Refresh para el botón "Actualizar": solo llamados vigentes nuevos desde la última corrida exitosa (−1 h de margen,
+ * máximo `dias`), con timeout corto. Si hubo un refresh exitoso hace menos de 10 min, no vuelve a pedirle a ARCE.
+ */
+export async function refreshRapido(dias = 2) {
+  const [ult] = await db.execute<{ hasta: string | null; reciente: boolean }>(sql`
+    select max(hasta)::text as hasta,
+      coalesce(bool_or(tipo = 'refresh' and estado = 'ok' and created_at > now() - interval '10 minutes'), false) as reciente
+    from ingesta_corridas where tipo in ('vigentes', 'refresh') and estado = 'ok'`);
+  if (ult?.reciente) return { omitido: true as const, compras: 0, items: 0, rubro: 0 };
+  const hasta = new Date();
+  const minimo = hasta.getTime() - dias * DIA;
+  const desde = new Date(Math.max(minimo, ult?.hasta ? new Date(ult.hasta).getTime() - 3600_000 : minimo));
+  const t0 = Date.now();
+  const v = await ingestarVigentes(desde, hasta, () => {}, { timeoutMs: 35_000, intentos: 2 });
+  await registrarCorrida({ tipo: 'refresh', desde, hasta, compras: v.compras, items: v.items, duracionMs: Date.now() - t0 });
+  return { omitido: false as const, ...v };
 }

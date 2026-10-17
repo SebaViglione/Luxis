@@ -49,7 +49,8 @@ export async function POST(request: Request) {
   const contexto = await armarContextoPliego(idCompra, consulta);
   if (!contexto) return Response.json({ error: 'No encontramos esa licitación.' }, { status: 404 });
   if (ultimo.role === 'user' && pregunta && trigger !== 'regenerate-message') {
-    await db.insert(chatMensajes).values({ empresaId: sesion.empresaId, idCompra, rol: 'user', contenido: pregunta });
+    // Sin await: guardar la pregunta no tiene que demorar la primera palabra de la respuesta.
+    void db.insert(chatMensajes).values({ empresaId: sesion.empresaId, idCompra, rol: 'user', contenido: pregunta }).catch(() => null);
   }
 
   const resultado = streamText({
