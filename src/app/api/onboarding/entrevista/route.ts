@@ -45,6 +45,8 @@ export async function POST(request: Request) {
     // No se fuerza tool_choice: DeepSeek en modo thinking lo rechaza. El cierre lo pide el prompt
     // y, si el modelo no guarda, la UI arma el perfil desde la transcripción.
     stopWhen: isStepCount(2),
+    // Respuestas de chat cortas: sin el razonamiento de DeepSeek V4 cada turno sale en pocos segundos.
+    providerOptions: { deepseek: { thinking: { type: 'disabled' } } },
     prepareStep: ({ stepNumber }) => (stepNumber > 0 ? { activeTools: [] } : {}),
   });
 
