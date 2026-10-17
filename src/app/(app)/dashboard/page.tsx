@@ -10,7 +10,8 @@ import { Filtros } from '@/components/licitaciones/filtros';
 import { filtrosDesdeUrl } from '@/components/licitaciones/filtros-url';
 import CountUp from '@/components/reactbits/count-up';
 import { buttonVariants } from '@/components/ui/button';
-import { Cargando } from '@/components/ui/cargando';
+import { ListaCargando } from '@/components/licitaciones/lista-cargando';
+import { Skeleton } from '@/components/ui/skeleton';
 import { EstadoVacio } from '@/components/ui/estado-vacio';
 import { BuscandoLicitaciones } from '@/components/licitaciones/buscando-licitaciones';
 import { db, schema } from '@/db';
@@ -95,16 +96,25 @@ async function Lista({ searchParams }: { searchParams: Promise<Record<string, st
 export default function DashboardPage({ searchParams }: PageProps<'/dashboard'>) {
   return (
     <div className="space-y-6">
-      <Suspense fallback={<EncabezadoCargando />}>
-        <Encabezado />
-      </Suspense>
-      <AnalizarUrl />
-      <Suspense fallback={<div className="h-24 rounded-md border bg-card" aria-hidden />}>
-        <FiltrosConOpciones />
-      </Suspense>
-      <Suspense fallback={<Cargando texto="Buscando licitaciones para tu empresa…" />}>
-        <Lista searchParams={searchParams} />
-      </Suspense>
+      {/* data-guia: anclas de la guía inicial (src/components/guia/guia-inicial.tsx). */}
+      <div data-guia="resumen">
+        <Suspense fallback={<EncabezadoCargando />}>
+          <Encabezado />
+        </Suspense>
+      </div>
+      <div data-guia="analizar-url">
+        <AnalizarUrl />
+      </div>
+      <div data-guia="filtros">
+        <Suspense fallback={<Skeleton className="h-[9.5rem] w-full rounded-md" />}>
+          <FiltrosConOpciones />
+        </Suspense>
+      </div>
+      <div data-guia="lista">
+        <Suspense fallback={<ListaCargando />}>
+          <Lista searchParams={searchParams} />
+        </Suspense>
+      </div>
     </div>
   );
 }

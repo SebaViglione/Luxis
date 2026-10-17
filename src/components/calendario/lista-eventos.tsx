@@ -11,17 +11,17 @@ export function ListaEventos({ eventos, hoy }: { eventos: EventoCalendario[]; ho
     return <EstadoVacio icono={CalendarDays} titulo="Nada en los próximos 14 días" descripcion="Cuando guardes o te aparezcan licitaciones, vas a ver acá sus cierres, visitas y plazos." />;
   }
   return (
-    <ol className="space-y-4">
+    <ol className="space-y-4 pb-4">
       {[...agruparPorDia(eventos)].map(([dia, delDia]) => (
         <li key={dia} className="space-y-1.5">
-          <h3 className="text-sm text-muted-foreground">
+          <h3 className="sticky top-0 z-10 bg-background/95 py-1 text-xs text-muted-foreground">
             {dia === hoy ? 'Hoy' : null}
             <span className={cn('font-mono', dia === hoy && 'ml-2')}>{fecha(delDia[0].fecha)}</span>
           </h3>
           <ul className="space-y-1.5">
             {delDia.map((e) => (
               <li key={e.id}>
-                <Link href={`/licitaciones/${encodeURIComponent(e.idCompra)}`} className="flex items-start gap-2.5 rounded-md border bg-card p-2.5 hover:bg-muted/50">
+                <Link href={`/licitaciones/${encodeURIComponent(e.idCompra)}`} className="flex items-start gap-2.5 rounded-md border bg-card px-2.5 py-2 transition-colors hover:border-foreground/20 hover:bg-muted/40">
                   <span aria-hidden className={cn('mt-1 h-4 w-1 shrink-0 rounded-full', TIPO_EVENTO[e.tipo].marca)} />
                   <span className="min-w-0 flex-1">
                     <span className="block text-xs text-muted-foreground">
