@@ -9,7 +9,7 @@ import { marcarNotificacionLeida } from './acciones';
 import { TIPO_NOTIFICACION } from './tipos';
 
 export function ItemNotificacion({ n, compacto = false, onNavegar }: { n: Notificacion; compacto?: boolean; onNavegar?: () => void }) {
-  const [, iniciar] = useTransition();
+  const [marcando, iniciar] = useTransition();
   const { icono: Icono, etiqueta } = TIPO_NOTIFICACION[n.tipo];
   const marcar = () => { if (!n.leida) iniciar(() => marcarNotificacionLeida(n.id)); onNavegar?.(); };
   const contenido = (
@@ -23,7 +23,7 @@ export function ItemNotificacion({ n, compacto = false, onNavegar }: { n: Notifi
       {!n.leida && <span aria-label="Sin leer" className="mt-1.5 size-2 shrink-0 rounded-full bg-primary" />}
     </>
   );
-  const clases = cn('flex items-start gap-3 rounded-md p-2.5 text-left transition-colors hover:bg-muted', !compacto && 'p-3');
+  const clases = cn('flex items-start gap-3 rounded-md p-2.5 text-left transition-[background-color,opacity] hover:bg-muted', !compacto && 'p-3', marcando && 'opacity-60');
   return n.idCompra ? (
     <Link href={`/licitaciones/${encodeURIComponent(n.idCompra)}`} onClick={marcar} className={clases}>{contenido}</Link>
   ) : (

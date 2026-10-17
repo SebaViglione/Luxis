@@ -44,11 +44,11 @@ export function urlReporte(tipo: TipoPublicacion, desde: Date, hasta: Date, tipo
   return `${URL_REPORTE}?${p.toString()}`;
 }
 
-async function fetchConReintentos(url: string, intentos = 3): Promise<string> {
+async function fetchConReintentos(url: string, intentos = 3, timeoutMs = TIMEOUT_MS): Promise<string> {
   let ultimoError: unknown;
   for (let i = 1; i <= intentos; i++) {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
       const res = await fetch(url, {
         headers: { 'User-Agent': UA_NAVEGADOR, Accept: 'text/xml,application/xml,*/*', 'Accept-Language': 'es-UY,es;q=0.9' },
@@ -200,12 +200,12 @@ export async function generarReporte(
   tipo: TipoPublicacion,
   desde: Date,
   hasta: Date,
-  opts: { tipoCompra?: string; onVentana?: (info: { desde: Date; hasta: Date; compras: number; bytes: number; ms: number }) => void } = {},
+  opts: { tipoCompra?: string; timeoutMs?: number; intentos?: number; onVentana?: (info: { desde: Date; hasta: Date; compras: number; bytes: number; ms: number }) => void } = {},
 ): Promise<CompraNormalizada[]> {
   const resultado: CompraNormalizada[] = [];
   for (const v of ventanas(desde, hasta)) {
     const t0 = Date.now();
-    const xml = await fetchConReintentos(urlReporte(tipo, v.desde, v.hasta, opts.tipoCompra));
+    const xml = await fetchConReintentos(urlReporte(tipo, v.desde, v.hasta, opts.tipoCompra), opts.intentos ?? 3, opts.timeoutMs ?? TIMEOUT_MS);
     const { compras } = parsearReporte(xml);
     for (const c of compras) {
       const m = mapCompra(c);

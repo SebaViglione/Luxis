@@ -47,7 +47,7 @@ export async function upsertLlamados(compras: CompraNormalizada[]): Promise<{ co
         lugarApertura: sql`excluded.lugar_apertura`, lugarEntrega: sql`excluded.lugar_entrega`,
         nombrePliego: sql`coalesce(excluded.nombre_pliego, ${schema.licitaciones.nombrePliego})`,
         // Si cambió el pliego, hay que volver a procesar archivos.
-        archivosProcesados: sql`case when excluded.nombre_pliego is distinct from ${schema.licitaciones.nombrePliego} then false else ${schema.licitaciones.archivosProcesados} end`,
+        archivosProcesados: sql`case when coalesce(excluded.nombre_pliego, ${schema.licitaciones.nombrePliego}) is distinct from ${schema.licitaciones.nombrePliego} then false else ${schema.licitaciones.archivosProcesados} end`,
         esRubro: sql`excluded.es_rubro`,
         raw: sql`excluded.raw`, updatedAt: sql`now()`,
       },

@@ -10,7 +10,8 @@ const globalForDb = globalThis as unknown as { __luxisDb?: DB };
 function crear(): DB {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('Falta DATABASE_URL en .env.local');
-  const conn = postgres(url, { prepare: false, max: 10, idle_timeout: 20 });
+  // idle_timeout largo: evita re-abrir la conexión TLS seguido entre pedidos.
+  const conn = postgres(url, { prepare: false, max: 10, idle_timeout: 120 });
   return drizzle(conn, { schema });
 }
 
