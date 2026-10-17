@@ -8,7 +8,7 @@ export type Bloque =
   | { tipo: 'parrafo'; texto: string; negrita?: boolean; derecha?: boolean }
   | { tipo: 'campos'; filas: [string, string][] }
   | { tipo: 'lista'; items: string[] }
-  | { tipo: 'tabla'; columnas: string[]; filas: string[][]; alineacion?: ('izq' | 'der')[] }
+  | { tipo: 'tabla'; columnas: string[]; filas: string[][]; alineacion?: ('izq' | 'der')[]; anchos?: number[] }
   | { tipo: 'firma'; lineas: string[] }
   | { tipo: 'nota'; texto: string };
 
@@ -117,7 +117,8 @@ export function cartaPresentacion(p: DatosPagina, d: DatosPostulacion, c: Cotiza
     incluidas.length > 0
       ? `cotizando ${incluidas.length} de los ${p.items.length} ítems solicitados por un total de ${totales}`
       : 'según la cotización adjunta';
-  const sobreLaEmpresa = [p.empresa.descripcion, p.empresa.experienciaLicitaciones].filter(Boolean).join(' ');
+  // Solo la descripción: la experiencia en licitaciones suele repetirla y está en tercera persona.
+  const sobreLaEmpresa = p.empresa.descripcion;
   const condiciones = [
     c.plazoEntrega && `un plazo de entrega de ${c.plazoEntrega}${p.licitacion.lugarEntrega ? ` en ${p.licitacion.lugarEntrega}` : ''}`,
     c.mantenimientoOferta && `el mantenimiento de la oferta por ${c.mantenimientoOferta}`,
@@ -189,6 +190,7 @@ export function especificacionOferta(p: DatosPagina, d: DatosPostulacion, c: Cot
             columnas: ['Ítem', 'Descripción solicitada', 'Producto ofrecido', 'Cantidad', 'Precio unitario sin imp.', 'IVA', 'Subtotal sin imp.'],
             filas,
             alineacion: ['izq', 'izq', 'izq', 'der', 'der', 'der', 'der'],
+            anchos: [0.55, 2, 2, 1.15, 1.35, 0.7, 1.35],
           }
         : { tipo: 'nota', texto: 'Todavía no cargaste precios en la cotización.' },
       ...(resumenTotales.length ? [{ tipo: 'lista' as const, items: resumenTotales }] : []),

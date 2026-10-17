@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronRight, FileDown, FileText, Printer } from 'lucide-react';
+import { ChevronRight, FileDown, FileText } from 'lucide-react';
 import { useState } from 'react';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -13,8 +13,8 @@ import {
   type DocumentoPostulacion,
 } from '@/server/postulacion/documentos';
 import type { Cotizacion, DatosPagina, DatosPostulacion } from '@/server/postulacion/tipos';
-import { useImprimirDocumento, VistaDocumento } from './documento-imprimible';
-import { descargarDocx } from './exportar';
+import { descargarDocx, descargarPdf } from './exportar';
+import { VistaDocumento } from './vista-documento';
 
 interface Props {
   datos: DatosPagina;
@@ -30,7 +30,6 @@ const DESCRIPCION: Record<DocumentoPostulacion['id'], string> = {
 };
 
 export function PasoDocumentos({ datos, datosEmpresa, cotizacion, onIrA }: Props) {
-  const { imprimir, elemento } = useImprimirDocumento();
   const documentos = [
     formularioIdentificacion(datos, datosEmpresa),
     cartaPresentacion(datos, datosEmpresa, cotizacion),
@@ -73,32 +72,31 @@ export function PasoDocumentos({ datos, datosEmpresa, cotizacion, onIrA }: Props
       )}
 
       {documentos.map((doc) => (
-        <TarjetaDocumento key={doc.id} documento={doc} onImprimir={() => imprimir(doc)} />
+        <TarjetaDocumento key={doc.id} documento={doc} />
       ))}
 
       <p className="text-xs text-muted-foreground">
-        Para firmar: imprimí, firmá y escaneá en PDF, o firmá el PDF digitalmente (Abitab ID, cédula con chip). SICE acepta PDF, Word y Excel de
+        Para firmar: firmá el PDF digitalmente (Abitab ID, cédula con chip) o imprimilo, firmalo y escanealo. SICE acepta PDF, Word y Excel de
         hasta 100 MB.
       </p>
-      {elemento}
     </div>
   );
 }
 
-function TarjetaDocumento({ documento, onImprimir }: { documento: DocumentoPostulacion; onImprimir: () => void }) {
-  const [descargando, setDescargando] = useState(false);
+function TarjetaDocumento({ documento }: { documento: DocumentoPostulacion }) {
+  const [descargando, setDescargando] = useState<'pdf' | 'word' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const word = async () => {
-    setDescargando(true);
+  const descargarComo = async (formato: 'pdf' | 'word') => {
+    setDescargando(formato);
     setError(null);
     try {
-      await descargarDocx(documento);
+      await (formato === 'pdf' ? descargarPdf(documento) : descargarDocx(documento));
     } catch (e) {
       console.error(e);
-      setError('No pudimos generar el Word. Probá de nuevo.');
+      setError(`No pudimos generar el ${formato === 'pdf' ? 'PDF' : 'Word'}. Probá de nuevo.`);
     } finally {
-      setDescargando(false);
+      setDescargando(null);
     }
   };
 
@@ -111,11 +109,11 @@ function TarjetaDocumento({ documento, onImprimir }: { documento: DocumentoPostu
         </CardTitle>
         <CardDescription>{DESCRIPCION[documento.id]}</CardDescription>
         <CardAction className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={onImprimir}>
-            <Printer aria-hidden /> PDF
+          <Button size="sm" variant="outline" onClick={() => descargarComo('pdf')} disabled={descargando !== null}>
+            {descargando === 'pdf' ? <Spinner /> : <FileDown aria-hidden />} PDF
           </Button>
-          <Button size="sm" variant="outline" onClick={word} disabled={descargando}>
-            {descargando ? <Spinner /> : <FileDown aria-hidden />} Word
+          <Button size="sm" variant="outline" onClick={() => descargarComo('word')} disabled={descargando !== null}>
+            {descargando === 'word' ? <Spinner /> : <FileDown aria-hidden />} Word
           </Button>
         </CardAction>
       </CardHeader>
