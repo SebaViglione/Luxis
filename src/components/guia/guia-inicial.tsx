@@ -46,8 +46,9 @@ export function GuiaInicial() {
   const router = useRouter();
   const [abierta, setAbierta] = useState(false);
   const [indice, setIndice] = useState(0);
-  // La medida guarda a qué paso pertenece: si cambia el paso, la vieja no se usa.
-  const [medida, setMedida] = useState<{ indice: number; rect: Rect } | null>(null);
+  // Última medida del ancla. Al cambiar de paso se conserva hasta medir la nueva: así el recorte se
+  // desliza de un ancla a la otra en vez de desaparecer un cuadro (eso hacía un "flash" del velo).
+  const [medida, setMedida] = useState<Rect | null>(null);
 
   // Primera visita al dashboard: espera a que la lista cargue y abre.
   useEffect(() => {
@@ -104,9 +105,9 @@ export function GuiaInicial() {
     const medir = () => {
       const r = el.getBoundingClientRect();
       setMedida((prev) =>
-        prev && prev.indice === indice && prev.rect.top === r.top && prev.rect.left === r.left && prev.rect.width === r.width && prev.rect.height === r.height
+        prev && prev.top === r.top && prev.left === r.left && prev.width === r.width && prev.height === r.height
           ? prev
-          : { indice, rect: { top: r.top, left: r.left, width: r.width, height: r.height } },
+          : { top: r.top, left: r.left, width: r.width, height: r.height },
       );
       raf = requestAnimationFrame(medir);
     };
@@ -114,7 +115,7 @@ export function GuiaInicial() {
     return () => cancelAnimationFrame(raf);
   }, [abierta, indice, paso.selector]);
 
-  const rect = medida?.indice === indice ? medida.rect : null;
+  const rect = paso.selector ? medida : null;
 
   useEffect(() => {
     if (!abierta) return;
@@ -148,23 +149,21 @@ export function GuiaInicial() {
   // "Saltar guía" va arriba a la derecha, salvo que ahí esté lo que se resalta ("Actualizar" en la topbar):
   // en ese caso baja a la esquina inferior para no taparlo.
   const saltarAbajo = Boolean(hueco && hueco.top < 72 && hueco.left + hueco.width > vw - 220);
+  const velo = hueco ?? { top: vh / 2, left: vw / 2, width: 0, height: 0 };
 
   return (
     <MotionConfig reducedMotion="user">
       <div className="fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-label="Guía de Luxis">
-        {/* Velo con recorte */}
-        {hueco ? (
-          <motion.div
-            className="pointer-events-none absolute rounded-xl shadow-[0_0_0_9999px_rgba(27,27,27,0.62)] ring-2 ring-primary"
-            initial={false}
-            animate={hueco}
-            transition={{ type: 'spring', stiffness: 260, damping: 30 }}
-          >
-            <span className="absolute -inset-1.5 animate-ping rounded-xl ring-2 ring-primary/40 [animation-duration:2s] motion-reduce:hidden" />
-          </motion.div>
-        ) : (
-          <motion.div className="absolute inset-0 bg-[rgba(27,27,27,0.62)]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} />
-        )}
+        {/* Velo con recorte: un solo elemento siempre montado. En los pasos centrados el recorte se
+            achica a un punto en el centro, así pasar de paso nunca apaga y vuelve a prender el velo. */}
+        <motion.div
+          className={cn('pointer-events-none absolute rounded-xl shadow-[0_0_0_9999px_rgba(27,27,27,0.62)]', hueco && 'ring-2 ring-primary')}
+          initial={{ ...velo, opacity: 0 }}
+          animate={{ ...velo, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 260, damping: 30, opacity: { duration: 0.25 } }}
+        >
+          {hueco && <span className="absolute -inset-1.5 animate-ping rounded-xl ring-2 ring-primary/40 [animation-duration:2s] motion-reduce:hidden" />}
+        </motion.div>
         {/* Bloquea clics al resto de la app mientras dura la guía */}
         <div className="absolute inset-0" onClick={(e) => e.stopPropagation()} />
 
