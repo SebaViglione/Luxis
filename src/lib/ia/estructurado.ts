@@ -1,30 +1,42 @@
 import { generateText, Output, type LanguageModel } from 'ai';
 import type { z } from 'zod';
+import { proveedor, CLAVE_POR_PROVEEDOR } from './modelos';
 
 export class IANoConfigurada extends Error {
-  constructor() { super('Falta configurar la IA: agregá ANTHROPIC_API_KEY (o GOOGLE_GENERATIVE_AI_API_KEY con IA_PROVEEDOR=google) en .env.local'); }
+  constructor() { super(`Falta configurar la IA: agregá ${CLAVE_POR_PROVEEDOR[proveedor]} en .env.local (IA_PROVEEDOR=${proveedor}).`); this.name = 'IANoConfigurada'; }
 }
 
 export function verificarIA() {
-  const prov = process.env.IA_PROVEEDOR ?? 'anthropic';
-  const key = prov === 'google' ? process.env.GOOGLE_GENERATIVE_AI_API_KEY : process.env.ANTHROPIC_API_KEY;
-  if (!key) throw new IANoConfigurada();
+  if (!process.env[CLAVE_POR_PROVEEDOR[proveedor]]) throw new IANoConfigurada();
 }
 
-/** Salida estructurada validada con zod (AI SDK 7: generateText + Output.object). */
+/** Opciones por proveedor para extracción determinística (DeepSeek: sin "thinking" para que respete temperature 0). */
+const OPCIONES_PROVEEDOR = proveedor === 'deepseek' ? { deepseek: { thinking: { type: 'disabled' as const } } } : undefined;
+
+/** Salida estructurada validada con zod (AI SDK 7: generateText + Output.object). Reintenta una vez si el JSON no valida. */
 export async function generarObjeto<S extends z.ZodType>(opts: {
   modelo: LanguageModel; schema: S; system: string; prompt: string; maxOutputTokens?: number;
 }): Promise<{ objeto: z.infer<S>; tokensEntrada: number; tokensSalida: number }> {
   verificarIA();
-  const r = await generateText({
-    model: opts.modelo,
-    system: opts.system,
-    prompt: opts.prompt,
-    temperature: 0,
-    maxOutputTokens: opts.maxOutputTokens ?? 4000,
-    output: Output.object({ schema: opts.schema }),
-  });
-  return { objeto: r.output as z.infer<S>, tokensEntrada: r.usage?.inputTokens ?? 0, tokensSalida: r.usage?.outputTokens ?? 0 };
+  let ultimo: unknown;
+  for (let intento = 1; intento <= 2; intento++) {
+    try {
+      const r = await generateText({
+        model: opts.modelo,
+        system: opts.system,
+        prompt: intento === 1 ? opts.prompt : `${opts.prompt}\n\nIMPORTANTE: respondé únicamente con JSON válido que cumpla el schema.`,
+        temperature: 0,
+        maxOutputTokens: opts.maxOutputTokens ?? 4000,
+        output: Output.object({ schema: opts.schema }),
+        providerOptions: OPCIONES_PROVEEDOR,
+      });
+      return { objeto: r.output as z.infer<S>, tokensEntrada: r.usage?.inputTokens ?? 0, tokensSalida: r.usage?.outputTokens ?? 0 };
+    } catch (e) {
+      ultimo = e;
+      if (!/No object generated|could not parse|did not match schema|validation/i.test((e as Error).message)) throw e;
+    }
+  }
+  throw ultimo;
 }
 
 /** Ejecuta tareas con concurrencia limitada. */
