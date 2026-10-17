@@ -1,6 +1,9 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
+import { connection } from 'next/server';
+import { sql } from 'drizzle-orm';
 import { SearchX } from 'lucide-react';
+import { AnalizarUrl } from '@/components/licitaciones/analizar-url';
 import { CardLicitacion } from '@/components/licitaciones/card-licitacion';
 import { Filtros } from '@/components/licitaciones/filtros';
 import { filtrosDesdeUrl } from '@/components/licitaciones/filtros-url';
@@ -8,11 +11,22 @@ import CountUp from '@/components/reactbits/count-up';
 import { buttonVariants } from '@/components/ui/button';
 import { Cargando } from '@/components/ui/cargando';
 import { EstadoVacio } from '@/components/ui/estado-vacio';
-import { empresaActual, listarMatches, resumenDashboard } from '@/lib/mocks/consultas';
+import { BuscandoLicitaciones } from '@/components/licitaciones/buscando-licitaciones';
+import { db, schema } from '@/db';
+import { requerirSesion } from '@/server/auth/sesion';
+import { listarMatches, resumenDashboard } from '@/server/consultas/licitaciones';
+
+// Después del onboarding el matching corre en segundo plano 1–2 min (docs/04, pendiente 1).
+async function perfilRecienActualizado(empresaId: string): Promise<boolean> {
+  const [e] = await db.select({ en: schema.empresas.perfilActualizadoEn }).from(schema.empresas)
+    .where(sql`${schema.empresas.id} = ${empresaId} and ${schema.empresas.perfilActualizadoEn} > now() - interval '5 minutes'`);
+  return Boolean(e?.en);
+}
 
 async function Encabezado() {
-  const empresa = await empresaActual();
-  const r = await resumenDashboard(empresa.id);
+  await connection();
+  const { empresaId } = await requerirSesion();
+  const r = await resumenDashboard(empresaId);
   return (
     <header className="space-y-1">
       <h1 aria-label={`${r.total} ${r.total === 1 ? 'licitación' : 'licitaciones'} para vos`} className="flex flex-wrap items-baseline gap-x-3">
@@ -36,19 +50,22 @@ function EncabezadoCargando() {
 }
 
 async function FiltrosConOpciones() {
-  const empresa = await empresaActual();
-  const todas = await listarMatches(empresa.id, { estado: 'todas', confianzaMin: 0 });
+  await connection();
+  const { empresaId } = await requerirSesion();
+  const todas = await listarMatches(empresaId, { estado: 'todas', confianzaMin: 0 });
   const organismos = [...new Set(todas.map((c) => c.organismo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
   return <Filtros organismos={organismos} />;
 }
 
 async function Lista({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const filtros = filtrosDesdeUrl(await searchParams);
-  const empresa = await empresaActual();
-  const cards = await listarMatches(empresa.id, filtros);
+  await connection();
+  const { empresaId } = await requerirSesion();
+  const cards = await listarMatches(empresaId, filtros);
 
   if (!cards.length) {
-    const hayAlguna = (await listarMatches(empresa.id, { estado: 'todas', confianzaMin: 0 })).length > 0;
+    const hayAlguna = (await listarMatches(empresaId, { estado: 'todas', confianzaMin: 0 })).length > 0;
+    if (!hayAlguna && (await perfilRecienActualizado(empresaId))) return <BuscandoLicitaciones />;
     return hayAlguna ? (
       <EstadoVacio icono={SearchX} titulo="No hay licitaciones con estos filtros"
         descripcion="Probá bajar la confianza mínima, ampliar el plazo de cierre o mirar las guardadas."
@@ -78,6 +95,7 @@ export default function DashboardPage({ searchParams }: PageProps<'/dashboard'>)
       <Suspense fallback={<EncabezadoCargando />}>
         <Encabezado />
       </Suspense>
+      <AnalizarUrl />
       <Suspense fallback={<div className="h-24 rounded-md border bg-card" aria-hidden />}>
         <FiltrosConOpciones />
       </Suspense>

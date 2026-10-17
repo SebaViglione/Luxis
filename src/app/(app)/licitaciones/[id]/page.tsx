@@ -1,10 +1,12 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { connection } from 'next/server';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { ChatPliego } from '@/components/chat/chat-pliego';
 import { AccionesMatch } from '@/components/licitaciones/acciones-match';
 import { BadgeDocumentacion } from '@/components/licitaciones/badge-documentacion';
+import { BotonAnalizar } from '@/components/licitaciones/boton-analizar';
 import { fecha, fechaHora, suavizarMayusculas, textoCierre } from '@/components/licitaciones/formato';
 import { ListaArchivos } from '@/components/licitaciones/lista-archivos';
 import { PanelDocumentacion } from '@/components/licitaciones/panel-documentacion';
@@ -15,8 +17,13 @@ import { TablaItems } from '@/components/licitaciones/tabla-items';
 import { buttonVariants } from '@/components/ui/button';
 import { Cargando } from '@/components/ui/cargando';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { empresaActual, obtenerDetalle } from '@/lib/mocks/consultas';
 import { cn } from '@/lib/utils';
+import { requerirSesion } from '@/server/auth/sesion';
+import { obtenerDetalle } from '@/server/consultas/licitaciones';
+
+function decodificar(id: string) {
+  try { return decodeURIComponent(id); } catch { return id; }
+}
 
 function Dato({ etiqueta, children, destacado }: { etiqueta: string; children: React.ReactNode; destacado?: boolean }) {
   return (
@@ -29,8 +36,9 @@ function Dato({ etiqueta, children, destacado }: { etiqueta: string; children: R
 
 async function Detalle({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const empresa = await empresaActual();
-  const d = await obtenerDetalle(empresa.id, id);
+  await connection();
+  const { empresaId } = await requerirSesion();
+  const d = await obtenerDetalle(empresaId, decodificar(id));
   if (!d) notFound();
 
   // eslint-disable-next-line react-hooks/purity -- Server Component dinámico: se renderiza una vez por request.
@@ -84,7 +92,7 @@ async function Detalle({ params }: { params: Promise<{ id: string }> }) {
           </TabsList>
         </div>
         <TabsContent value="resumen" className="pt-4">
-          <ResumenIa analisis={d.analisis} match={d.match} />
+          <ResumenIa analisis={d.analisis} match={d.match} accionAnalizar={<BotonAnalizar idCompra={l.idCompra} />} />
         </TabsContent>
         <TabsContent value="items" className="space-y-8 pt-4">
           <PanelPrecio precios={d.precios} items={d.items} />
