@@ -1,0 +1,210 @@
+{
+  "fecha": "2026-10-17T20:06:11.062Z",
+  "umbral": 60,
+  "casos": 20,
+  "errores": 0,
+  "tp": 5,
+  "fp": 0,
+  "fn": 5,
+  "tn": 10,
+  "precision": 1,
+  "recall": 0.5,
+  "f1": 0.6666666666666666,
+  "exactitud": 0.75,
+  "porUmbral": [
+    {
+      "umbral": 40,
+      "precision": 1,
+      "recall": 0.8,
+      "f1": 0.888888888888889
+    },
+    {
+      "umbral": 60,
+      "precision": 1,
+      "recall": 0.5,
+      "f1": 0.6666666666666666
+    }
+  ],
+  "detalle": [
+    {
+      "idCompra": "1375519",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1375519",
+      "relevante": true,
+      "motivo": "Adq. de materiales de construcción para obra en Unidad N.° 22 Rocha: pide pedregullo, arena gruesa, arena fina y otros materiales que una barraca vende directamente",
+      "confianza": 72,
+      "prediccion": true,
+      "razon": "Puede ofertar áridos, cemento, varillas, bloques y caños PVC, pero la entrega en Rocha (fuera de su zona) suma flete y el volumen de balasto y bloques supera su capacidad semanal."
+    },
+    {
+      "idCompra": "1377866",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1377866",
+      "relevante": true,
+      "motivo": "Compra directa de materiales de construcción con entrega inmediata en Río Negro: varilla de hierro, arena terciada, codos de PVC, típico pedido a barraca",
+      "confianza": 58,
+      "prediccion": false,
+      "razon": "Puede ofertar varios ítems de materiales (arena, cemento, varilla, cerámica, pintura, membrana), pero la entrega es en Río Negro, fuera de su zona, y muchos ítems son ajenos (eléctricos, termofusión, aberturas)."
+    },
+    {
+      "idCompra": "1379503",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1379503",
+      "relevante": true,
+      "motivo": "Materiales para refaccionar columnas en Unidad N.° 7 Canelones: pedregullo y arena fina, ítems de barraca",
+      "confianza": 72,
+      "prediccion": true,
+      "razon": "Puede ofertar pedregullo y arena fina (6 m³ en total), que son productos propios y la entrega es en Canelones, zona de reparto; el resto son herramientas y flejes ajenos al rubro."
+    },
+    {
+      "idCompra": "1380047",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1380047",
+      "relevante": true,
+      "motivo": "Objeto literal 'Materiales de Barraca'; pide fratachos, baldes de albañil y chapa de compensado fenólico",
+      "confianza": 22,
+      "prediccion": false,
+      "razon": "Solo puede ofertar el compensado fenólico (ítem 7), y piden 12 mm plastificado mientras la empresa tiene 18 mm; el resto son herramientas y fratachos que no vende."
+    },
+    {
+      "idCompra": "1379507",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1379507",
+      "relevante": true,
+      "motivo": "Materiales para reacondicionar contenedores en Río Negro: tabla para encofrado y caño de hierro cuadrado, productos de barraca",
+      "confianza": 62,
+      "prediccion": true,
+      "razon": "Puede ofertar tablas de encofrado y esmalte con antioxidante, pero ventanas y caños de hierro cuadrado quedan fuera de su rubro; entrega en Río Negro implica flete desde Canelones."
+    },
+    {
+      "idCompra": "i503606",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/i503606",
+      "relevante": true,
+      "motivo": "Adquisición de 30 camiones de balasto para arreglos tras evento climático: producto que vende una barraca al por mayor",
+      "confianza": 78,
+      "prediccion": true,
+      "razon": "Balasto es producto propio y la entrega en Las Piedras (Canelones) está en zona de reparto; el volumen de 30 camiones con acopio hasta abril 2027 es exigente pero se puede ofertar parcial."
+    },
+    {
+      "idCompra": "i503656",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/i503656",
+      "relevante": true,
+      "motivo": "Solicitud de membrana líquida impermeabilizante con caucho: producto de catálogo típico de barraca",
+      "confianza": 72,
+      "prediccion": true,
+      "razon": "Piden membrana líquida impermeabilizante c/ caucho en baldes de 20 L, producto que la empresa vende como impermeabilizante líquido balde 20 L; la entrega es en Montevideo, zona alcanzable, aunque hay que confirmar equivalencia con la ficha técnica y el envase de 22 kg."
+    },
+    {
+      "idCompra": "1379506",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1379506",
+      "relevante": true,
+      "motivo": "Materiales para perímetro de Unidad N.° 14 Colonia: alambre de púa, tejido de alambre galvanizado y columnas de hormigón, todos productos de barraca",
+      "confianza": 58,
+      "prediccion": false,
+      "razon": "Puede ofertar alambre de púa y tejido de alambre galvanizado, pero concertina, columna de hormigón y alambre ovalado de alto carbono no son productos de la barraca; el volumen es acotado y la entrega en Colonia suma flete."
+    },
+    {
+      "idCompra": "1377159",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1377159",
+      "relevante": true,
+      "motivo": "Adquisición de cordones de hormigón prefabricados (escalones de hormigón prefabricado): producto de barraca",
+      "confianza": 18,
+      "prediccion": false,
+      "razon": "Piden cordones de hormigón prefabricados, producto que la barraca no fabrica ni vende; además la entrega es en Rosario, Colonia, fuera de la zona de reparto."
+    },
+    {
+      "idCompra": "1358540",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1358540",
+      "relevante": true,
+      "motivo": "Mantenimiento edilicio: pide esmalte sintético, pintura imprimación y caño de PVC para sanitaria, insumos que vende una barraca",
+      "confianza": 58,
+      "prediccion": false,
+      "razon": "Hay varios ítems que la barraca vende (arena terciada, cemento, pastina, esmalte, látex, pinceles, rodillos, lijas), pero el grueso de la licitación es eléctrico, herramientas y sanitario/grifería que no maneja; además la entrega no está indicada y el volumen de algunos ítems supera su capacidad."
+    },
+    {
+      "idCompra": "1378380",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1378380",
+      "relevante": false,
+      "motivo": "Suministro de insumos para osteosíntesis (traumatología): instrumental médico, no materiales de construcción",
+      "confianza": 5,
+      "prediccion": false,
+      "razon": "La licitación es de insumos médicos de osteosíntesis (sets de instrumental, motor neumático, empujadores quirúrgicos), rubro totalmente ajeno a la barraca de materiales de construcción; no hay ningún ítem ofertable."
+    },
+    {
+      "idCompra": "1373590",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1373590",
+      "relevante": false,
+      "motivo": "Reactivos de laboratorio (agar, azul de metileno): rubro salud, sin ningún ítem de construcción",
+      "confianza": 5,
+      "prediccion": false,
+      "razon": "Es un suministro de reactivos y medios de laboratorio clínico, rubro que la barraca no vende; no hay ningún ítem de materiales de construcción ofertable."
+    },
+    {
+      "idCompra": "1376165",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1376165",
+      "relevante": false,
+      "motivo": "Instrumentos de física para laboratorio educativo (cinta métrica, dinamómetro): 'alambre' y 'hierro' aparecen en contexto de instrumental, no de materiales",
+      "confianza": 8,
+      "prediccion": false,
+      "razon": "La licitación es de instrumentos de laboratorio de física (dinamómetros, imanes, protoboards, multímetros), rubro que la barraca no vende; solo el alambre nicromo podría asimilarse al alambre de la empresa, pero es un ítem menor y específico."
+    },
+    {
+      "idCompra": "1378881",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1378881",
+      "relevante": false,
+      "motivo": "Pedido de farmacia (medicamentos e insumos médicos): falso positivo típico de la palabra 'hierro' (suplemento) que hay que excluir",
+      "confianza": 3,
+      "prediccion": false,
+      "razon": "Es una compra de medicamentos del Hospital de San Carlos; la barraca no vende fármacos ni insumos farmacéuticos, así que no hay ningún ítem ofertable."
+    },
+    {
+      "idCompra": "1380084",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1380084",
+      "relevante": false,
+      "motivo": "Compra de medicamentos de alto costo (procedimiento especial): rubro salud, sin relación con materiales de construcción",
+      "confianza": 3,
+      "prediccion": false,
+      "razon": "Es una compra de medicamentos del Ministerio del Interior; la barraca no vende fármacos ni productos equivalentes, así que no hay ningún ítem ofertable."
+    },
+    {
+      "idCompra": "1377845",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1377845",
+      "relevante": false,
+      "motivo": "Adquisición de mobiliario de oficina (mesas y sillas de madera): 'madera' aparece pero es mueble terminado, no materia prima de barraca",
+      "confianza": 5,
+      "prediccion": false,
+      "razon": "Es una compra de mobiliario de oficina y laboratorio; la barraca no vende muebles ni sillas, solo materiales de construcción, así que no hay ítems ofertables."
+    },
+    {
+      "idCompra": "1371540",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1371540",
+      "relevante": false,
+      "motivo": "Mobiliario para eventos (mesas y sillas): mismo caso que mobiliario de oficina, mueble terminado y no material",
+      "confianza": 8,
+      "prediccion": false,
+      "razon": "Es una licitación de mobiliario para eventos (mesas y sillas), un rubro que la barraca no vende; no hay ítems de materiales de construcción que pueda ofertar."
+    },
+    {
+      "idCompra": "1367149",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1367149",
+      "relevante": false,
+      "motivo": "Tramposo — obra llave en mano: construcción de veredas, drenaje y colectores pluviales como obra de infraestructura completa (mano de obra + materiales + equipos), no una compra de materiales que una barraca pueda simplemente cotizar",
+      "confianza": 12,
+      "prediccion": false,
+      "razon": "Es una obra vial llave en mano en Rocha, fuera de la zona de reparto, cotizada como ítem global único; no es una venta de materiales sueltos."
+    },
+    {
+      "idCompra": "1376874",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1376874",
+      "relevante": false,
+      "motivo": "Tramposo — servicio de albañilería: contratación de la obra de reacondicionamiento de baños (mano de obra incluida), no una compra de materiales",
+      "confianza": 12,
+      "prediccion": false,
+      "razon": "Es una obra llave en mano con demoliciones, instalaciones sanitaria y eléctrica, mamparas, mesadas y muebles; no es venta de materiales sueltos. Aunque vende ticholo, yeso y pintura, el objeto es ejecución de obra y exige visita obligatoria en Montevideo."
+    },
+    {
+      "idCompra": "1380234",
+      "url": "https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1380234",
+      "relevante": false,
+      "motivo": "Tramposo — compra de maquinaria: cizalla y plegadora hidráulica industrial para metales con instalación y capacitación; 'chapa' aparece por la plegadora de chapa, pero el objeto es una máquina, no materiales de barraca",
+      "confianza": 5,
+      "prediccion": false,
+      "razon": "La licitación es para cizalla y plegadora hidráulicas industriales con instalación y capacitación; Barraca Don Aurelio vende materiales de construcción, no maquinaria ni servicios de instalación."
+    }
+  ]
+}
