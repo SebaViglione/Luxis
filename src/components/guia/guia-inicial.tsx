@@ -20,13 +20,13 @@ type Paso = { selector?: string; titulo: string; texto: string };
 
 const PASOS: Paso[] = [
   { titulo: 'Bienvenido a Luxis', texto: 'En un minuto te mostramos dónde está cada cosa. Podés saltear la guía cuando quieras.' },
-  { selector: '[data-guia="resumen"]', titulo: 'Tus licitaciones', texto: 'Cuántos llamados vigentes encajan con lo que vendés y cuántos cierran esta semana.' },
-  { selector: '[data-guia="lista"] article', titulo: 'Cada tarjeta es un llamado', texto: 'Qué piden, quién compra, cuándo cierra y por qué te sirve. Desde acá lo guardás, lo descartás o entrás al detalle.' },
-  { selector: '[data-guia="lista"] article [aria-label^="Confianza"]', titulo: 'Confianza de 0 a 100', texto: 'Qué tan bien encaja con tu catálogo y tu zona de entrega. Alta desde 75, media desde 50.' },
-  { selector: '[data-guia="filtros"]', titulo: 'Filtrá a tu medida', texto: 'Por confianza mínima, tipo de compra, organismo o fecha de cierre.' },
+  { selector: '[data-guia="resumen"]', titulo: 'Tus licitaciones', texto: 'Cuántas licitaciones abiertas tienen cosas que vendés, cuántas cierran esta semana y cuántas aparecieron hoy.' },
+  { selector: '[data-guia="lista"] article', titulo: 'Cada tarjeta es un llamado', texto: 'Cuándo cierra, quién compra, por qué te sirve y qué podés vender. Desde acá la guardás, marcás "No me interesa" o entrás al detalle.' },
+  { selector: '[data-guia="lista"] article [aria-label^="Confianza"]', titulo: 'Coincidencia con tu empresa', texto: 'Un puntaje de 0 a 100 según lo que vendés, tu zona y los papeles que piden. Alta desde 75, media desde 50.' },
+  { selector: '[data-guia="filtros"]', titulo: 'Filtrá a tu medida', texto: 'Elegí la coincidencia mínima y la fecha de cierre. En "Tipo de compra y organismo" afinás por quién compra o el tamaño de la compra.' },
   { selector: '[data-guia="analizar-url"]', titulo: 'Analizá cualquier llamado', texto: '¿Viste uno en ARCE? Pegá el link y lo leemos aunque no te haya aparecido como match.' },
   { selector: 'header button[aria-label^="Notificaciones"]', titulo: 'Avisos', texto: 'Nuevos matches, cierres y visitas que se acercan y aclaraciones del organismo.' },
-  { selector: 'header button[title^="Trae novedades"]', titulo: 'Actualizar', texto: 'Trae lo último publicado en ARCE y recalcula tus matches. Tarda alrededor de un minuto.' },
+  { selector: 'header button[title^="Trae novedades"]', titulo: 'Actualizar', texto: 'Trae lo último publicado en ARCE y lo compara con lo que vendés. Suele tardar entre 10 y 30 segundos.' },
   { selector: 'aside a[href="/calendario"]', titulo: 'Calendario', texto: 'Consultas, visitas y aperturas de lo que guardaste, ordenadas por fecha.' },
   { titulo: 'Listo', texto: 'Empezá por la primera licitación de la lista. Si querés repasar, la guía está en el menú.' },
 ];

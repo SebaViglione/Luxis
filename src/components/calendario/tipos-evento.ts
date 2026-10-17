@@ -1,12 +1,12 @@
 import type { EventoCalendario } from '@/lib/types';
 
 export const TIPO_EVENTO: Record<EventoCalendario['tipo'], { etiqueta: string; marca: string }> = {
-  apertura: { etiqueta: 'Cierre de ofertas', marca: 'bg-primary' },
-  visita: { etiqueta: 'Visita', marca: 'bg-alerta' },
-  consultas: { etiqueta: 'Consultas', marca: 'bg-muted-foreground/60' },
-  prorroga: { etiqueta: 'Prórroga', marca: 'bg-muted-foreground/60' },
-  entrega: { etiqueta: 'Entrega', marca: 'bg-exito' },
-  otro: { etiqueta: 'Otro', marca: 'bg-muted-foreground/40' },
+  apertura: { etiqueta: 'Cierre: último momento para ofertar', marca: 'bg-primary' },
+  visita: { etiqueta: 'Visita al lugar', marca: 'bg-alerta' },
+  consultas: { etiqueta: 'Último día para hacer preguntas', marca: 'bg-muted-foreground/60' },
+  prorroga: { etiqueta: 'Último día para pedir más plazo', marca: 'bg-muted-foreground/60' },
+  entrega: { etiqueta: 'Entrega de mercadería', marca: 'bg-exito' },
+  otro: { etiqueta: 'Otra fecha', marca: 'bg-muted-foreground/40' },
 };
 
 const fmtDia = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Montevideo' });
@@ -39,4 +39,16 @@ export function sinEntregasDuplicadas(eventos: EventoCalendario[]): EventoCalend
 export function objetoDelEvento(e: EventoCalendario): string {
   const i = e.titulo.indexOf(': ');
   return i >= 0 ? e.titulo.slice(i + 2) : e.titulo;
+}
+
+/** "Hoy", "Mañana" o "Martes 21/10" para un día yyyy-mm-dd. */
+export function diaRelativo(dia: string, hoy: string): string {
+  if (dia === hoy) return 'Hoy';
+  const d = new Date(`${dia}T12:00:00-03:00`);
+  const h = new Date(`${hoy}T12:00:00-03:00`);
+  const diff = Math.round((d.getTime() - h.getTime()) / 864e5);
+  if (diff === 1) return 'Mañana';
+  const nombre = new Intl.DateTimeFormat('es-UY', { weekday: 'long', timeZone: 'America/Montevideo' }).format(d);
+  const fecha = new Intl.DateTimeFormat('es-UY', { day: '2-digit', month: '2-digit', timeZone: 'America/Montevideo' }).format(d);
+  return `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${fecha}`;
 }

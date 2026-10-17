@@ -19,7 +19,7 @@ type EstadoEtapa = 'pendiente' | 'en_curso' | 'ok';
 // 'aviso' es informativo (p. ej. la URL era una adjudicación y se completó desde la compra original): no cambia la etapa.
 type Evento = { etapa?: string; estado?: 'en_curso' | 'ok' | 'aviso'; mensaje?: string; listo?: boolean; idCompra?: string; error?: string };
 
-export function AnalizarUrl() {
+export function AnalizarUrl({ compacto = false }: { compacto?: boolean }) {
   const router = useRouter();
   const [url, setUrl] = useState('');
   const [estados, setEstados] = useState<Record<string, EstadoEtapa> | null>(null);
@@ -78,21 +78,25 @@ export function AnalizarUrl() {
   };
 
   return (
-    <section aria-labelledby="titulo-analizar" className="space-y-3 rounded-md border bg-card p-4">
+    <section aria-labelledby="titulo-analizar" className={cn('space-y-3 rounded-md border bg-card', compacto ? 'p-4' : 'p-4')}>
       <div>
-        <h2 id="titulo-analizar" className="text-base">Analizar una licitación puntual</h2>
-        <p className="text-sm text-muted-foreground">Pegá el link de un llamado de comprasestatales.gub.uy o su número. Tarda entre 20 segundos y un minuto y medio.</p>
+        <h2 id="titulo-analizar" className="text-base">{compacto ? '¿Viste una licitación en ARCE?' : 'Analizar una licitación puntual'}</h2>
+        <p className="text-sm text-muted-foreground">
+          {compacto
+            ? 'Pegá el link o el número y te decimos si te conviene, qué papeles piden y a qué precio se gana.'
+            : 'Pegá el link de un llamado de comprasestatales.gub.uy o su número. Tarda entre 20 segundos y un minuto y medio.'}
+        </p>
       </div>
-      <form onSubmit={analizar} className="flex flex-col gap-2 sm:flex-row">
+      <form onSubmit={analizar} className={cn('flex flex-col gap-2', !compacto && 'sm:flex-row')}>
         <Input value={url} onChange={(e) => setUrl(e.target.value)} disabled={enCurso} aria-label="URL o ID de ARCE"
-          placeholder="https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1375519" className="flex-1" />
+          placeholder={compacto ? 'Link de comprasestatales.gub.uy o número' : 'https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1375519'} className="flex-1" />
         <Button type="submit" disabled={enCurso || !url.trim()}>
-          <ScanSearch aria-hidden /> {enCurso ? 'Analizando…' : 'Analizar'}
+          <ScanSearch aria-hidden /> {enCurso ? 'Analizando…' : compacto ? 'Analizar esta licitación' : 'Analizar'}
         </Button>
       </form>
       {estados && (
         <div aria-live="polite" className="space-y-2">
-          <ol className="flex flex-wrap gap-x-4 gap-y-1.5">
+          <ol className={cn('flex gap-x-4 gap-y-1.5', compacto ? 'flex-col' : 'flex-wrap')}>
             {ETAPAS.map((x) => {
               const est = estados[x.id] ?? 'pendiente';
               const Icono = est === 'ok' ? CircleCheck : est === 'en_curso' ? LoaderCircle : Circle;

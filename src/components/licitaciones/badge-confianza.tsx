@@ -1,9 +1,10 @@
 import { cn } from '@/lib/utils';
 
+/** Bandas de confianza (docs/07-marca.md §9): alta ≥ 75, media ≥ 50. `llano` es el texto para cualquier persona. */
 export function nivelConfianza(valor: number) {
-  if (valor >= 75) return { etiqueta: 'Alta', barra: 'bg-exito', fondo: 'bg-exito-suave' };
-  if (valor >= 50) return { etiqueta: 'Media', barra: 'bg-alerta', fondo: 'bg-alerta-suave' };
-  return { etiqueta: 'Baja', barra: 'bg-muted-foreground/50', fondo: 'bg-muted' };
+  if (valor >= 75) return { etiqueta: 'Alta', llano: 'Coincidencia alta', barra: 'bg-exito', fondo: 'bg-exito-suave' };
+  if (valor >= 50) return { etiqueta: 'Media', llano: 'Coincidencia media', barra: 'bg-alerta', fondo: 'bg-alerta-suave' };
+  return { etiqueta: 'Baja', llano: 'Coincidencia baja', barra: 'bg-muted-foreground/50', fondo: 'bg-muted' };
 }
 
 export function BadgeConfianza({ valor, grande = false, className }: { valor: number; grande?: boolean; className?: string }) {

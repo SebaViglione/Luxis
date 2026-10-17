@@ -36,8 +36,8 @@ export function PanelCuenta({ nombre, email, perfil }: PanelCuentaProps) {
   return (
     <Tabs defaultValue="usuario">
       <TabsList>
-        <TabsTrigger value="usuario">Usuario</TabsTrigger>
-        <TabsTrigger value="empresa">Empresa</TabsTrigger>
+        <TabsTrigger value="usuario">Tu usuario</TabsTrigger>
+        <TabsTrigger value="empresa">Tu empresa</TabsTrigger>
       </TabsList>
       <TabsContent value="usuario" className="mt-4 flex flex-col gap-6">
         <DatosUsuario nombre={nombre} email={email} />

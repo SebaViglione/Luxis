@@ -10,10 +10,10 @@ export const metadata: Metadata = { title: 'Cuenta · Luxis' };
 
 export default function PaginaCuenta() {
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
+    <div className="flex w-full max-w-4xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Cuenta</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Tus datos de acceso y el perfil de tu empresa.</p>
+        <h1 className="text-3xl font-semibold tracking-tight">Cuenta</h1>
+        <p className="mt-1 text-muted-foreground">Tus datos de acceso y lo que Luxis sabe de tu empresa: productos, zonas y papeles.</p>
       </div>
       <Suspense fallback={<Skeleton className="h-96 w-full" />}>
         <ContenidoCuenta />

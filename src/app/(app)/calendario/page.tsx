@@ -1,14 +1,12 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { connection } from 'next/server';
 import { addDays, addMonths, format, parse, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { diasDeLaGrilla, GrillaMes } from '@/components/calendario/grilla-mes';
 import { LeyendaEventos, ListaEventos } from '@/components/calendario/lista-eventos';
 import { hoyMontevideo, sinEntregasDuplicadas } from '@/components/calendario/tipos-evento';
-import { buttonVariants } from '@/components/ui/button';
+import { NavegacionMes } from '@/components/calendario/navegacion-mes';
 import { Cargando } from '@/components/ui/cargando';
 import { requerirSesion } from '@/server/auth/sesion';
 import { listarEventos } from '@/server/consultas/eventos';
@@ -41,12 +39,8 @@ async function Calendario({ searchParams }: { searchParams: Promise<Record<strin
     <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
       <section aria-labelledby="titulo-mes" className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="titulo-mes" className="text-lg first-letter:uppercase">{titulo}</h2>
-          <div className="flex items-center gap-1">
-            <Link href={`/calendario?mes=${format(subMonths(mes, 1), 'yyyy-MM')}`} aria-label="Mes anterior" className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}><ChevronLeft aria-hidden /></Link>
-            <Link href="/calendario" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Hoy</Link>
-            <Link href={`/calendario?mes=${format(addMonths(mes, 1), 'yyyy-MM')}`} aria-label="Mes siguiente" className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}><ChevronRight aria-hidden /></Link>
-          </div>
+          <h2 id="titulo-mes" className="text-xl font-semibold first-letter:uppercase">{titulo}</h2>
+          <NavegacionMes anterior={format(subMonths(mes, 1), 'yyyy-MM')} siguiente={format(addMonths(mes, 1), 'yyyy-MM')} esMesActual={pedido === hoy.slice(0, 7)} />
         </div>
         <LeyendaEventos />
         <GrillaMes mes={mes} eventos={delMes} hoy={hoy} />
@@ -54,10 +48,10 @@ async function Calendario({ searchParams }: { searchParams: Promise<Record<strin
       {/* Columna fija con scroll propio: la lista no estira la página aunque haya muchos eventos. */}
       <section aria-labelledby="titulo-proximos" className="flex flex-col gap-3 lg:sticky lg:top-20 lg:self-start">
         <div className="flex items-baseline justify-between gap-2">
-          <h2 id="titulo-proximos" className="text-lg">Próximos 14 días</h2>
+          <h2 id="titulo-proximos" className="text-lg font-semibold">Próximas dos semanas</h2>
           {proximos.length > 0 && (
             <span className="font-mono text-xs text-muted-foreground tabular-nums">
-              {proximos.length} {proximos.length === 1 ? 'evento' : 'eventos'}
+              {proximos.length} {proximos.length === 1 ? 'fecha' : 'fechas'}
             </span>
           )}
         </div>
@@ -73,8 +67,8 @@ export default function CalendarioPage({ searchParams }: PageProps<'/calendario'
   return (
     <div className="space-y-6">
       <header className="space-y-1">
-        <p className="font-mono text-xs tracking-wide text-muted-foreground uppercase">Fechas clave</p>
-        <h1 className="text-2xl">Calendario</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Calendario</h1>
+        <p className="text-muted-foreground">Cierres, visitas y plazos de las licitaciones para tu empresa. Tocá una fecha para ver la licitación.</p>
       </header>
       <Suspense fallback={<Cargando texto="Armando tu calendario…" />}>
         <Calendario searchParams={searchParams} />

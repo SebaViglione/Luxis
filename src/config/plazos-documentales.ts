@@ -10,11 +10,16 @@ export interface PlazoDocumental {
   preparaLuxis?: boolean;
   /** Se exige después de la adjudicación: no frena la oferta. */
   postAdjudicacion?: boolean;
+  /** No es un papel: son reglas generales (Pliego Único, TOCAF) que se aceptan al ofertar. */
+  reglasGenerales?: boolean;
 }
 
 // El orden importa: gana el primer patrón que matchea. Lo que arma Luxis y lo post-adjudicación va primero
 // (ej. "Formulario de identificación del oferente validado en RUPE" es un formulario, no RUPE).
 export const PLAZOS_DOCUMENTALES: PlazoDocumental[] = [
+  { tipo: 'OTRO', patrones: [/PLIEGO UNICO/, /CONDICIONES GENERALES/, /\bTOCAF\b/, /DECRETO 131/, /RESOLUCION N?\.? ?3989/],
+    diasHabiles: 0, alcanzable: true, reglasGenerales: true,
+    nota: 'No es un papel para presentar: son las reglas generales de las compras del Estado. Se aceptan al ofertar.' },
   { tipo: 'OTRO', patrones: [/FIEL CUMPLIMIENTO/, /CUMPLIMIENTO DE CONTRATO/, /GARANTIA DE CUMPLIMIENTO/, /CUMPLIMIENTO DEL CONTRATO/,
     /REMITO/, /FACTURA/, /AL MOMENTO DE LA ENTREGA/, /ORDEN DE COMPRA/, /CONSTANCIA DE ENTREGA/],
     diasHabiles: 3, alcanzable: true, postAdjudicacion: true, nota: 'Se exige después de la adjudicación o en la entrega: no frena tu oferta.' },
@@ -22,7 +27,7 @@ export const PLAZOS_DOCUMENTALES: PlazoDocumental[] = [
   { tipo: 'OTRO', patrones: [/FORMULARIO/, /DECLARACION/, /PLANILLA/, /ESPECIFICACION/, /ESPECIFICAR/, /OFERTA TECNICA/, /OFERTA ECONOMICA/, /OFERTA ENVIADA/,
     /OFERTA POR CORREO/, /PRESENTACION DE (LA )?OFERTA/, /CARTA DE PRESENTACION/, /NOTA DE PRESENTACION/, /ANEXO/, /DATOS DE LA EMPRESA/, /RAZON SOCIAL/,
     /DETALLE DE (PRECIO|MONTO)/, /PRECIO UNITARIO/, /COTIZACION/, /\bIVA\b/, /IMPUESTOS/, /PLAZO DE (ENTREGA|MANTENIMIENTO)/, /MARCA/, /ORIGEN/,
-    /IDENTIFICACION DEL (REPUESTO|PRODUCTO|ARTICULO|BIEN)/, /PLIEGO UNICO/, /ACEPTACION DEL PLIEGO/, /MANTENIMIENTO DE (LA )?OFERTA/],
+    /IDENTIFICACION DEL (REPUESTO|PRODUCTO|ARTICULO|BIEN)/, /ACEPTACION DEL PLIEGO/, /MANTENIMIENTO DE (LA )?OFERTA/],
     diasHabiles: 0, alcanzable: true, preparaLuxis: true, nota: 'Lo prepara Luxis en Postulación.' },
   { tipo: 'RUPE', patrones: [/RUPE/, /REGISTRO UNICO DE PROVEEDORES/], diasHabiles: 5, alcanzable: true, nota: 'Inscripción en línea y validación de documentación; 1 a 5 días hábiles (10 si falta documentación). "En ingreso" alcanza para ofertar.' },
   { tipo: 'DGI', patrones: [/DGI/, /CERTIFICADO UNICO/, /VIGENCIA ANUAL/], diasHabiles: 0, alcanzable: true, nota: 'Se descarga en línea si la empresa está al día.' },
@@ -41,4 +46,15 @@ export const PLAZO_POR_DEFECTO: PlazoDocumental = { tipo: 'OTRO', patrones: [], 
 export function buscarPlazo(nombreRequisito: string): PlazoDocumental {
   const n = nombreRequisito.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
   return PLAZOS_DOCUMENTALES.find((p) => p.patrones.some((rx) => rx.test(n))) ?? PLAZO_POR_DEFECTO;
+}
+
+/**
+ * ¿El "requisito" es en realidad un documento de la propia licitación (pliego, bases y condiciones, TOCAF, decretos)?
+ * Esos se leen, no se entregan: no van en Papeles. Los formularios, anexos o declaraciones del pliego sí son entregables.
+ */
+export function esDocumentoDeLaLicitacion(nombre: string): boolean {
+  const n = nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+  if (/FORMULARIO|ANEXO|DECLARACION|ACEPTACION|CONSTANCIA|CERTIFICADO|PLANILLA/.test(n)) return false;
+  return /^(EL |LA )?(PLIEGO|BASES Y CONDICIONES|CONDICIONES (GENERALES|PARTICULARES)|TOCAF|DECRETO|RESOLUCION|LEY )/.test(n)
+    || /PLIEGO UNICO DE BASES/.test(n);
 }
