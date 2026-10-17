@@ -11,10 +11,10 @@ import { buttonVariants } from '@/components/ui/button';
 import { ListaCargando } from '@/components/licitaciones/lista-cargando';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EstadoVacio } from '@/components/ui/estado-vacio';
-import { BuscandoLicitaciones } from '@/components/licitaciones/buscando-licitaciones';
+import { BuscandoLicitaciones, SiguenLlegando } from '@/components/licitaciones/buscando-licitaciones';
 import { db, schema } from '@/db';
 import { requerirSesion } from '@/server/auth/sesion';
-import { listarMatches, listarOrganismos, tieneMatches } from '@/server/consultas/licitaciones';
+import { listarMatches, listarOrganismos, progresoMatching, tieneMatches } from '@/server/consultas/licitaciones';
 import { ListaConEstado, ProveedorFiltros } from '@/components/licitaciones/estado-filtros';
 import { TituloDashboard } from '@/components/licitaciones/titulo-dashboard';
 import { ListaTarjetas } from '@/components/licitaciones/lista-tarjetas';
@@ -26,13 +26,6 @@ type ParametrosUrl = Promise<Record<string, string | string[] | undefined>>;
 
 // El encabezado y la lista piden lo mismo: una sola consulta por request.
 const matchesFiltrados = cache((empresaId: string, filtros: string) => listarMatches(empresaId, JSON.parse(filtros) as FiltrosDashboard));
-
-// Después del onboarding el matching corre en segundo plano 1–2 min (docs/04, pendiente 1).
-async function perfilRecienActualizado(empresaId: string): Promise<boolean> {
-  const [e] = await db.select({ en: schema.empresas.perfilActualizadoEn }).from(schema.empresas)
-    .where(sql`${schema.empresas.id} = ${empresaId} and ${schema.empresas.perfilActualizadoEn} > now() - interval '5 minutes'`);
-  return Boolean(e?.en);
-}
 
 /** El número grande cuenta las licitaciones que cumplen los filtros actuales (pedido de seba). */
 async function Encabezado({ searchParams }: { searchParams: ParametrosUrl }) {
@@ -83,10 +76,12 @@ async function Lista({ searchParams }: { searchParams: ParametrosUrl }) {
   await connection();
   const { empresaId } = await requerirSesion();
   const cards = await matchesFiltrados(empresaId, JSON.stringify(filtros));
+  // Después del onboarding (o de cambiar el perfil) el matching corre en segundo plano 1–3 min (rafa).
+  const progreso = await progresoMatching(empresaId);
 
   if (!cards.length) {
+    if (progreso.enCurso) return <BuscandoLicitaciones evaluadas={progreso.evaluadas} total={progreso.total} />;
     const hayAlguna = await tieneMatches(empresaId);
-    if (!hayAlguna && (await perfilRecienActualizado(empresaId))) return <BuscandoLicitaciones />;
     return hayAlguna ? (
       <EstadoVacio icono={SearchX} titulo="Ninguna licitación coincide con estos filtros"
         descripcion="Probá con “Todas” en coincidencia, “Cuando sea” en fecha de cierre o mirá las guardadas."
@@ -100,6 +95,7 @@ async function Lista({ searchParams }: { searchParams: ParametrosUrl }) {
 
   return (
     <section aria-labelledby="titulo-lista" className="space-y-3">
+      {progreso.enCurso && <SiguenLlegando evaluadas={progreso.evaluadas} total={progreso.total} />}
       <h2 id="titulo-lista" className="sr-only">Licitaciones con los filtros actuales</h2>
       <ListaTarjetas cards={cards} />
     </section>
