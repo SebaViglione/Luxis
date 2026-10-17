@@ -4,21 +4,14 @@ import { and, asc, eq } from 'drizzle-orm';
 import type { SystemModelMessage } from 'ai';
 import { db } from '@/db';
 import { licitacionAclaraciones, licitacionArchivos, licitaciones, licitacionItems } from '@/db/schema';
+import type { CategoriaArchivo } from '@/lib/types';
+import { PRIORIDAD } from '@/server/arce/clasificar';
 
 const MAX_CARACTERES = 350_000;
 const LARGO_PARRAFO = 700;
 
-// Orden de prioridad cuando el pliego no entra completo.
-const PRIORIDAD_CATEGORIA: Record<string, number> = {
-  pliego_particular: 0,
-  aclaracion: 1,
-  formulario: 2,
-  memoria: 3,
-  planilla: 4,
-  pliego_general: 5,
-  plano: 6,
-  otro: 7,
-};
+// Mismo orden que usa el análisis del pliego (seba) cuando el texto no entra completo.
+const prioridad = (categoria: string) => PRIORIDAD[categoria as CategoriaArchivo] ?? 9;
 
 export interface ArchivoEnContexto {
   nombre: string;
@@ -120,7 +113,7 @@ export async function armarContextoPliego(idCompra: string): Promise<ContextoPli
 
   const ordenados = archivos
     .filter((a) => a.texto?.trim())
-    .sort((a, b) => (PRIORIDAD_CATEGORIA[a.categoria] ?? 9) - (PRIORIDAD_CATEGORIA[b.categoria] ?? 9));
+    .sort((a, b) => prioridad(a.categoria) - prioridad(b.categoria));
 
   let restante = MAX_CARACTERES - metadata.length;
   const bloques: string[] = [];
