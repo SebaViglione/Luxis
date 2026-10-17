@@ -21,8 +21,39 @@ export function idDesdeUrl(entrada: string): string | null {
 const fechaHs = (s: string | null | undefined) => parseFechaArce((s ?? '').replace(/hs\.?/i, '').trim());
 const num = (s: string) => Number(s.replace(/\./g, '').replace(',', '.'));
 
-/** Scrapea la página de detalle de un llamado. Devuelve null si no existe. */
+/**
+ * Scrapea la página de detalle de un llamado. Devuelve null si no existe.
+ * Si la página es una adjudicación (sin objeto/fechas/pliego) y linkea a la "Compra Original",
+ * completa esos datos desde la compra original y marca raw.esAdjudicacion.
+ */
 export async function scrapeDetalle(idCompra: string): Promise<CompraNormalizada | null> {
+  const c = await scrapePagina(idCompra);
+  if (!c) return null;
+  const idOriginal = (c.raw as { idOriginal?: string | null }).idOriginal;
+  if (idOriginal && idOriginal !== idCompra && (!c.objeto || !c.nombrePliego || !c.fechaTopeOfertas)) {
+    const o = await scrapePagina(idOriginal).catch(() => null);
+    if (o) {
+      return {
+        ...c,
+        objeto: c.objeto ?? o.objeto,
+        fechaPublicacion: o.fechaPublicacion ?? c.fechaPublicacion,
+        fechaApertura: c.fechaApertura ?? o.fechaApertura, fechaTopeOfertas: c.fechaTopeOfertas ?? o.fechaTopeOfertas,
+        fechaSolAclar: c.fechaSolAclar ?? o.fechaSolAclar, fechaSolProrr: c.fechaSolProrr ?? o.fechaSolProrr,
+        fechaTopeEntrega: c.fechaTopeEntrega ?? o.fechaTopeEntrega,
+        lugarApertura: c.lugarApertura ?? o.lugarApertura, lugarEntrega: c.lugarEntrega ?? o.lugarEntrega,
+        precioPliego: c.precioPliego ?? o.precioPliego, emailContacto: c.emailContacto ?? o.emailContacto,
+        nombrePliego: c.nombrePliego ?? o.nombrePliego,
+        aclaraciones: c.aclaraciones.length ? c.aclaraciones : o.aclaraciones,
+        items: c.items.length ? c.items : o.items,
+        estado: 7,
+        raw: { ...(c.raw as object), esAdjudicacion: true, idOriginal, completadoDesde: idOriginal },
+      };
+    }
+  }
+  return c;
+}
+
+async function scrapePagina(idCompra: string): Promise<CompraNormalizada | null> {
   const url = urlDetalleCompra(idCompra);
   const res = await fetch(url, { headers: { 'User-Agent': UA_NAVEGADOR, Referer: `${BASE_ARCE}/consultas`, 'Accept-Language': 'es-UY,es;q=0.9' } });
   if (!res.ok) throw new Error(`ARCE respondió HTTP ${res.status} para ${idCompra}`);
@@ -102,6 +133,9 @@ export async function scrapeDetalle(idCompra: string): Promise<CompraNormalizada
     urlDetalle: url, aperturaElectronica: /apertura electr[oó]nica/i.test(cuerpo), fuente: 'scrape',
     fechaPubAdj: null, montoAdj: null, items, aclaraciones, adjudicaciones: [], oferentes: [],
     organismo: inc?.[1] ?? null, unidadEjecutora: mt?.[5] && mt[5] !== inc?.[1] ? mt[5] : null,
-    raw: { titulo },
+    raw: {
+      titulo,
+      idOriginal: /\/id\/([a-z]?\d+)/i.exec($('a').filter((_, a) => /compra original/i.test($(a).text())).attr('href') ?? '')?.[1] ?? null,
+    },
   };
 }
