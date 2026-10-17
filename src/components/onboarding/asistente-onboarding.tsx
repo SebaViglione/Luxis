@@ -34,29 +34,21 @@ export function AsistenteOnboarding({ perfilInicial }: { perfilInicial: PerfilEm
 
   return (
     <div className="flex flex-col gap-8">
-      <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Pasos del onboarding">
+      <ol className="grid grid-cols-4 gap-3" aria-label="Pasos del onboarding">
         {PASOS.map((p, i) => {
           const hecho = i < indiceActual;
           const actual = i === indiceActual;
           return (
-            <li
-              key={p.id}
-              aria-current={actual ? 'step' : undefined}
-              className={cn(
-                'flex items-center gap-2 border-t-2 pt-2 text-sm',
-                actual ? 'border-primary font-medium text-foreground' : 'border-border text-muted-foreground',
-                hecho && 'border-foreground/40',
-              )}
-            >
-              <span
-                className={cn(
-                  'flex size-5 shrink-0 items-center justify-center rounded-sm border font-mono text-xs tabular-nums',
-                  actual && 'border-primary bg-primary text-primary-foreground',
-                )}
-              >
-                {hecho ? <Check className="size-3" aria-hidden /> : i + 1}
+            <li key={p.id} aria-current={actual ? 'step' : undefined} className="flex flex-col gap-2.5">
+              <span aria-hidden className="h-1 overflow-hidden rounded-full bg-border">
+                <span className={cn('block h-full rounded-full bg-primary transition-[width] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]', hecho || actual ? 'w-full' : 'w-0', hecho && 'bg-foreground/40')} />
               </span>
-              {p.titulo}
+              <span className={cn('flex items-center gap-2 text-sm', actual ? 'font-medium text-foreground' : 'text-muted-foreground')}>
+                <span className={cn('font-mono text-xs tabular-nums', actual && 'text-primary')}>
+                  {hecho ? <Check className="size-3.5 text-exito" aria-hidden /> : String(i + 1).padStart(2, '0')}
+                </span>
+                <span className={cn(!actual && 'hidden sm:inline')}>{p.titulo}</span>
+              </span>
             </li>
           );
         })}

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
+import { LogoMarca } from '@/components/marca/logo';
 import { cn } from '@/lib/utils';
 import type { PerfilEmpresa } from '@/lib/types';
 import { MAX_PREGUNTAS_ENTREVISTA } from '@/server/onboarding/constantes';
@@ -103,16 +104,23 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
           Te hacemos unas preguntas cortas para completar lo que falta. Respondé como en WhatsApp; si no sabés algo, decí
           “no sé” y seguimos.
         </CardDescription>
-        <CardAction className="flex items-center gap-2">
-          {acciones}
+        <CardAction className="flex items-center gap-2">{acciones}</CardAction>
+        {/* Progreso de la entrevista */}
+        <div className="col-span-full mt-3 flex items-center gap-3">
+          <span className="h-1 flex-1 overflow-hidden rounded-full bg-border">
+            <span
+              className="block h-full rounded-full bg-primary transition-[width] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+              style={{ width: `${(Math.min(preguntas, MAX_PREGUNTAS_ENTREVISTA) / MAX_PREGUNTAS_ENTREVISTA) * 100}%` }}
+            />
+          </span>
           <Badge variant="outline" className="font-mono tabular-nums">
             {Math.min(preguntas, MAX_PREGUNTAS_ENTREVISTA)}/{MAX_PREGUNTAS_ENTREVISTA}
           </Badge>
-        </CardAction>
+        </div>
       </CardHeader>
 
       <CardContent>
-        <div className="flex h-[min(28rem,60svh)] flex-col gap-3 overflow-y-auto rounded-md border bg-muted/30 p-3" aria-live="polite">
+        <div className="flex h-[min(30rem,60svh)] flex-col gap-4 overflow-y-auto rounded-xl border bg-muted/30 p-4" aria-live="polite">
           {perfil.productos.length > 0 && (
             <p className="text-center text-xs text-muted-foreground">
               Ya tenemos {perfil.productos.length} productos de tus documentos. Solo preguntamos lo que falta.
@@ -122,9 +130,14 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
             <Mensaje key={mensaje.id} mensaje={mensaje} />
           ))}
           {status === 'submitted' && (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Spinner /> Luxis está escribiendo…
-            </p>
+            <div className="flex items-end gap-2" role="status" aria-label="Luxis está escribiendo">
+              <AvatarLuxis />
+              <span className="flex items-center gap-1 rounded-2xl rounded-bl-md border bg-background px-3.5 py-3">
+                {[0, 1, 2].map((i) => (
+                  <span key={i} className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60 motion-reduce:animate-none" style={{ animationDelay: `${i * 150}ms` }} />
+                ))}
+              </span>
+            </div>
           )}
           {error && (
             <Alert variant="destructive">
@@ -155,7 +168,7 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
         </div>
 
         <form
-          className="mt-3 flex items-end gap-2"
+          className="mt-3 flex items-end gap-2 rounded-2xl border bg-background p-2 transition-colors focus-within:border-primary/50"
           onSubmit={(e) => {
             e.preventDefault();
             enviar(texto);
@@ -173,10 +186,10 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
             placeholder={guardado ? 'Entrevista terminada' : 'Escribí tu respuesta…'}
             aria-label="Tu respuesta"
             rows={2}
-            className="min-h-0 resize-none"
+            className="min-h-0 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
             disabled={Boolean(guardado) || cierre.estado !== 'no'}
           />
-          <Button type="submit" size="icon" aria-label="Enviar" disabled={ocupado || !texto.trim() || Boolean(guardado)}>
+          <Button type="submit" size="icon" className="size-9 shrink-0 rounded-full" aria-label="Enviar" disabled={ocupado || !texto.trim() || Boolean(guardado)}>
             <SendHorizontal />
           </Button>
         </form>
@@ -204,15 +217,17 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
 function Mensaje({ mensaje }: { mensaje: UIMessage }) {
   const esUsuario = mensaje.role === 'user';
   return (
-    <div className={cn('flex flex-col gap-1', esUsuario ? 'items-end' : 'items-start')}>
+    <div className={cn('flex animate-in items-end gap-2 duration-300 fade-in-0 slide-in-from-bottom-1', esUsuario ? 'flex-row-reverse' : 'flex-row')}>
+      {!esUsuario && <AvatarLuxis />}
+      <div className={cn('flex min-w-0 flex-col gap-1', esUsuario ? 'items-end' : 'items-start')}>
       {mensaje.parts.map((parte, i) => {
         if (parte.type === 'text' && parte.text.trim()) {
           return (
             <p
               key={i}
               className={cn(
-                'max-w-[85%] rounded-md px-3 py-2 text-sm whitespace-pre-wrap',
-                esUsuario ? 'bg-primary text-primary-foreground' : 'border bg-background',
+                'max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap',
+                esUsuario ? 'rounded-br-md bg-primary text-primary-foreground' : 'rounded-bl-md border bg-background',
               )}
             >
               {parte.text}
@@ -242,7 +257,16 @@ function Mensaje({ mensaje }: { mensaje: UIMessage }) {
         }
         return null;
       })}
+      </div>
     </div>
+  );
+}
+
+function AvatarLuxis() {
+  return (
+    <span aria-hidden className="flex size-7 shrink-0 items-center justify-center rounded-full border bg-background">
+      <LogoMarca className="size-3.5" />
+    </span>
   );
 }
 
