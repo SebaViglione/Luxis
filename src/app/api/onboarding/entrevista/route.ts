@@ -29,8 +29,7 @@ export async function POST(request: Request) {
   }
 
   const perfil = await leerPerfil(sesion.empresaId);
-  const preguntasHechas = messages.filter((m) => m.role === 'assistant').length;
-  const debeCerrar = preguntasHechas >= MAX_PREGUNTAS_ENTREVISTA;
+  const preguntasHechas = Math.min(messages.filter((m) => m.role === 'assistant').length, MAX_PREGUNTAS_ENTREVISTA);
 
   const resultado = streamText({
     model: modeloFuerte,
@@ -42,13 +41,11 @@ export async function POST(request: Request) {
       await guardarPerfil(sesion.empresaId, actualizado, { completo: false });
       return actualizado;
     }),
-    // Paso 1: pregunta o guarda. Paso 2 (solo si guardó): despedida, sin volver a llamar herramientas.
+    // Paso 1: pregunta o guarda. Paso 2 (solo si guardó): despedida, sin herramientas.
+    // No se fuerza tool_choice: DeepSeek en modo thinking lo rechaza. El cierre lo pide el prompt
+    // y, si el modelo no guarda, la UI arma el perfil desde la transcripción.
     stopWhen: isStepCount(2),
-    prepareStep: ({ stepNumber }) => {
-      if (stepNumber > 0) return { toolChoice: 'none' };
-      if (debeCerrar) return { toolChoice: { type: 'tool', toolName: 'guardar_perfil' } };
-      return {};
-    },
+    prepareStep: ({ stepNumber }) => (stepNumber > 0 ? { activeTools: [] } : {}),
   });
 
   return resultado.toUIMessageStreamResponse({
