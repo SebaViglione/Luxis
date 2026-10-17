@@ -28,7 +28,7 @@ export async function upsertLlamados(compras: CompraNormalizada[]): Promise<{ co
       if (esR) rubro++;
       return {
         idCompra: c.idCompra, tipoCompra: c.tipoCompra, subtipoCompra: c.subtipoCompra, numCompra: c.numCompra, anioCompra: c.anioCompra,
-        inciso: c.inciso, ue: c.ue, organismo: org.organismo, unidadEjecutora: org.unidadEjecutora, objeto: c.objeto, estado: c.estado,
+        inciso: c.inciso, ue: c.ue, organismo: c.organismo ?? org.organismo, unidadEjecutora: c.unidadEjecutora ?? org.unidadEjecutora, objeto: c.objeto, estado: c.estado,
         fechaPublicacion: c.fechaPublicacion, fechaUltMod: c.fechaUltMod, fechaApertura: c.fechaApertura, fechaTopeOfertas: c.fechaTopeOfertas,
         fechaSolAclar: c.fechaSolAclar, fechaSolProrr: c.fechaSolProrr, fechaTopeEntrega: c.fechaTopeEntrega,
         lugarApertura: c.lugarApertura, lugarEntrega: c.lugarEntrega,
