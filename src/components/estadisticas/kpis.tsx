@@ -23,10 +23,10 @@ export function KpisEstadisticas({ e }: { e: EstadisticasEmpresa }) {
   return (
     <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <Tile etiqueta="Ganadas" valor={fmtEntero.format(e.ganadas)} marca="bg-exito" detalle={`de ${fmtEntero.format(total)} con resultado`} />
-      <Tile etiqueta="Perdidas" valor={fmtEntero.format(e.perdidas)} marca="bg-error" detalle={e.enCurso ? `${fmtEntero.format(e.enCurso)} presentadas esperan adjudicación` : undefined} />
+      <Tile etiqueta="Perdidas" valor={fmtEntero.format(e.perdidas)} marca="bg-error" detalle={e.enCurso ? `${fmtEntero.format(e.enCurso)} presentadas esperan el resultado` : undefined} />
       <Tile etiqueta="Tasa de éxito" valor={e.tasaExito === null ? '—' : `${Math.round(e.tasaExito * 100)} %`} detalle="ganadas sobre ganadas + perdidas" />
       <Tile etiqueta="Facturado sin IVA" valor={monto(e.facturado)}
-        detalle={e.facturadoOtrasMonedas ? `Además ${fmtEntero.format(Math.round(e.facturadoOtrasMonedas))} en otras monedas` : 'Cantidad × precio unitario adjudicado'} />
+        detalle={e.facturadoOtrasMonedas ? `Además ${fmtEntero.format(Math.round(e.facturadoOtrasMonedas))} en otras monedas` : 'Cantidad por precio unitario de lo que ganaste'} />
     </dl>
   );
 }

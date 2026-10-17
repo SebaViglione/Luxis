@@ -35,7 +35,7 @@ async function Contenido() {
   if (e.ganadas + e.perdidas === 0) {
     return (
       <EstadoVacio icono={ChartColumn} titulo="Todavía no tenés resultados"
-        descripcion={`Cuando marques una licitación como presentada y ARCE publique la adjudicación, comparamos el RUT del ganador con el de tu empresa (o el nombre, si no hay RUT) y la anotamos como ganada o perdida.${e.enCurso ? ` Tenés ${e.enCurso} ${e.enCurso === 1 ? 'presentada esperando' : 'presentadas esperando'} resultado.` : ''}`}
+        descripcion={`Cuando marques una licitación como presentada y el Estado publique quién ganó, la anotamos acá como ganada o perdida.${e.enCurso ? ` Tenés ${e.enCurso} ${e.enCurso === 1 ? 'presentada esperando' : 'presentadas esperando'} resultado.` : ''}`}
         accion={<Link href="/en-curso" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Ver licitaciones en curso</Link>} />
     );
   }
@@ -43,7 +43,7 @@ async function Contenido() {
   return (
     <div className="space-y-10">
       <KpisEstadisticas e={e} />
-      <Seccion id="ranking" titulo="Ventas por producto" bajada="Lo que te adjudicaron, ordenado por monto sin IVA. Solo líneas en pesos.">
+      <Seccion id="ranking" titulo="Ventas por producto" bajada="Lo que ganaste, ordenado por monto sin IVA. Solo ventas en pesos.">
         <RankingProductos productos={e.ranking} />
       </Seccion>
       <Seccion id="recientes" titulo="Resultados recientes">
@@ -57,9 +57,8 @@ export default function EstadisticasPage() {
   return (
     <div className="space-y-6">
       <header className="space-y-1">
-        <p className="font-mono text-xs tracking-wide text-muted-foreground uppercase">Resultados</p>
-        <h1 className="text-2xl">Mis estadísticas</h1>
-        <p className="text-sm text-muted-foreground">Licitaciones ganadas y perdidas según las adjudicaciones que publica ARCE, y cuánto facturaste en cada producto.</p>
+        <h1 className="text-3xl font-semibold tracking-tight">Mis estadísticas</h1>
+        <p className="text-sm text-muted-foreground">Las licitaciones que ganaste y perdiste según los resultados que publica el Estado, y cuánto vendiste de cada producto.</p>
       </header>
       <Suspense fallback={<KpisCargando />}>
         <Contenido />

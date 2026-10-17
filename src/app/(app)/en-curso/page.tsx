@@ -24,7 +24,7 @@ function Rotulo({ lic }: { lic: LicitacionCard }) {
     <p className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
       <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-medium', presentada ? 'bg-alerta-suave text-alerta-fuerte' : 'bg-secondary text-foreground')}>
         <Icono aria-hidden className="size-3.5" />
-        {presentada ? 'Presentada · esperando adjudicación' : 'Guardada'}
+        {presentada ? 'Presentada, esperando el resultado' : 'Guardada'}
       </span>
       {cerro && lic.fechaTopeOfertas && (
         <span className="text-muted-foreground">Cerró el <span className="font-mono">{fecha(lic.fechaTopeOfertas).slice(0, 5)}</span></span>
@@ -42,7 +42,7 @@ async function Lista() {
   if (!cards.length) {
     return (
       <EstadoVacio icono={Hourglass} titulo="No tenés licitaciones en curso"
-        descripcion="Cuando guardes una licitación o la marques como presentada, la seguimos acá hasta que ARCE publique a quién se la adjudicaron."
+        descripcion="Cuando guardes una licitación o la marques como presentada, la seguimos acá hasta que el Estado publique quién ganó."
         accion={<Link href="/dashboard" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Ver licitaciones para vos</Link>} />
     );
   }
@@ -69,8 +69,7 @@ export default function EnCursoPage() {
   return (
     <div className="space-y-6">
       <header className="space-y-1">
-        <p className="font-mono text-xs tracking-wide text-muted-foreground uppercase">Seguimiento</p>
-        <h1 className="text-2xl">En curso</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">En curso</h1>
         <p className="text-sm text-muted-foreground">
           Las licitaciones que guardaste o a las que te presentaste. Siguen acá aunque haya cerrado la recepción de ofertas, hasta que se publique el ganador.
         </p>

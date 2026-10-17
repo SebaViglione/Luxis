@@ -9,7 +9,7 @@ export function RankingProductos({ productos }: { productos: ProductoVendido[] }
     <ol className="space-y-3">
       {productos.map((p, i) => {
         const unidad = p.unidad?.toLowerCase() ?? '';
-        const detalle = `${suavizarMayusculas(p.producto)}: ${monto(p.monto)} sin IVA · ${cantidad(p.cantidad)} ${unidad} · ${p.lineas} ${p.lineas === 1 ? 'adjudicación' : 'adjudicaciones'}`;
+        const detalle = `${suavizarMayusculas(p.producto)}: ${monto(p.monto)} sin IVA · ${cantidad(p.cantidad)} ${unidad} · ${p.lineas} ${p.lineas === 1 ? 'venta' : 'ventas'}`;
         return (
           <li key={p.producto} className="grid gap-1.5 sm:grid-cols-[minmax(0,14rem)_1fr] sm:items-center sm:gap-4" title={detalle}>
             <span className="flex min-w-0 items-baseline gap-2 text-sm">
