@@ -2,7 +2,6 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { connection } from 'next/server';
-import { sql } from 'drizzle-orm';
 import { SearchX } from 'lucide-react';
 import { AnalizarUrl } from '@/components/licitaciones/analizar-url';
 import { CardLicitacion } from '@/components/licitaciones/card-licitacion';
@@ -12,21 +11,13 @@ import { buttonVariants } from '@/components/ui/button';
 import { ListaCargando } from '@/components/licitaciones/lista-cargando';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EstadoVacio } from '@/components/ui/estado-vacio';
-import { BuscandoLicitaciones } from '@/components/licitaciones/buscando-licitaciones';
-import { db, schema } from '@/db';
+import { BuscandoLicitaciones, SiguenLlegando } from '@/components/licitaciones/buscando-licitaciones';
 import { requerirSesion } from '@/server/auth/sesion';
-import { listarMatches, listarOrganismos, resumenDashboard, tieneMatches } from '@/server/consultas/licitaciones';
+import { listarMatches, listarOrganismos, progresoMatching, resumenDashboard, tieneMatches } from '@/server/consultas/licitaciones';
 import { ListaConEstado, ProveedorFiltros } from '@/components/licitaciones/estado-filtros';
 import { ContadorTotal } from '@/components/licitaciones/contador-total';
 
 export const metadata: Metadata = { title: 'Licitaciones · Luxis' };
-
-// Después del onboarding el matching corre en segundo plano 1–2 min (docs/04, pendiente 1).
-async function perfilRecienActualizado(empresaId: string): Promise<boolean> {
-  const [e] = await db.select({ en: schema.empresas.perfilActualizadoEn }).from(schema.empresas)
-    .where(sql`${schema.empresas.id} = ${empresaId} and ${schema.empresas.perfilActualizadoEn} > now() - interval '5 minutes'`);
-  return Boolean(e?.en);
-}
 
 async function Encabezado() {
   await connection();
@@ -66,10 +57,12 @@ async function Lista({ searchParams }: { searchParams: Promise<Record<string, st
   await connection();
   const { empresaId } = await requerirSesion();
   const cards = await listarMatches(empresaId, filtros);
+  // Después del onboarding (o de cambiar el perfil) el matching corre en segundo plano 1–3 min.
+  const progreso = await progresoMatching(empresaId);
 
   if (!cards.length) {
+    if (progreso.enCurso) return <BuscandoLicitaciones evaluadas={progreso.evaluadas} total={progreso.total} />;
     const hayAlguna = await tieneMatches(empresaId);
-    if (!hayAlguna && (await perfilRecienActualizado(empresaId))) return <BuscandoLicitaciones />;
     return hayAlguna ? (
       <EstadoVacio icono={SearchX} titulo="No hay licitaciones con estos filtros"
         descripcion="Probá bajar la confianza mínima, ampliar el plazo de cierre o mirar las guardadas."
@@ -83,6 +76,7 @@ async function Lista({ searchParams }: { searchParams: Promise<Record<string, st
 
   return (
     <section aria-labelledby="titulo-lista" className="space-y-3">
+      {progreso.enCurso && <SiguenLlegando evaluadas={progreso.evaluadas} total={progreso.total} />}
       <h2 id="titulo-lista" className="text-sm font-normal text-muted-foreground">
         {cards.length} {cards.length === 1 ? 'licitación' : 'licitaciones'} con los filtros actuales
       </h2>

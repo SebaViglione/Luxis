@@ -17,7 +17,7 @@ export function CtaFinal() {
           <p className="mt-4 text-lg text-primary-foreground/80">Creá tu cuenta, subí tu lista de precios y en unos minutos ves cuáles son.</p>
         </Aparecer>
         <Aparecer retraso={0.15} className="flex shrink-0 flex-wrap gap-3">
-          <Link href="/registro" className={cn(buttonVariants({ size: 'lg' }), 'h-11 bg-background px-5 text-[0.95rem] text-foreground hover:bg-background/90')}>
+          <Link href="/registro" className={cn(buttonVariants({ size: 'lg' }), 'h-11 bg-background px-5 text-[0.95rem] text-foreground hover:bg-background/90 has-data-[icon=inline-end]:pr-4')}>
             Crear cuenta <ArrowRight data-icon="inline-end" />
           </Link>
           <Link

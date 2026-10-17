@@ -127,10 +127,32 @@ export async function listarOrganismos(empresaId: string): Promise<string[]> {
   return [...filas].map((f) => f.organismo);
 }
 
-/** ¿La empresa tiene algún match abierto? (para distinguir "sin resultados con estos filtros" de "todavía nada"). */
+/** ¿La empresa tiene algún match abierto que el dashboard mostraría sin filtros? (para distinguir
+ *  "sin resultados con estos filtros" de "todavía nada"). Los de confianza efectiva < 40 no cuentan. */
 export async function tieneMatches(empresaId: string): Promise<boolean> {
   const [f] = await db.execute<{ hay: boolean }>(sql`
-    select exists (select 1 from matches m join licitaciones l on l.id_compra = m.id_compra
-      where m.empresa_id = ${empresaId} and l.fecha_tope_ofertas > now()) as hay`);
+    select exists (select 1 from matches join licitaciones l on l.id_compra = matches.id_compra
+      where matches.empresa_id = ${empresaId} and l.fecha_tope_ofertas > now()
+        and matches.estado_usuario <> 'descartada' and ${CONF_EF} >= 40) as hay`);
   return Boolean(f?.hay);
+}
+
+/**
+ * Progreso del matching después de un cambio de perfil: cuántas licitaciones abiertas del rubro ya se
+ * evaluaron con el perfil actual (evaluarLicitacion siempre guarda una fila, también las descartadas).
+ * `enCurso` solo durante 10 minutos: si el matching se cortó, el dashboard deja de decir "buscando".
+ */
+export async function progresoMatching(empresaId: string): Promise<{ total: number; evaluadas: number; enCurso: boolean }> {
+  const [f] = await db.execute<{ total: number; evaluadas: number; reciente: boolean }>(sql`
+    select
+      (select count(*)::int from licitaciones l where l.es_rubro and l.fecha_tope_ofertas > now()) as total,
+      (select count(*)::int from matches m
+         join licitaciones l on l.id_compra = m.id_compra
+         join empresas e on e.id = m.empresa_id
+       where m.empresa_id = ${empresaId} and l.es_rubro and l.fecha_tope_ofertas > now()
+         and (e.perfil_actualizado_en is null or m.perfil_version >= e.perfil_actualizado_en)) as evaluadas,
+      exists (select 1 from empresas e where e.id = ${empresaId} and e.perfil_actualizado_en > now() - interval '10 minutes') as reciente`);
+  const total = Number(f?.total ?? 0);
+  const evaluadas = Math.min(Number(f?.evaluadas ?? 0), total);
+  return { total, evaluadas, enCurso: Boolean(f?.reciente) && evaluadas < total };
 }

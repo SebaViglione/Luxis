@@ -145,6 +145,9 @@ export function GuiaInicial() {
     const left = Math.min(Math.max(16, hueco.left), vw - ancho - 16);
     tarjeta = abajo + 230 < vh ? { top: abajo, left } : { top: Math.max(16, hueco.top - 16 - 230), left };
   }
+  // "Saltar guía" va arriba a la derecha, salvo que ahí esté lo que se resalta ("Actualizar" en la topbar):
+  // en ese caso baja a la esquina inferior para no taparlo.
+  const saltarAbajo = Boolean(hueco && hueco.top < 72 && hueco.left + hueco.width > vw - 220);
 
   return (
     <MotionConfig reducedMotion="user">
@@ -169,7 +172,7 @@ export function GuiaInicial() {
           variant="secondary"
           size="sm"
           onClick={cerrar}
-          className="absolute top-4 right-4 z-10 rounded-full bg-background/95 px-4 shadow-lg"
+          className={cn('absolute right-4 z-10 rounded-full bg-background/95 px-4 shadow-lg', saltarAbajo ? 'bottom-4' : 'top-4')}
         >
           Saltar guía <X data-icon="inline-end" />
         </Button>

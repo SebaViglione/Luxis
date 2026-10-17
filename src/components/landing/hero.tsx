@@ -66,7 +66,7 @@ export function Hero() {
               <p className="mt-1.5">que podés ganar, con precio y papeles.</p>
             </motion.div>
             <motion.div {...entrada(0.7)} className="mt-10 flex flex-wrap gap-3">
-              <Link href="/registro" className={cn(buttonVariants({ size: 'lg' }), 'h-12 px-6 text-base')}>
+              <Link href="/registro" className={cn(buttonVariants({ size: 'lg' }), 'h-12 px-6 text-base has-data-[icon=inline-end]:pr-5')}>
                 <ShinyText text="Crear cuenta" color="rgba(255,255,255,0.82)" shineColor="#ffffff" speed={2.6} delay={1.2} />
                 <ArrowRight data-icon="inline-end" />
               </Link>
