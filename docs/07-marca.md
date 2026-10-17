@@ -114,7 +114,8 @@ El movimiento explica algo (que llegan licitaciones, que se calcula un precio); 
   
   Sin partículas, auroras ni degradés.
 - **Texto animado (reactbits):** `BlurText` para el titular, `RotatingText` con resaltado ladrillo para el rubro, `ShinyText` en el CTA principal y `CountUp` para cifras reales.
-- **En la app:** solo transiciones de estado y `CountUp` en el encabezado del dashboard. Nada de fondos animados, salvo el panel de marca de las pantallas de login y registro (hilos ladrillo sobre tinta).
+- **En la app:** un solo momento reactbits por pantalla y solo en el dashboard: el título del encabezado (`CountUp` + `BlurText`, una vez por sesión) sobre la textura estática de puntos. El resto del movimiento responde a una acción: resaltado deslizante en los selectores (`layoutId`, spring 420/34), entrada y salida de tarjetas al filtrar (`popLayout`, spring 26/260), barra de puntaje que se llena (0,9 s) y pastillas de filtros activos. Nada de fondos animados, salvo el panel de marca de las pantallas de login y registro (hilos ladrillo sobre tinta). Todo respeta `prefers-reduced-motion`.
+- **Lenguaje en la app:** sin siglas ni jerga de compras públicas: "te calza" en vez de confianza, "quién compra" en vez de organismo, tipos de compra con nombre completo y una línea que los explica, "No me interesa" en vez de descartar, "papeles" en vez de documentación.
 
 ## 9. Patrones reutilizables
 

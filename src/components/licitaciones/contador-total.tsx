@@ -14,6 +14,7 @@ export function ContadorTotal({ total, className }: { total: number; className?:
   useEffect(() => {
     let previo: number | null = null;
     try { const v = sessionStorage.getItem(CLAVE); previo = v === null ? null : Number(v); } catch { /* sin storage */ }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- lectura de sessionStorage al montar
     setDesde(previo ?? 0);
     try { sessionStorage.setItem(CLAVE, String(total)); } catch { /* sin storage */ }
   }, [total]);

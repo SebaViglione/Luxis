@@ -5,7 +5,6 @@ import { connection } from 'next/server';
 import { sql } from 'drizzle-orm';
 import { SearchX } from 'lucide-react';
 import { AnalizarUrl } from '@/components/licitaciones/analizar-url';
-import { CardLicitacion } from '@/components/licitaciones/card-licitacion';
 import { Filtros } from '@/components/licitaciones/filtros';
 import { filtrosDesdeUrl } from '@/components/licitaciones/filtros-url';
 import { buttonVariants } from '@/components/ui/button';
@@ -17,7 +16,8 @@ import { db, schema } from '@/db';
 import { requerirSesion } from '@/server/auth/sesion';
 import { listarMatches, listarOrganismos, resumenDashboard, tieneMatches } from '@/server/consultas/licitaciones';
 import { ListaConEstado, ProveedorFiltros } from '@/components/licitaciones/estado-filtros';
-import { ContadorTotal } from '@/components/licitaciones/contador-total';
+import { TituloDashboard } from '@/components/licitaciones/titulo-dashboard';
+import { ListaTarjetas } from '@/components/licitaciones/lista-tarjetas';
 
 export const metadata: Metadata = { title: 'Licitaciones · Luxis' };
 
@@ -31,15 +31,19 @@ async function perfilRecienActualizado(empresaId: string): Promise<boolean> {
 async function Encabezado() {
   await connection();
   const { empresaId } = await requerirSesion();
-  const r = await resumenDashboard(empresaId);
+  const [r, [empresa]] = await Promise.all([
+    resumenDashboard(empresaId),
+    db.select({ nombre: schema.empresas.nombre }).from(schema.empresas).where(sql`${schema.empresas.id} = ${empresaId}`),
+  ]);
+  const semana = r.cierranSemana === 0 ? 'Ninguna cierra esta semana' : `${r.cierranSemana} ${r.cierranSemana === 1 ? 'cierra' : 'cierran'} esta semana`;
+  const nuevas = r.nuevas24h > 0 ? `${r.nuevas24h} ${r.nuevas24h === 1 ? 'apareció' : 'aparecieron'} hoy` : null;
   return (
-    <header className="space-y-1">
-      <h1 aria-label={`${r.total} ${r.total === 1 ? 'licitación' : 'licitaciones'} para vos`} className="flex flex-wrap items-baseline gap-x-3">
-        <ContadorTotal total={r.total} className="text-5xl font-semibold tracking-tight" />
-        <span className="text-2xl font-semibold tracking-tight">{r.total === 1 ? 'licitación' : 'licitaciones'} para vos</span>
-      </h1>
-      <p className="text-muted-foreground">
-        {r.cierranSemana === 0 ? 'Ninguna cierra esta semana.' : `${r.cierranSemana} ${r.cierranSemana === 1 ? 'cierra' : 'cierran'} esta semana.`}
+    <header className="space-y-2">
+      {empresa?.nombre && <p className="text-sm text-muted-foreground">Hola, {empresa.nombre}</p>}
+      <TituloDashboard total={r.total} />
+      <p className="flex flex-wrap items-center gap-x-2 text-muted-foreground">
+        <span>{semana}.</span>
+        {nuevas && <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-1.5 rounded-full bg-primary" />{nuevas}.</span>}
       </p>
     </header>
   );
@@ -47,9 +51,10 @@ async function Encabezado() {
 
 function EncabezadoCargando() {
   return (
-    <header className="space-y-1" aria-hidden>
-      <div className="h-12 w-72 rounded-md bg-muted" />
-      <div className="h-5 w-40 rounded-md bg-muted" />
+    <header className="space-y-2" aria-hidden>
+      <div className="h-4 w-40 rounded-md bg-muted" />
+      <div className="h-14 w-96 max-w-full rounded-md bg-muted" />
+      <div className="h-5 w-64 rounded-md bg-muted" />
     </header>
   );
 }
@@ -71,8 +76,8 @@ async function Lista({ searchParams }: { searchParams: Promise<Record<string, st
     const hayAlguna = await tieneMatches(empresaId);
     if (!hayAlguna && (await perfilRecienActualizado(empresaId))) return <BuscandoLicitaciones />;
     return hayAlguna ? (
-      <EstadoVacio icono={SearchX} titulo="No hay licitaciones con estos filtros"
-        descripcion="Probá bajar la confianza mínima, ampliar el plazo de cierre o mirar las guardadas."
+      <EstadoVacio icono={SearchX} titulo="Ninguna licitación coincide con estos filtros"
+        descripcion="Probá con “Todas” en qué tan bien te calzan, elegí “Cuando sea” en cuándo cierran o mirá las guardadas."
         accion={<Link href="/dashboard" className={buttonVariants({ variant: 'outline', size: 'sm' })}>Limpiar filtros</Link>} />
     ) : (
       <EstadoVacio icono={SearchX} titulo="Todavía no encontramos licitaciones para tu empresa"
@@ -84,11 +89,9 @@ async function Lista({ searchParams }: { searchParams: Promise<Record<string, st
   return (
     <section aria-labelledby="titulo-lista" className="space-y-3">
       <h2 id="titulo-lista" className="text-sm font-normal text-muted-foreground">
-        {cards.length} {cards.length === 1 ? 'licitación' : 'licitaciones'} con los filtros actuales
+        {cards.length === 1 ? 'Te mostramos 1 licitación' : `Te mostramos ${cards.length} licitaciones`}
       </h2>
-      <ul className="space-y-3">
-        {cards.map((c) => <li key={c.idCompra}><CardLicitacion lic={c} /></li>)}
-      </ul>
+      <ListaTarjetas cards={cards} />
     </section>
   );
 }
@@ -96,7 +99,7 @@ async function Lista({ searchParams }: { searchParams: Promise<Record<string, st
 function FiltrosYListaCargando() {
   return (
     <>
-      <Skeleton className="h-[9.5rem] w-full rounded-md" />
+      <Skeleton className="h-[13rem] w-full rounded-md" />
       <div className="min-h-[24rem] pt-2"><ListaCargando /></div>
     </>
   );
@@ -106,18 +109,22 @@ export default function DashboardPage({ searchParams }: PageProps<'/dashboard'>)
   return (
     <div className="space-y-6">
       {/* data-guia: anclas de la guía inicial (src/components/guia/guia-inicial.tsx). */}
-      <div data-guia="resumen">
-        <Suspense fallback={<EncabezadoCargando />}>
-          <Encabezado />
-        </Suspense>
-      </div>
-      <div data-guia="analizar-url">
-        <AnalizarUrl />
-      </div>
+      <section className="relative grid gap-6 overflow-hidden rounded-xl border bg-card p-5 sm:p-7 lg:grid-cols-[1fr_22rem] lg:items-center">
+        {/* Textura de puntos estática (la misma de los estados vacíos): da profundidad sin animar. */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:linear-gradient(to_right,black,transparent_70%)]" />
+        <div data-guia="resumen" className="relative">
+          <Suspense fallback={<EncabezadoCargando />}>
+            <Encabezado />
+          </Suspense>
+        </div>
+        <div data-guia="analizar-url" className="relative">
+          <AnalizarUrl compacto />
+        </div>
+      </section>
       <Suspense fallback={<FiltrosYListaCargando />}>
       <ProveedorFiltros>
         <div data-guia="filtros">
-          <Suspense fallback={<Skeleton className="h-[9.5rem] w-full rounded-md" />}>
+          <Suspense fallback={<Skeleton className="h-[13rem] w-full rounded-md" />}>
             <FiltrosConOpciones />
           </Suspense>
         </div>

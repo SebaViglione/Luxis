@@ -40,7 +40,7 @@ export function AccionesMatch({ idCompra, estado, conPresentada = false }: {
       </Button>
       <Button variant="ghost" size="sm" disabled={pendiente} onClick={() => cambiar(descartada ? 'nuevo' : 'descartada')}>
         {descartada ? <Undo2 aria-hidden /> : <X aria-hidden />}
-        {descartada ? 'Recuperar' : 'Descartar'}
+        {descartada ? 'Recuperar' : 'No me interesa'}
       </Button>
       {conPresentada && (
         <Button variant={presentada ? 'secondary' : 'outline'} size="sm" disabled={pendiente} aria-pressed={presentada}
