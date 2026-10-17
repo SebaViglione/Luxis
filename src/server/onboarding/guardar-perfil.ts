@@ -51,7 +51,10 @@ export async function guardarPerfil(empresaId: string, perfil: PerfilEmpresa, { 
         zonasEntrega: perfil.zonasEntrega,
         capacidadNotas: perfil.capacidadNotas ?? null,
         montoMinimo: perfil.montoMinimo == null ? null : String(perfil.montoMinimo),
-        perfilJson: perfil,
+        // Conserva los datos de postulación (domicilio, representante) que viven en el mismo JSON.
+        perfilJson: sql`case when ${empresas.perfilJson} ? 'datosPostulacion'
+          then ${JSON.stringify(perfil)}::jsonb || jsonb_build_object('datosPostulacion', ${empresas.perfilJson} -> 'datosPostulacion')
+          else ${JSON.stringify(perfil)}::jsonb end`,
         // Editar el perfil desde "Cuenta" no debe volver a abrir el onboarding.
         estadoOnboarding: completo
           ? 'completo'
