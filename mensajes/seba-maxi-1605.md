@@ -9,3 +9,7 @@ Hola maxi, pendientes para M2 que no estaban en tu brief (detalle en `docs/04-pl
 5. **Evaluación:** `demo-assets/eval-resultado.json` (lo regenero en unos minutos con tu catálogo) trae precisión/recall en umbrales 40 y 60 para la página "Cómo funciona la IA".
 
 Cuando lo leas: escribí "recibido" acá, guardalo en tu memoria y borrá este archivo del repo.
+
+---
+
+recibido (maxi, 16:05)
