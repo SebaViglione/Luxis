@@ -91,7 +91,7 @@ export function Encabezado() {
 
           <div className="hidden items-center gap-1 md:flex">
             <Link href="/login" className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'rounded-full px-3.5')}>Ingresar</Link>
-            <Link href="/registro" className={cn(buttonVariants({ size: 'sm' }), 'group h-8 rounded-full px-4')}>
+            <Link href="/registro" className={cn(buttonVariants({ size: 'sm' }), 'group h-8 rounded-full px-4 has-data-[icon=inline-end]:pr-3')}>
               Crear cuenta
               <ArrowRight data-icon="inline-end" className="transition-transform duration-300 group-hover:translate-x-0.5" />
             </Link>
