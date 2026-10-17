@@ -10,6 +10,8 @@ export const maxDuration = 300;
 
 /** Analiza el pliego. `?forzar=1` recalcula con el modelo fuerte. */
 export async function POST(req: NextRequest, ctx: RouteContext<'/api/licitaciones/[id]/analizar'>) {
+  const empresaId = await empresaIdActual();
+  if (!empresaId) return NextResponse.json({ error: 'Iniciá sesión para analizar licitaciones.' }, { status: 401 });
   const { id } = await ctx.params;
   const forzar = req.nextUrl.searchParams.get('forzar') === '1';
   try {
@@ -17,8 +19,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<'/api/licitacione
     if (!l) return NextResponse.json({ error: 'Licitación no encontrada' }, { status: 404 });
     if (!l.ok) await procesarArchivos(id);
     const analisis = await analizarLicitacion(id, { forzar, modelo: forzar ? 'fuerte' : 'rapido' });
-    const empresaId = await empresaIdActual();
-    if (empresaId) await calcularGapParaMatch(empresaId, id).catch(() => null);
+    await calcularGapParaMatch(empresaId, id).catch(() => null);
     return NextResponse.json(analisis);
   } catch (e) {
     const err = e as Error;
