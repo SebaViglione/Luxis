@@ -42,6 +42,13 @@ async function docx(buf: Buffer): Promise<string> {
   return (await mammoth.extractRawText({ buffer: buf })).value;
 }
 
+/** ODT/ODS: zip con content.xml; se quita el marcado y se respetan párrafos. */
+function odf(buf: Buffer): string {
+  const xml = new AdmZip(buf).getEntry('content.xml')?.getData().toString('utf8') ?? '';
+  return xml.replace(/<\/(text:p|text:h|table:table-row)>/g, '\n').replace(/<text:tab\/>|<\/table:table-cell>/g, ' | ')
+    .replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+}
+
 async function doc(buf: Buffer): Promise<string> {
   const { default: WordExtractor } = await import('word-extractor');
   const d = await new WordExtractor().extract(buf);
@@ -113,9 +120,10 @@ export async function extraerTexto(nombre: string, buf: Buffer, contenedor: stri
     let texto: string | null = null;
     switch (tipo) {
       case 'pdf': texto = await pdf(buf); break;
-      case 'docx': case 'odt': texto = await docx(buf); break;
+      case 'docx': texto = await docx(buf); break;
+      case 'odt': case 'ods': texto = odf(buf); break;
       case 'doc': texto = await doc(buf); break;
-      case 'xls': case 'xlsx': case 'ods': case 'csv': texto = await hoja(buf); break;
+      case 'xls': case 'xlsx': case 'csv': texto = await hoja(buf); break;
       case 'html': case 'htm': case 'xml': texto = html(buf); break;
       case 'txt': case 'rtf': texto = decodificarTexto(buf).replace(/\\[a-z]+-?\d* ?|[{}]/g, ' '); break;
       default:
