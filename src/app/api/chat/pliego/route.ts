@@ -5,7 +5,7 @@ import { chatMensajes } from '@/db/schema';
 import { IANoConfigurada, verificarIA } from '@/lib/ia/estructurado';
 import { modeloFuerte } from '@/lib/ia/modelos';
 import { obtenerSesion } from '@/server/auth/sesion';
-import { armarContextoPliego, buscarParrafo, instruccionesChatPliego } from '@/server/ia/chat-pliego';
+import { armarContextoPliego, buscarParrafo, instruccionesChatPliego, resumenContextoPliego } from '@/server/ia/chat-pliego';
 
 export const maxDuration = 60;
 
@@ -40,11 +40,14 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Falta la licitación o el mensaje.' }, { status: 400 });
   }
 
-  const contexto = await armarContextoPliego(idCompra);
-  if (!contexto) return Response.json({ error: 'No encontramos esa licitación.' }, { status: 404 });
-
   const ultimo = messages[messages.length - 1];
   const pregunta = textoDe(ultimo);
+  // Para pliegos grandes se buscan los párrafos relevantes: la pregunta actual + la anterior (repreguntas tipo "¿y el monto?").
+  const preguntasUsuario = messages.filter((m) => m.role === 'user').map(textoDe).filter(Boolean);
+  const consulta = preguntasUsuario.slice(-2).join('\n');
+
+  const contexto = await armarContextoPliego(idCompra, consulta);
+  if (!contexto) return Response.json({ error: 'No encontramos esa licitación.' }, { status: 404 });
   if (ultimo.role === 'user' && pregunta && trigger !== 'regenerate-message') {
     await db.insert(chatMensajes).values({ empresaId: sesion.empresaId, idCompra, rol: 'user', contenido: pregunta });
   }
@@ -59,7 +62,7 @@ export async function POST(request: Request) {
     messages: await convertToModelMessages(messages.slice(-MAX_MENSAJES_HISTORIAL)),
     onFinish: async ({ text, usage }) => {
       console.info(
-        `[chat-pliego] ${idCompra} tokens entrada=${usage.inputTokens} cache_lectura=${usage.inputTokenDetails?.cacheReadTokens ?? 0} salida=${usage.outputTokens}`,
+        `[chat-pliego] ${idCompra} modo=${contexto.modo} tokens entrada=${usage.inputTokens} cache_lectura=${usage.inputTokenDetails?.cacheReadTokens ?? 0} salida=${usage.outputTokens}`,
       );
       if (text.trim()) {
         await db.insert(chatMensajes).values({ empresaId: sesion.empresaId, idCompra, rol: 'assistant', contenido: text });
@@ -95,7 +98,7 @@ export async function GET(request: Request) {
   }
 
   const [contexto, historial] = await Promise.all([
-    armarContextoPliego(idCompra),
+    resumenContextoPliego(idCompra),
     db
       .select()
       .from(chatMensajes)
