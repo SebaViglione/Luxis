@@ -24,18 +24,20 @@ Desempate: producto funcionando, después valor. **Nunca** mostrar algo simulado
 
 Barraca de Las Piedras (Canelones), 12 empleados, entrega en Canelones, Montevideo, San José y Florida. Vende portland (bolsa y granel), cal, arenas, pedregullo, balasto, ladrillos, ticholos, bloques, hierro, malla, alambre, chapas, caños PVC, maderas, yeso, membranas, adhesivos y cerámicas básicas. RUPE activo, DGI y BPS al día, BSE vigente, sin UNIT ni ISO. Se presentó a 2 licitaciones en 2025 y ganó 1. Usuario demo: lo crea `npm run seed:demo` (credenciales solo en el canal).
 
-## 4. Guion de 3 minutos (quién habla / qué se ve)
+## 4. Guion final de 3 minutos (quién habla / qué dice / qué se ve)
 
-Texto completo en primera persona: [`demo-assets/guion-pitch-v1.md`](../demo-assets/guion-pitch-v1.md). Ojo: la empresa demo tiene BSE vigente, así que el documento faltante "alcanzable" del bloque 1:05 tiene que ser otro (garantía de oferta, fichas técnicas, muestras).
+Versión de ensayo; el borrador v1 está en [`demo-assets/guion-pitch-v1.md`](../demo-assets/guion-pitch-v1.md). Lo que va entre llaves se lee de la pantalla en el momento (no se inventa). Ensayar con cronómetro: el bloque 3 es el que más se estira.
 
-| Tiempo | Quién | Dice | Pantalla |
+| Tiempo | Quién | Pantalla | Dice (primera persona) |
 |---|---|---|---|
-| 0:00–0:25 | maxi | El problema: el Estado compra portland y ladrillos todas las semanas; las barracas chicas no se presentan porque ARCE es inusable, los pliegos son enormes y nadie sabe a qué precio se gana. | Landing |
-| 0:25–1:05 | rafa | "Luxis conoce tu empresa en 2 minutos": sube lista de precios y carta → perfil extraído → la IA pregunta lo único que falta (voz o chat) → confirmar. | Onboarding |
-| 1:05–1:45 | seba | Dashboard: "14 licitaciones para vos, 3 cierran esta semana". Abre la primera (92 %): resumen, ítems que vendemos, **precio sugerido** con banda histórica y 3 competidores, documentación (falta BSE, alcanzable), fechas con visita. | Dashboard → Detalle |
-| 1:45–2:15 | seba | Chat: "¿piden muestras?" → respuesta con cita del pliego. Calendario y campanita en 5 segundos. | Chat → Calendario |
-| 2:15–2:45 | rafa | Variación en vivo: pega una URL de ARCE que el jurado elija → etapas (descargando, extrayendo, analizando, precios) → detalle nuevo. | Analizar por URL |
-| 2:45–3:00 | maxi | Cierre: datos reales de ARCE, precios sin IVA, limitaciones declaradas; "una barraca que hoy no licita, mañana cotiza con el precio ganador en la mano". | Cómo funciona la IA |
+| 0:00–0:25 | maxi | Landing | "El Estado uruguayo compra portland, ladrillos y arena todas las semanas. Las barracas chicas casi nunca se presentan: ARCE es difícil, los pliegos tienen 80 páginas y nadie sabe a qué precio se gana. Para eso hicimos Luxis." |
+| 0:25–1:05 | rafa | Onboarding | "Subo la lista de precios y la carta de Barraca Don Aurelio y la IA arma el perfil: qué vende, dónde entrega, qué papeles tiene. Lo que falta me lo pregunta por chat o por voz. Confirmo y listo." |
+| 1:05–1:45 | seba | Dashboard → detalle | "Luxis le encontró {N} licitaciones a la barraca, {M} cierran esta semana. Cada una dice por qué: la de 30 camiones de balasto se entrega en el Municipio de Las Piedras, su misma localidad. En el detalle está lo que piden, el **precio ganador histórico** del ítem con quién ganó antes, y la documentación: lo que le falta y si llega antes del cierre." |
+| 1:45–2:15 | seba | Chat → calendario → campanita | "Le pregunto al pliego '¿piden muestras?' y contesta citando el archivo y el párrafo; si no está, lo dice. En el calendario veo cierres y visitas; la campanita me avisa lo que cierra en 48 horas." |
+| 2:15–2:45 | rafa | Dashboard → "Analizar una licitación puntual" | "Ahora una que nunca vimos: el jurado nos pasa una URL de ARCE, la pegamos y se ven las etapas reales: buscando en ARCE, leyendo el pliego, analizando con IA, comparando con los productos, precios. En menos de un minuto, el detalle completo." |
+| 2:45–3:00 | maxi | Cómo funciona la IA | "Todo corre sobre datos reales de ARCE: {adjudicaciones} adjudicaciones históricas. Con 20 llamados etiquetados a mano, el matching acertó en todo lo que mostró y encontró casi 9 de cada 10 oportunidades reales. Precios sin IVA, sin ofertas perdedoras y la IA puede equivocarse: por eso muestra confianza y motivo. Una barraca que hoy no licita, mañana cotiza con el precio ganador en la mano." |
+
+**Plan B:** si la IA tarda en el bloque 2:15 (analizar por URL tarda 20–90 s), seguir hablando del cierre mientras corre y volver al detalle al final; si no responde, pasar el video de respaldo desde ese minuto.
 
 ## 5. Casos de variación para el jurado (preparados, no precargados)
 
@@ -47,7 +49,7 @@ Texto completo en primera persona: [`demo-assets/guion-pitch-v1.md`](../demo-ass
 ## 6. Preguntas probables y respuestas
 
 - **¿De dónde salen los precios?** De las adjudicaciones publicadas por ARCE (interfaz XML pública), por artículo, moneda y unidad, últimos 24 meses, sin IVA. No es probabilidad de ganar: ARCE no publica ofertas perdedoras.
-- **¿Cómo sabemos que el matching es bueno?** 20 llamados etiquetados a mano; mostramos precisión y recall; además cada match trae razón y confianza, y nunca descarta solo.
+- **¿Cómo sabemos que el matching es bueno?** 20 llamados reales de ARCE etiquetados a mano (10 sí, 10 no, 3 tramposos). Mostrando desde confianza 40: precisión 1,00 y recall 0,88 (F1 0,93); desde 60 el recall cae a 0,38, por eso el dashboard arranca en 40. Además cada match trae razón y confianza, y nunca descarta solo. Está en la página "Cómo funciona la IA".
 - **¿Qué pasa si el pliego es escaneado?** Se marca como no leído, el análisis baja a confianza ≤ 50 y se avisa.
 - **¿Qué es IA y qué es SQL?** Perfil, matching, lectura del pliego, chat y explicaciones: LLM. Percentiles de precio y competidores: SQL. La IA interpreta, SQL calcula.
 - **¿Escala?** Los datos son públicos y la ingesta corre en ventanas; el costo por licitación analizada es de centavos con el modelo rápido.
@@ -56,7 +58,9 @@ Texto completo en primera persona: [`demo-assets/guion-pitch-v1.md`](../demo-ass
 ## 7. Checklist pre-demo (20:30)
 
 - [ ] Cuenta demo creada y con matching/análisis corrido; cuenta vacía lista para "nuevo usuario".
-- [ ] `npm run build && npm start` local funcionando; Vercel como respaldo; `.env.local` con claves válidas; saldo de Anthropic verificado.
+- [ ] `npm run build && npm start` local funcionando; Vercel como respaldo; `.env.local` con claves válidas; saldo del proveedor de IA verificado (DeepSeek o Anthropic, según `IA_PROVEEDOR`).
+- [ ] Red con salida a los puertos 5432/6543 de Supabase (el Wi‑Fi del evento puede bloquearlos: tener el hotspot del celular a mano).
+- [ ] Botón "Actualizar" corrido antes de presentar (tarda 1–3 min) para que la campanita tenga avisos.
 - [ ] 2 URLs de ARCE vigentes elegidas por nosotros por si el jurado no trae una (pero aceptamos la suya).
 - [ ] Minutos de ElevenLabs restantes ≥ 20; micrófono probado; fallback de chat a mano.
 - [ ] Video de respaldo en el teléfono y en la laptop.

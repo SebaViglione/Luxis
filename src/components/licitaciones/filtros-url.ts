@@ -1,6 +1,6 @@
 import type { FiltrosDashboard } from '@/lib/types';
 
-export const CONFIANZA_POR_DEFECTO = 60;
+export const CONFIANZA_POR_DEFECTO = 40;
 
 type ParametrosUrl = Record<string, string | string[] | undefined>;
 const uno = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
