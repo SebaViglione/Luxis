@@ -34,8 +34,9 @@ export function AnalizarUrl() {
       if (ev.mensaje) setNotas((prev) => [...prev, ev.mensaje!]);
       return;
     }
-    if (ev.etapa && ev.estado) {
-      setEstados((prev) => ({ ...prev, [ev.etapa!]: ev.estado! }));
+    const { etapa, estado } = ev;
+    if (etapa && estado) {
+      setEstados((prev) => ({ ...prev, [etapa]: estado }));
       if (ev.mensaje) setMensaje(ev.mensaje);
     }
     if (ev.listo && ev.idCompra) {
