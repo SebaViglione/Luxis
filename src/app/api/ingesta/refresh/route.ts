@@ -29,11 +29,13 @@ async function handler(req: NextRequest) {
   const dias = Math.min(Math.max(Number(req.nextUrl.searchParams.get('dias') ?? 2), 1), 10);
   try {
     if (empresaSesion) {
-      const vigentes = await refreshRapido(dias);
+      // Si ARCE no responde, igual hacemos matching y avisos con lo que ya hay (no falla el botón entero).
+      const vigentes = await refreshRapido(dias).catch((e) => ({ omitido: false as const, compras: 0, items: 0, rubro: 0, error: (e as Error).message }));
       const matching = await evaluarEmpresa(empresaSesion).catch((e) => ({ error: (e as Error).message }));
       const notificaciones = await generarNotificaciones(empresaSesion).catch(() => 0);
-      after(() => trabajoEnSegundoPlano(dias));
-      return NextResponse.json({ ok: true, dias, vigentes, matching, notificaciones, segundoPlano: true });
+      const arceCaido = 'error' in vigentes;
+      if (!arceCaido) after(() => trabajoEnSegundoPlano(dias));
+      return NextResponse.json({ ok: true, dias, vigentes, matching, notificaciones, segundoPlano: !arceCaido, aviso: arceCaido ? 'ARCE no respondió: mostramos lo que ya teníamos.' : undefined });
     }
 
     const datos = await refresh(dias);

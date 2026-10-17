@@ -28,12 +28,12 @@ export function BotonActualizar() {
     try {
       // Una sola llamada: novedades de ARCE + matching de lo nuevo + avisos. Adjudicaciones y pliegos siguen en segundo plano.
       const res = await fetch('/api/ingesta/refresh?dias=2', { method: 'POST' });
-      const datos = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; notificaciones?: number; vigentes?: { omitido?: boolean } };
+      const datos = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; aviso?: string; notificaciones?: number; vigentes?: { omitido?: boolean } };
       if (!res.ok || datos.ok === false) throw new Error(datos.error ?? `Error ${res.status}`);
       setEstado({ tipo: 'trabajando', texto: 'Mostrando novedades…', desde: inicio });
       router.refresh();
       const creadas = datos.notificaciones ?? 0;
-      setEstado({ tipo: 'listo', texto: creadas ? `${creadas} ${creadas === 1 ? 'aviso nuevo' : 'avisos nuevos'}` : datos.vigentes?.omitido ? 'Ya estaba al día' : 'Todo al día' });
+      setEstado({ tipo: 'listo', texto: datos.aviso ?? (creadas ? `${creadas} ${creadas === 1 ? 'aviso nuevo' : 'avisos nuevos'}` : datos.vigentes?.omitido ? 'Ya estaba al día' : 'Todo al día') });
       window.setTimeout(() => setEstado((e) => (e.tipo === 'listo' ? { tipo: 'inactivo' } : e)), 6000);
     } catch {
       setEstado({ tipo: 'error', texto: 'No se pudo actualizar. ARCE puede estar lento: probá de nuevo en unos minutos.' });
