@@ -48,8 +48,13 @@ export function dividirEnParrafos(texto: string): string[] {
       parrafos.push(bloque.replace(/\n+/g, ' '));
       continue;
     }
+    // Líneas larguísimas (texto sin saltos, típico de algunos .docx/.xml) se parten por oraciones.
+    const segmentos = bloque
+      .split('\n')
+      .flatMap((linea) => (linea.length > LARGO_PARRAFO * 2 ? linea.split(/(?<=[.;:])\s+(?=\S)/) : [linea]))
+      .flatMap((oracion) => (oracion.length > LARGO_PARRAFO * 2 ? oracion.match(/.{1,700}(?:\s|$)|\S+/g) ?? [oracion] : [oracion]));
     let actual = '';
-    for (const linea of bloque.split('\n')) {
+    for (const linea of segmentos) {
       if (actual && actual.length + linea.length > LARGO_PARRAFO) {
         parrafos.push(actual.trim());
         actual = '';
@@ -139,7 +144,7 @@ export async function armarContextoPliego(idCompra: string): Promise<ContextoPli
       usados += linea.length + 1;
     }
     restante -= usados;
-    bloques.push(`=== ARCHIVO: ${archivo.nombre} (${archivo.categoria}) ===\n${lineas.join('\n')}`);
+    bloques.push(`=== ARCHIVO: "${archivo.nombre}" ===\n(tipo de documento: ${archivo.categoria})\n${lineas.join('\n')}`);
     incluidos.push({ nombre: archivo.nombre, categoria: archivo.categoria, parrafos: lineas.length, recortado });
   }
 
@@ -154,21 +159,53 @@ export async function armarContextoPliego(idCompra: string): Promise<ContextoPli
   };
 }
 
-/** Texto de un párrafo citado ([archivo, pN]) para mostrarlo en la UI. */
-export async function buscarParrafo(idCompra: string, archivo: string, numero: number): Promise<string | null> {
-  const [fila] = await db
-    .select({ texto: licitacionArchivos.texto })
+const normalizarNombre = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/\.[a-z0-9]{2,4}$/, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+/**
+ * Texto de un párrafo citado ([archivo, pN]) para mostrarlo en la UI. Tolera que el modelo cite el
+ * nombre con otra capitalización, sin extensión, abreviado o con el tipo de documento
+ * ("pliego_particular") en lugar del nombre.
+ */
+export async function buscarParrafo(
+  idCompra: string,
+  archivo: string,
+  numero: number,
+): Promise<{ archivo: string; texto: string } | null> {
+  const archivos = await db
+    .select({ nombre: licitacionArchivos.nombre, categoria: licitacionArchivos.categoria, texto: licitacionArchivos.texto })
     .from(licitacionArchivos)
-    .where(and(eq(licitacionArchivos.idCompra, idCompra), eq(licitacionArchivos.nombre, archivo)))
-    .limit(1);
-  if (!fila?.texto) return null;
-  return dividirEnParrafos(fila.texto)[numero - 1] ?? null;
+    .where(and(eq(licitacionArchivos.idCompra, idCompra), eq(licitacionArchivos.estadoExtraccion, 'ok')));
+  const conTexto = archivos.filter((a) => a.texto);
+  const buscado = normalizarNombre(archivo);
+  const porPrioridad = (lista: typeof conTexto) => [...lista].sort((a, b) => prioridad(a.categoria) - prioridad(b.categoria));
+
+  const elegido =
+    conTexto.find((a) => a.nombre === archivo) ??
+    conTexto.find((a) => normalizarNombre(a.nombre) === buscado) ??
+    porPrioridad(conTexto.filter((a) => normalizarNombre(a.categoria) === buscado))[0] ??
+    porPrioridad(
+      conTexto.filter((a) => {
+        const nombre = normalizarNombre(a.nombre);
+        return buscado.length >= 4 && (nombre.includes(buscado) || buscado.includes(nombre));
+      }),
+    )[0];
+  if (!elegido?.texto) return null;
+
+  const texto = dividirEnParrafos(elegido.texto)[numero - 1];
+  return texto ? { archivo: elegido.nombre, texto } : null;
 }
 
 const REGLAS = `Sos el asistente de Luxis que responde preguntas sobre UNA licitación pública de Uruguay (portal ARCE) a una barraca de materiales de construcción.
 Reglas:
 - Respondés solo con información del pliego y los datos de la licitación que tenés abajo. Nunca uses conocimiento externo sobre esta licitación.
-- Cada afirmación lleva cita con el formato exacto [nombre del archivo, pN] (ej. [Pliego particular.pdf, p12]). Para datos del portal citá [Datos ARCE]. No inventes números de párrafo.
+- Cada afirmación lleva una cita con el formato exacto [nombre del archivo, pN]. El nombre tiene que ser IDÉNTICO al que aparece entre comillas en el encabezado === ARCHIVO: "…" === (no uses el tipo de documento ni lo abrevies) y pN es UN solo párrafo. Si te apoyás en varios párrafos, poné varias citas seguidas: [Pliego de Condiciones Particulares.pdf, p12] [Pliego de Condiciones Particulares.pdf, p13]. Nunca uses rangos ni agregues texto dentro de los corchetes. Para datos del portal citá [Datos ARCE]. No inventes números de párrafo.
 - Si la respuesta no está, decí claramente "No está en el pliego" y sugerí a quién consultar (el contacto de la licitación si existe) y hasta cuándo se pueden hacer consultas.
 - Respondé en español rioplatense, conciso. Usá viñetas ("- ") cuando enumeres requisitos o documentos.
 - Nunca inventes fechas, montos, cantidades ni requisitos. Si un dato es ambiguo, decilo.

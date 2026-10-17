@@ -7,18 +7,31 @@ import { Spinner } from '@/components/ui/spinner';
 export interface Cita {
   archivo: string;
   parrafo: number | null; // null = datos del portal ARCE
+  /** Cómo mostrarla: "p12" o "p7–10" si el modelo citó un rango. */
+  etiqueta?: string;
 }
 
 const GRUPO_ENTRE_CORCHETES = /\[([^[\]]+)\]/g;
+const REFERENCIA_PARRAFO = /\bp\.?\s*(\d+)(?:\s*[-–]\s*p?\.?\s*(\d+))?/gi;
 
-/** Interpreta "[archivo, p12]", "[a.pdf, p3; b.pdf, p5]" o "[Datos ARCE]". Devuelve null si no es una cita. */
+/**
+ * Interpreta "[archivo, p12]", "[a.pdf, p3; b.pdf, p5]", "[a.pdf, p7-10]", "[a.pdf, p12, p13]",
+ * "[a.pdf, p8 / sección 10.3]" o "[Datos ARCE]". Devuelve null si no es una cita.
+ */
 function parsearCitas(contenido: string): Cita[] | null {
   if (/^datos arce$/i.test(contenido.trim())) return [{ archivo: 'Datos ARCE', parrafo: null }];
   const citas: Cita[] = [];
   for (const parte of contenido.split(';')) {
-    const m = /^\s*(.+?),\s*p\.?\s*(\d+)\s*$/i.exec(parte);
-    if (!m) return null;
-    citas.push({ archivo: m[1].trim(), parrafo: Number(m[2]) });
+    const m = /^\s*(.+?),\s*(p\.?\s*\d+.*)$/i.exec(parte);
+    if (!m) {
+      if (/^\s*datos arce\s*$/i.test(parte)) continue;
+      return null;
+    }
+    const archivo = m[1].trim();
+    for (const ref of m[2].matchAll(REFERENCIA_PARRAFO)) {
+      const desde = Number(ref[1]);
+      citas.push({ archivo, parrafo: desde, etiqueta: ref[2] ? `p${desde}–${ref[2]}` : `p${desde}` });
+    }
   }
   return citas.length ? citas : null;
 }
@@ -50,7 +63,7 @@ function TextoEnLinea({ texto }: { texto: string }) {
           key={`c${m.index}-${clave(c)}`}
           className="mx-0.5 inline-flex items-center rounded-sm border bg-muted px-1 align-baseline font-mono text-[0.7rem] text-muted-foreground"
         >
-          {c.parrafo ? `${c.archivo} · p${c.parrafo}` : c.archivo}
+          {c.parrafo ? `${c.archivo} · ${c.etiqueta ?? `p${c.parrafo}`}` : c.archivo}
         </span>,
       );
     });
@@ -132,6 +145,7 @@ export function RespuestaConCitas({ texto, idCompra }: { texto: string; idCompra
 function FuentePlegable({ cita, idCompra }: { cita: Cita; idCompra: string }) {
   const [estado, setEstado] = useState<'cerrado' | 'cargando' | 'listo' | 'error'>('cerrado');
   const [texto, setTexto] = useState<string | null>(null);
+  const [archivoReal, setArchivoReal] = useState<string | null>(null);
 
   const cargar = async () => {
     if (estado === 'listo' || estado === 'cargando') return;
@@ -139,8 +153,9 @@ function FuentePlegable({ cita, idCompra }: { cita: Cita; idCompra: string }) {
     try {
       const params = new URLSearchParams({ idCompra, archivo: cita.archivo, p: String(cita.parrafo) });
       const respuesta = await fetch(`/api/chat/pliego?${params}`);
-      const cuerpo = (await respuesta.json()) as { texto?: string | null };
+      const cuerpo = (await respuesta.json()) as { texto?: string | null; archivo?: string | null };
       setTexto(cuerpo.texto ?? null);
+      setArchivoReal(cuerpo.archivo ?? null);
       setEstado(respuesta.ok ? 'listo' : 'error');
     } catch {
       setEstado('error');
@@ -152,13 +167,16 @@ function FuentePlegable({ cita, idCompra }: { cita: Cita; idCompra: string }) {
       <summary className="flex cursor-pointer list-none items-center gap-1.5 px-2 py-1 font-mono select-none">
         <FileText className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
         <span className="truncate">{cita.archivo}</span>
-        <span className="text-muted-foreground">· p{cita.parrafo}</span>
+        <span className="text-muted-foreground">· {cita.etiqueta ?? `p${cita.parrafo}`}</span>
       </summary>
       <div className="border-t px-2 py-1.5 text-xs leading-relaxed text-muted-foreground">
         {estado === 'cargando' && (
           <span className="flex items-center gap-1.5">
             <Spinner className="size-3" /> Buscando el párrafo…
           </span>
+        )}
+        {estado === 'listo' && archivoReal && archivoReal !== cita.archivo && (
+          <span className="mb-1 block font-mono text-[0.7rem]">Archivo: {archivoReal}</span>
         )}
         {estado === 'listo' && (texto ?? 'No encontramos ese párrafo en el archivo (la cita puede estar mal numerada).')}
         {estado === 'error' && 'No pudimos cargar el párrafo.'}
