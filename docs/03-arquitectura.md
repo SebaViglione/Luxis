@@ -158,10 +158,10 @@ Hasta que existan, maxi implementa las **mismas firmas** en `src/lib/mocks/consu
 ### Acciones (seba) — server actions en `src/server/consultas/acciones.ts` + rutas
 | Qué | Firma / ruta |
 |---|---|
-| Cambiar estado de un match | `actualizarEstadoMatch(empresaId, idCompra, estado: EstadoUsuarioMatch)` |
+| Cambiar estado de un match | `actualizarEstadoMatch(empresaId, idCompra, estado)` (solo servidor, `server-only`): el `empresaId` sale de la sesión dentro de una server action propia de la UI, nunca del cliente |
 | Recalcular matches de la empresa actual | `POST /api/empresas/matching` → `{ evaluadas, relevantes }` (usa la sesión) |
 | Refresh de datos | `POST /api/ingesta/refresh?dias=2` (cron: `Authorization: Bearer CRON_SECRET`; botón: sesión del usuario) → `{ ok, vigentes, adjudicaciones, pliegosProcesados, matching }`. Trae datos, procesa pliegos nuevos y recalcula matches. **No** genera notificaciones: el botón "Actualizar" llama después a `generarNotificaciones(empresaId)` (maxi). |
-| Analizar una licitación ya ingestada | `POST /api/licitaciones/{idCompra}/analizar` → `AnalisisPliego` (idempotente; `?forzar=1` recalcula) |
+| Analizar una licitación ya ingestada | `POST /api/licitaciones/{idCompra}/analizar` (requiere sesión) → `AnalisisPliego` (idempotente; `?forzar=1` recalcula) |
 | Analizar por URL o id nuevo | `POST /api/licitaciones/analizar-url` body `{ url }` → **stream NDJSON**: una línea JSON por evento `{ etapa, estado: "en_curso"\|"ok", mensaje? }` con etapas `buscando → archivos → analizando → matching → precios`; última línea `{ listo: true, idCompra }` o `{ error }`. Leer con `res.body.getReader()` + `TextDecoder`, partir por `\n`. Tarda 20–90 s. |
 | Precio de un ítem | `GET /api/licitaciones/{idCompra}/precio` → `PrecioHistorico[]` (se calcula en matching; esta ruta solo lee/recalcula) |
 
@@ -174,7 +174,7 @@ Hasta que existan, maxi implementa las **mismas firmas** en `src/lib/mocks/consu
 - `guardarPerfil(empresaId, perfil: PerfilEmpresa, { completo: boolean })`: upsert en `empresas`, reemplaza `empresa_productos` y `empresa_documentos`, actualiza `perfil_actualizado_en`. Si `completo`, dispara `POST /api/empresas/matching` (fire-and-forget) y redirige al dashboard.
 
 ### Notificaciones (maxi) — `src/server/notificaciones/*`
-- `generarNotificaciones(empresaId): Promise<number>` (idempotente por `clave_dedupe`), `contarNoLeidas(empresaId)`, `listarNotificaciones(empresaId, { soloNoLeidas?, limite? })`, `marcarLeida(id)`, `marcarTodasLeidas(empresaId)`.
+- `generarNotificaciones(empresaId): Promise<number>` (idempotente por `clave_dedupe`), `contarNoLeidas(empresaId)`, `listarNotificaciones(empresaId, { soloNoLeidas?, limite? })`, `marcarLeida(empresaId, id)`, `marcarTodasLeidas(empresaId)`.
 
 ### Chat (rafa) — `POST /api/chat/pliego` body `{ idCompra, messages }` → stream UI del AI SDK. Componente `<ChatPliego idCompra />`.
 

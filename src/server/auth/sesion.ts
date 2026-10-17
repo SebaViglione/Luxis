@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { connection } from 'next/server';
 import { cache } from 'react';
 import { crearClienteServidor } from '@/lib/supabase/server';
 import { crearCuenta } from './cuenta';
@@ -13,6 +14,9 @@ export interface Sesion {
 
 /** Sesión actual (usuario + empresa) o null. Se memoiza por request. */
 export const obtenerSesion = cache(async (): Promise<Sesion | null> => {
+  // La sesión es por request: con Cache Components hay que marcar el render como dinámico antes de
+  // leerla (getClaims usa Date.now() y si no, Next intenta prerenderizar y corta con "Blocking Route").
+  await connection();
   const supabase = await crearClienteServidor();
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;

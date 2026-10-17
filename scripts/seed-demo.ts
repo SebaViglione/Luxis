@@ -39,6 +39,17 @@ async function main() {
   const { db, schema } = await import('@/db');
   const { eq } = await import('drizzle-orm');
   const { normalizarTexto } = await import('@/server/arce/normalizar');
+  // Catálogo real de la demo: demo-assets/lista-precios.xlsx (maxi). Si no está, se usa la lista de respaldo de arriba.
+  try {
+    const XLSX = await import('xlsx');
+    const { readFile } = await import('node:fs/promises');
+    const wb = XLSX.read(await readFile('demo-assets/lista-precios.xlsx'), { type: 'buffer' });
+    const filas = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[wb.SheetNames[0]], { defval: null });
+    const desdeXlsx = filas.filter((f) => f.Producto).map((f): [string, string, string, number] => [
+      String(f.Producto), String(f.Marca ?? 'General'), String(f.Unidad ?? 'unidad').toLowerCase(), Number(f['Precio UYU sin IVA'] ?? 0),
+    ]);
+    if (desdeXlsx.length) { PRODUCTOS.length = 0; PRODUCTOS.push(...desdeXlsx); console.log(`· Catálogo desde lista-precios.xlsx: ${desdeXlsx.length} productos`); }
+  } catch { console.log('· Sin demo-assets/lista-precios.xlsx: uso el catálogo de respaldo'); }
   const email = 'demo@luxis.test';
   let userId: string | null = null;
 
