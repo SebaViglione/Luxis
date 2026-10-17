@@ -1,7 +1,12 @@
 import {
   pgTable, text, uuid, integer, serial, numeric, timestamp, boolean, jsonb, date, char,
-  index, uniqueIndex,
+  index, uniqueIndex, vector, customType,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+
+const tsvector = customType<{ data: string }>({ dataType: () => 'tsvector' });
+/** Dimensión de los embeddings (Gemini gemini-embedding-001 con outputDimensionality 768). */
+export const DIM_EMBEDDING = 768;
 import type {
   PerfilEmpresa, ItemOfertable, GapDocumental, RequisitoDocumental, FechaClave, Condiciones, Competidor,
 } from '@/lib/types';
@@ -111,6 +116,7 @@ export const licitaciones = pgTable('licitaciones', {
 }, (t) => [
   index('licitaciones_es_rubro_idx').on(t.esRubro),
   index('licitaciones_tope_idx').on(t.fechaTopeOfertas),
+  index('licitaciones_rubro_tope_idx').on(t.fechaTopeOfertas).where(sql`es_rubro`),
 ]);
 
 export const licitacionItems = pgTable('licitacion_items', {
@@ -179,6 +185,7 @@ export const adjudicaciones = pgTable('adjudicaciones', {
   index('adjudicaciones_articulo_idx').on(t.idArticulo, t.idMoneda),
   index('adjudicaciones_prov_idx').on(t.nroDocProv),
   index('adjudicaciones_fecha_idx').on(t.fechaPubAdj),
+  index('adjudicaciones_desc_idx').on(t.descNormalizada),
 ]);
 
 export const oferentes = pgTable('oferentes', {
@@ -186,7 +193,7 @@ export const oferentes = pgTable('oferentes', {
   idCompra: text('id_compra').notNull(),
   nroDocProv: text('nro_doc_prov').notNull(),
   nombreComercial: text('nombre_comercial'),
-}, (t) => [uniqueIndex('oferentes_unq').on(t.idCompra, t.nroDocProv)]);
+}, (t) => [uniqueIndex('oferentes_unq').on(t.idCompra, t.nroDocProv), index('oferentes_prov_idx').on(t.nroDocProv, t.idCompra)]);
 
 export const ingestaCorridas = pgTable('ingesta_corridas', {
   id: serial('id').primaryKey(),
@@ -275,6 +282,7 @@ export const notificaciones = pgTable('notificaciones', {
 }, (t) => [
   uniqueIndex('notificaciones_dedupe_unq').on(t.empresaId, t.claveDedupe),
   index('notificaciones_empresa_leida_idx').on(t.empresaId, t.leida),
+  index('notificaciones_empresa_fecha_idx').on(t.empresaId, t.createdAt.desc()),
 ]);
 
 export const chatMensajes = pgTable('chat_mensajes', {
@@ -284,4 +292,30 @@ export const chatMensajes = pgTable('chat_mensajes', {
   rol: text('rol').notNull(), // user | assistant
   contenido: text('contenido').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [index('chat_mensajes_idx').on(t.empresaId, t.idCompra)]);
+}, (t) => [index('chat_mensajes_idx').on(t.empresaId, t.idCompra, t.createdAt)]);
+
+// ---------- Búsqueda vectorial ----------
+
+/** Pliegos partidos en párrafos (la numeración coincide con las citas [archivo, pN] del chat). */
+export const licitacionParrafos = pgTable('licitacion_parrafos', {
+  id: serial('id').primaryKey(),
+  archivoId: integer('archivo_id').notNull().references(() => licitacionArchivos.id, { onDelete: 'cascade' }),
+  idCompra: text('id_compra').notNull(),
+  archivoNombre: text('archivo_nombre').notNull(),
+  categoria: text('categoria').notNull(),
+  nroParrafo: integer('nro_parrafo').notNull(),
+  texto: text('texto').notNull(),
+  tsv: tsvector('tsv').generatedAlwaysAs(sql`to_tsvector('spanish', texto)`),
+  embedding: vector('embedding', { dimensions: DIM_EMBEDDING }),
+}, (t) => [
+  index('parrafos_compra_idx').on(t.idCompra),
+  uniqueIndex('parrafos_unq').on(t.archivoId, t.nroParrafo),
+  index('parrafos_tsv_idx').using('gin', t.tsv),
+  index('parrafos_embedding_idx').using('hnsw', t.embedding.op('vector_cosine_ops')),
+]);
+
+/** Embedding de cada descripción de artículo distinta (adjudicaciones + ítems) para comparar productos. */
+export const articulosVec = pgTable('articulos_vec', {
+  descNormalizada: text('desc_normalizada').primaryKey(),
+  embedding: vector('embedding', { dimensions: DIM_EMBEDDING }).notNull(),
+}, (t) => [index('articulos_vec_embedding_idx').using('hnsw', t.embedding.op('vector_cosine_ops'))]);

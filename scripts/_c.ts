@@ -1,0 +1,3 @@
+import { config } from 'dotenv'; config({ path: '.env.local', quiet: true });
+async function main(){const {db}=await import('@/db');const {sql}=await import('drizzle-orm');const [r]=await db.execute(sql`select (select count(distinct desc_normalizada) from adjudicaciones)::int desc_adj, (select count(distinct desc_normalizada) from licitacion_items)::int desc_items, (select count(*) from licitacion_archivos where relevante and texto is not null)::int arch_rel, (select coalesce(sum(caracteres),0) from licitacion_archivos where relevante)::bigint chars_rel, (select count(*) from empresa_productos)::int prods`);console.log(r);process.exit(0)}
+main();

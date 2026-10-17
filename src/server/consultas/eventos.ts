@@ -4,12 +4,16 @@ import type { EventoCalendario, FechaClave } from '@/lib/types';
 
 /** Eventos de calendario de las licitaciones con match no descartado (fechas de ARCE + fechas clave del pliego). */
 export async function listarEventos(empresaId: string, desde: Date, hasta: Date): Promise<EventoCalendario[]> {
+  const d = desde.toISOString(); const h = hasta.toISOString();
   const filas = await db.execute<{
     id_compra: string; objeto: string | null; tope: Date | null; aclar: Date | null; prorr: Date | null; entrega: Date | null; fechas: FechaClave[] | null;
   }>(sql`
     select l.id_compra, l.objeto, l.fecha_tope_ofertas as tope, l.fecha_sol_aclar as aclar, l.fecha_sol_prorr as prorr, l.fecha_tope_entrega as entrega, a.fechas_clave as fechas
     from matches m join licitaciones l on l.id_compra = m.id_compra left join analisis_licitacion a on a.id_compra = m.id_compra
-    where m.empresa_id = ${empresaId} and m.confianza >= 40 and m.estado_usuario <> 'descartada'`);
+    where m.empresa_id = ${empresaId} and m.confianza >= 40 and m.estado_usuario <> 'descartada'
+      and (l.fecha_tope_ofertas between ${d}::timestamptz and ${h}::timestamptz or l.fecha_sol_aclar between ${d}::timestamptz and ${h}::timestamptz
+           or l.fecha_sol_prorr between ${d}::timestamptz and ${h}::timestamptz or l.fecha_tope_entrega between ${d}::timestamptz and ${h}::timestamptz
+           or a.fechas_clave is not null)`);
   const out: EventoCalendario[] = [];
   const corto = (s: string | null) => (s ?? 'Licitación').replace(/\s+/g, ' ').slice(0, 70);
   const push = (id: string, tipo: EventoCalendario['tipo'], f: Date | string | null, titulo: string, descripcion: string | null, obligatoria: boolean) => {

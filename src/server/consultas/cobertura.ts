@@ -1,7 +1,18 @@
 import { sql } from 'drizzle-orm';
 import { db } from '@/db';
 
-export async function coberturaDatos() {
+type Cobertura = { licitacionesRubro: number; adjudicaciones: number; articulosConHistorial: number; pliegosLeidos: number; ultimaIngesta: string | null };
+let cache: { valor: Cobertura; vence: number } | null = null;
+
+/** Números de cobertura (consultas pesadas): se cachean 5 minutos en memoria. */
+export async function coberturaDatos(): Promise<Cobertura> {
+  if (cache && cache.vence > Date.now()) return cache.valor;
+  const valor = await calcularCobertura();
+  cache = { valor, vence: Date.now() + 5 * 60_000 };
+  return valor;
+}
+
+async function calcularCobertura(): Promise<Cobertura> {
   const [r] = await db.execute<{
     licitaciones_rubro: string; adjudicaciones: string; articulos: string; pliegos: string; ultima: string | null;
   }>(sql`
