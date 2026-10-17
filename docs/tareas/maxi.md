@@ -150,7 +150,7 @@ src/components/layout/campanita.tsx       # badge con no leídas, popover con la
 src/app/(app)/notificaciones/page.tsx     # lista completa con filtros por tipo, marcar todas leídas
 src/app/(app)/calendario/page.tsx         # vista mensual (grilla simple propia con date-fns, sin librería de calendario) + lista lateral "próximos 14 días"
 src/components/calendario/{grilla-mes,lista-eventos}.tsx
-src/components/licitaciones/analizar-url.tsx   # input "Pegá una URL o ID de ARCE" → POST /api/licitaciones/analizar-url → redirige al detalle; muestra progreso por etapas (descargando pliego → extrayendo → analizando → calculando precios)
+src/components/licitaciones/analizar-url.tsx   # input "Pegá una URL o ID de ARCE" → POST /api/licitaciones/analizar-url (stream NDJSON, ver docs/03 §5) → muestra cada etapa (Buscando en ARCE → Leyendo el pliego → Analizando con IA → Comparando con tus productos → Precios históricos) y al recibir { listo, idCompra } redirige al detalle
 src/lib/mocks/**                          # ELIMINAR al final de M2
 ```
 
