@@ -51,9 +51,17 @@ async function main() {
   const precision = tp + fp ? tp / (tp + fp) : null;
   const recall = tp + fn ? tp / (tp + fn) : null;
   const f1 = precision && recall ? (2 * precision * recall) / (precision + recall) : null;
-  const resultado = { fecha: new Date().toISOString(), umbral: UMBRAL, casos: ok.length, tp, fp, fn, tn, precision, recall, f1, exactitud: ok.length ? (tp + tn) / ok.length : null, detalle: filas };
+  const metricas = (u: number) => {
+    const p = ok.filter((f) => (f.confianza ?? 0) >= u);
+    const tp_ = p.filter((f) => f.relevante).length, fp_ = p.length - tp_;
+    const fn_ = ok.filter((f) => (f.confianza ?? 0) < u && f.relevante).length;
+    const pr = tp_ + fp_ ? tp_ / (tp_ + fp_) : null, rc = tp_ + fn_ ? tp_ / (tp_ + fn_) : null;
+    return { umbral: u, precision: pr, recall: rc, f1: pr && rc ? (2 * pr * rc) / (pr + rc) : null };
+  };
+  const resultado = { fecha: new Date().toISOString(), umbral: UMBRAL, casos: ok.length, errores: filas.length - ok.length, tp, fp, fn, tn, precision, recall, f1, exactitud: ok.length ? (tp + tn) / ok.length : null, porUmbral: [metricas(40), metricas(60)], detalle: filas };
   await writeFile('demo-assets/eval-resultado.json', JSON.stringify(resultado, null, 2));
-  console.log(`\nPrecisión ${precision?.toFixed(2)} · Recall ${recall?.toFixed(2)} · F1 ${f1?.toFixed(2)} · ${ok.length} casos → demo-assets/eval-resultado.json`);
+  for (const m of resultado.porUmbral) console.log(`Umbral ${m.umbral}: precisión ${m.precision?.toFixed(2)} · recall ${m.recall?.toFixed(2)} · F1 ${m.f1?.toFixed(2)}`);
+  console.log(`${ok.length} casos evaluados, ${resultado.errores} con error → demo-assets/eval-resultado.json`);
   process.exit(0);
 }
 main().catch((e) => { console.error('✗', (e as Error).message); process.exit(1); });
