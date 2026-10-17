@@ -1,12 +1,15 @@
 // IA del perfil de empresa: extracción desde documentos/web/transcript y entrevista por chat.
-import { generateText, Output, tool } from 'ai';
+import { tool } from 'ai';
 import { z } from 'zod';
+import { generarObjeto } from '@/lib/ia/estructurado';
 import { modeloFuerte } from '@/lib/ia/modelos';
 import type { DocumentoEmpresa, PerfilEmpresa, ProductoEmpresa } from '@/lib/types';
 import { DEPARTAMENTOS_UY, MAX_PREGUNTAS_ENTREVISTA, UNIDADES } from '@/server/onboarding/constantes';
 import { normalizarZonas } from '@/server/onboarding/perfil';
 
 const MAX_CARACTERES_FUENTES = 150_000;
+// Una lista de precios de 40+ productos con keywords no entra en el default de 4000 tokens.
+const MAX_TOKENS_PERFIL = 16_000;
 
 export interface FuenteTexto {
   /** Nombre del archivo, URL o "Entrevista por voz". */
@@ -79,18 +82,19 @@ export async function extraerPerfil(
   perfilActual: PerfilEmpresa,
   fuenteProductos: ProductoEmpresa['fuente'] = 'documento',
 ): Promise<{ perfil: Partial<PerfilEmpresa>; faltantes: string[] }> {
-  const { output } = await generateText({
-    model: modeloFuerte,
-    temperature: 0,
-    instructions: PROMPT_EXTRAER,
+  const { objeto, tokensEntrada, tokensSalida } = await generarObjeto({
+    modelo: modeloFuerte,
+    schema: perfilIA,
+    system: PROMPT_EXTRAER,
     prompt: [
       `Datos que ya cargó el usuario (no los contradigas salvo evidencia clara):\n${JSON.stringify(resumenParaContexto(perfilActual))}`,
       `FUENTES:\n${unirFuentes(fuentes)}`,
     ].join('\n\n'),
-    output: Output.object({ schema: perfilIA }),
+    maxOutputTokens: MAX_TOKENS_PERFIL,
   });
+  console.info(`[perfil] ${objeto.productos.length} productos · tokens entrada=${tokensEntrada} salida=${tokensSalida}`);
 
-  return { perfil: desdeIA(output, fuenteProductos), faltantes: output.camposFaltantes };
+  return { perfil: desdeIA(objeto, fuenteProductos), faltantes: objeto.camposFaltantes };
 }
 
 function unirFuentes(fuentes: FuenteTexto[]): string {

@@ -69,6 +69,9 @@ export interface CompraNormalizada {
   urlDetalle: string;
   aperturaElectronica: boolean;
   fuente: 'xml' | 'scrape';
+  /** Solo scraper: nombres tal cual el portal (el XML trae códigos de inciso/UE). */
+  organismo?: string | null;
+  unidadEjecutora?: string | null;
   fechaPubAdj: Date | null;
   montoAdj: number | null;
   items: ItemNormalizado[];
