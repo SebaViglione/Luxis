@@ -137,6 +137,9 @@ export function calcularFaltantes(perfil: PerfilEmpresa, extra: string[] = []): 
   const vistos = new Set(faltantes.map(normalizarTexto));
   for (const campo of extra) {
     const clave = normalizarTexto(campo);
+    // El modelo a veces devuelve nombres de campo ("razonSocial", "rut"): solo aceptamos frases, y no
+    // listamos datos de contacto/identidad, que no hacen al matching ni se preguntan en la entrevista.
+    if (!/\s/.test(campo.trim()) || CAMPOS_DE_IDENTIDAD.test(clave)) continue;
     if (clave && !vistos.has(clave) && !esCampoCubierto(campo, perfil)) {
       vistos.add(clave);
       faltantes.push(campo);
@@ -144,6 +147,8 @@ export function calcularFaltantes(perfil: PerfilEmpresa, extra: string[] = []): 
   }
   return faltantes;
 }
+
+const CAMPOS_DE_IDENTIDAD = /RAZON ?SOCIAL|\bRUT\b|LOCALIDAD|\bWEB\b|PAGINA|TELEFONO|EMAIL|CORREO|NOMBRE|DIRECCION/;
 
 // Los campos_faltantes que devuelve el modelo pueden repetir cosas que ya cubrimos arriba.
 function esCampoCubierto(campo: string, perfil: PerfilEmpresa) {

@@ -52,6 +52,9 @@ export async function POST(request: Request) {
   const resultado = streamText({
     model: modeloFuerte,
     temperature: 0,
+    // DeepSeek V4 razona por defecto: tarda hasta 1 min en escribir y además ignora temperature.
+    // Sin razonamiento el primer texto llega en ~5 s y las citas siguen igual de precisas.
+    providerOptions: { deepseek: { thinking: { type: 'disabled' } } },
     instructions: instruccionesChatPliego(contexto),
     messages: await convertToModelMessages(messages.slice(-MAX_MENSAJES_HISTORIAL)),
     onFinish: async ({ text, usage }) => {

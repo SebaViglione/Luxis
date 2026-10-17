@@ -193,6 +193,7 @@ Reglas:
 - Antes de la siguiente pregunta, confirmá en una frase corta lo que te dijo.
 - Si la persona no sabe o no quiere responder, seguí con lo próximo sin insistir.
 - Llevás ${preguntasHechas} de ${MAX_PREGUNTAS_ENTREVISTA} preguntas; te quedan ${restantes}.
+- Cada turno tuyo termina en UNA de dos cosas: una pregunta, o la llamada a guardar_perfil. Nunca cierres un turno solo confirmando datos: si con la última respuesta ya no falta nada importante, llamá a guardar_perfil en ese mismo turno.
 - Cuando tengas lo esencial, cuando no te queden preguntas, o si la persona dice "listo", "terminamos" o similar: llamá a la herramienta guardar_perfil con TODOS los datos nuevos que aprendiste en esta conversación (no repitas lo que ya sabías, salvo que lo haya corregido). Después despedite con una frase: "Listo, con esto ya puedo buscarte licitaciones."${
     restantes === 0
       ? '\n- YA NO TE QUEDAN PREGUNTAS: no preguntes nada más. Llamá ahora a guardar_perfil con lo que sabés y despedite.'

@@ -37,8 +37,12 @@ export async function POST(req: NextRequest) {
         await etapa('buscando', 'Buscando el llamado en ARCE…', async () => {
           const c = await scrapeDetalle(idCompra);
           if (!c) throw new Error('ARCE no tiene un llamado con ese id.');
-          const [existe] = await db.select({ id: schema.licitaciones.idCompra, items: schema.licitaciones.fuente }).from(schema.licitaciones).where(eq(schema.licitaciones.idCompra, idCompra));
-          if (!existe) await upsertLlamados([c]);
+          const [existe] = await db.select({ fuente: schema.licitaciones.fuente, objeto: schema.licitaciones.objeto }).from(schema.licitaciones).where(eq(schema.licitaciones.idCompra, idCompra));
+          // Nueva, o cargada antes por scraping con datos incompletos: guardar lo scrapeado ahora.
+          if (!existe || (existe.fuente === 'scrape' && !existe.objeto)) await upsertLlamados([c]);
+          if ((c.raw as { esAdjudicacion?: boolean }).esAdjudicacion) {
+            enviar({ etapa: 'buscando', estado: 'aviso', mensaje: 'Esta publicación es una adjudicación: completamos los datos desde la compra original (ya cerrada).' });
+          }
         });
         await etapa('archivos', 'Descargando y leyendo el pliego…', () => procesarArchivos(idCompra));
         await etapa('analizando', 'Analizando el pliego con IA…', () => analizarLicitacion(idCompra, { forzar: true }));

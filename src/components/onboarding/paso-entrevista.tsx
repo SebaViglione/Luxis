@@ -54,20 +54,22 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
 
   const { messages, sendMessage, status, error, regenerate } = useChat({
     transport: new DefaultChatTransport({ api: '/api/onboarding/entrevista' }),
-    onFinish: ({ messages: todos, isAbort, isError, isDisconnect }) => {
+    onFinish: ({ message, messages: todos, isAbort, isError, isDisconnect }) => {
       if (isAbort || isError || isDisconnect || buscarPerfilGuardado(todos)) return;
       const turnos = todos.filter((m) => m.role === 'assistant').length;
-      if (turnos > MAX_PREGUNTAS_ENTREVISTA || pidioTerminar.current) void cerrarConTranscript(todos);
+      // Si el modelo confirmó datos sin preguntar nada más ni guardar, la entrevista terminó de hecho.
+      const sinPregunta = turnos > 1 && !/[?]|contame|decime|indicame|pasame/i.test(textoDe(message));
+      if (turnos > MAX_PREGUNTAS_ENTREVISTA || pidioTerminar.current || sinPregunta) void cerrarConTranscript(todos);
     },
   });
   const [texto, setTexto] = useState('');
-  const iniciado = useRef(false);
   const finalRef = useRef<HTMLDivElement>(null);
 
+  // useChat corta la petición en curso al desmontarse; en desarrollo (StrictMode) el montaje se
+  // simula dos veces, así que diferimos el primer mensaje y lo cancelamos en la limpieza.
   useEffect(() => {
-    if (iniciado.current) return;
-    iniciado.current = true;
-    void sendMessage({ text: MENSAJE_INICIO });
+    const inicio = setTimeout(() => void sendMessage({ text: MENSAJE_INICIO }), 0);
+    return () => clearTimeout(inicio);
   }, [sendMessage]);
 
   useEffect(() => {

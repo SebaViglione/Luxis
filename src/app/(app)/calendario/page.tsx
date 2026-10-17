@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { connection } from 'next/server';
 import { addDays, addMonths, format, parse, subMonths } from 'date-fns';
@@ -11,6 +12,8 @@ import { buttonVariants } from '@/components/ui/button';
 import { Cargando } from '@/components/ui/cargando';
 import { requerirSesion } from '@/server/auth/sesion';
 import { listarEventos } from '@/server/consultas/eventos';
+
+export const metadata: Metadata = { title: 'Calendario · Luxis' };
 
 // Uruguay no tiene horario de verano: medianoche de Montevideo = 03:00 UTC.
 const inicioDelDia = (dia: string) => new Date(`${dia}T00:00:00-03:00`);
