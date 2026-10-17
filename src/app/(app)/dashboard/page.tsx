@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { connection } from 'next/server';
 import { sql } from 'drizzle-orm';
@@ -15,6 +16,8 @@ import { BuscandoLicitaciones } from '@/components/licitaciones/buscando-licitac
 import { db, schema } from '@/db';
 import { requerirSesion } from '@/server/auth/sesion';
 import { listarMatches, resumenDashboard } from '@/server/consultas/licitaciones';
+
+export const metadata: Metadata = { title: 'Licitaciones · Luxis' };
 
 // Después del onboarding el matching corre en segundo plano 1–2 min (docs/04, pendiente 1).
 async function perfilRecienActualizado(empresaId: string): Promise<boolean> {

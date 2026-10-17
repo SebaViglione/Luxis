@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { connection } from 'next/server';
 import { Bell } from 'lucide-react';
@@ -11,6 +12,8 @@ import type { Notificacion } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { requerirSesion } from '@/server/auth/sesion';
 import { contarNoLeidas, listarNotificaciones, TIPOS_NOTIFICACION } from '@/server/notificaciones/consultas';
+
+export const metadata: Metadata = { title: 'Notificaciones · Luxis' };
 
 async function Lista({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = await searchParams;

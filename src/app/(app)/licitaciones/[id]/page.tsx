@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
@@ -20,6 +21,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { requerirSesion } from '@/server/auth/sesion';
 import { obtenerDetalle } from '@/server/consultas/licitaciones';
+
+export const metadata: Metadata = { title: 'Licitación · Luxis' };
 
 function decodificar(id: string) {
   try { return decodeURIComponent(id); } catch { return id; }
