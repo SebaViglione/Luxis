@@ -1,5 +1,6 @@
 import { convertToModelMessages, isStepCount, streamText, type UIMessage } from 'ai';
 import { modeloFuerte } from '@/lib/ia/modelos';
+import { IANoConfigurada, verificarIA } from '@/lib/ia/estructurado';
 import { obtenerSesion } from '@/server/auth/sesion';
 import { herramientasEntrevista, promptEntrevista } from '@/server/ia/perfil';
 import { MAX_PREGUNTAS_ENTREVISTA } from '@/server/onboarding/constantes';
@@ -11,6 +12,13 @@ export const maxDuration = 60;
 export async function POST(request: Request) {
   const sesion = await obtenerSesion();
   if (!sesion) return Response.json({ error: 'Tu sesión venció. Ingresá de nuevo.' }, { status: 401 });
+
+  try {
+    verificarIA();
+  } catch (error) {
+    if (error instanceof IANoConfigurada) return Response.json({ error: error.message }, { status: 503 });
+    throw error;
+  }
 
   let messages: UIMessage[];
   try {
