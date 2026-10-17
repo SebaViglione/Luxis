@@ -10,8 +10,8 @@ const globalForDb = globalThis as unknown as { __luxisDb?: DB };
 function crear(): DB {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('Falta DATABASE_URL en .env.local');
-  // idle_timeout largo: evita re-abrir la conexión TLS seguido entre pedidos.
-  const conn = postgres(url, { prepare: false, max: 10, idle_timeout: 120 });
+  // idle_timeout menor al del pooler de Supabase (si no, reusa conexiones ya cortadas: ECONNRESET).
+  const conn = postgres(url, { prepare: false, max: 10, idle_timeout: 30, max_lifetime: 60 * 10 });
   return drizzle(conn, { schema });
 }
 
