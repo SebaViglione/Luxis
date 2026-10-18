@@ -49,7 +49,7 @@ const FUNCIONES: Funcion[] = [
     Icono: CalendarDays,
     titulo: 'Fechas que no se te pasan',
     texto: 'Consultas, visitas y aperturas de todo lo que guardaste, ordenadas en un calendario.',
-    detalle: ['Fechas extraídas del pliego', 'Los próximos 14 días de un vistazo', 'Marcadas por tipo de evento'],
+    detalle: ['Fechas extraídas del pliego', 'Todo el mes de un vistazo', 'Marcadas por tipo de evento'],
     Demo: DemoCalendario,
   },
   {
