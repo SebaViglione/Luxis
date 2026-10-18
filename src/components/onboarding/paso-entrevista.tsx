@@ -13,8 +13,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { LogoMarca } from '@/components/marca/logo';
 import { cn } from '@/lib/utils';
 import type { PerfilEmpresa } from '@/lib/types';
-import { MAX_PREGUNTAS_ENTREVISTA } from '@/server/onboarding/constantes';
-import type { ResultadoGuardarPerfil } from '@/server/onboarding/tipos';
+import { MAX_PREGUNTAS_ENTREVISTA, NOMBRE_TEMA } from '@/server/onboarding/constantes';
+import { agendaEntrevista, HERRAMIENTA_ANOTAR, ultimaAnotacion } from '@/server/onboarding/entrevista';
+import type { ResultadoAnotar } from '@/server/onboarding/tipos';
 import { extraerDesdeFuentes } from './leer-eventos';
 
 // Primer mensaje que dispara la entrevista; no se muestra en la conversación.
@@ -35,8 +36,8 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
     alListo.current = onListo;
   });
 
-  // Respaldo: si se pasó del máximo de preguntas o pidió terminar y el modelo no llamó a
-  // guardar_perfil, armamos el perfil desde la transcripción (mismo camino que la entrevista por voz).
+  // Respaldo: si se pasó del máximo de preguntas o pidió terminar y el modelo no cerró con
+  // anotar_respuesta, armamos el perfil desde la transcripción (mismo camino que la entrevista por voz).
   const pidioTerminar = useRef(false);
   const [cierre, setCierre] = useState<{ estado: 'no' | 'procesando' | 'error'; mensaje?: string }>({ estado: 'no' });
 
@@ -90,6 +91,13 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
 
   const ocupado = status === 'submitted' || status === 'streaming';
   const preguntas = messages.filter((m) => m.role === 'assistant').length;
+  // Qué falta al entrar: se lo decimos a la persona para que entienda por qué preguntamos solo eso.
+  const temasIniciales = agendaEntrevista(perfil);
+  const temasPendientes = temasIniciales.map((p) => NOMBRE_TEMA[p.tema]);
+  // Progreso por temas: lo que la última anotación dejó pendiente.
+  const ultima = ultimaAnotacion(messages);
+  const totalTemas = temasIniciales.length;
+  const temasHechos = guardado ? totalTemas : Math.max(totalTemas - (ultima ? ultima.pendientes.length : totalTemas), 0);
   const visibles = messages.filter((m, i) => !(i === 0 && m.role === 'user' && textoDe(m) === MENSAJE_INICIO));
 
   const enviar = (contenido: string) => {
@@ -109,25 +117,28 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
           “no sé” y seguimos.
         </CardDescription>
         <CardAction className="flex items-center gap-2">{acciones}</CardAction>
-        {/* Progreso de la entrevista */}
-        <div className="col-span-full mt-3 flex items-center gap-3">
-          <span className="h-1 flex-1 overflow-hidden rounded-full bg-border">
-            <span
-              className="block h-full rounded-full bg-primary transition-[width] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
-              style={{ width: `${(Math.min(preguntas, MAX_PREGUNTAS_ENTREVISTA) / MAX_PREGUNTAS_ENTREVISTA) * 100}%` }}
-            />
-          </span>
-          <Badge variant="outline" className="font-mono tabular-nums">
-            {Math.min(preguntas, MAX_PREGUNTAS_ENTREVISTA)}/{MAX_PREGUNTAS_ENTREVISTA}
-          </Badge>
-        </div>
+        {/* Progreso de la entrevista: temas resueltos sobre los que faltaban al entrar */}
+        {totalTemas > 0 && (
+          <div className="col-span-full mt-3 flex items-center gap-3">
+            <span className="h-1 flex-1 overflow-hidden rounded-full bg-border">
+              <span
+                className="block h-full rounded-full bg-primary transition-[width] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                style={{ width: `${(temasHechos / totalTemas) * 100}%` }}
+              />
+            </span>
+            <Badge variant="outline" className="font-mono tabular-nums">
+              {temasHechos}/{totalTemas} temas
+            </Badge>
+          </div>
+        )}
       </CardHeader>
 
       <CardContent>
         <div className="flex h-[min(30rem,60svh)] flex-col gap-4 overflow-y-auto rounded-xl border bg-muted/30 p-4" aria-live="polite">
           {perfil.productos.length > 0 && (
             <p className="text-center text-xs text-muted-foreground">
-              Ya tenemos {perfil.productos.length} productos de tus documentos. Solo preguntamos lo que falta.
+              Ya tenemos {perfil.productos.length} productos de tus documentos.{' '}
+              {temasPendientes.length > 0 ? `Te preguntamos solo lo que falta: ${enumerar(temasPendientes)}.` : 'No falta nada por preguntar.'}
             </p>
           )}
           {visibles.map((mensaje) => (
@@ -238,8 +249,10 @@ function Mensaje({ mensaje }: { mensaje: UIMessage }) {
             </p>
           );
         }
-        if (isToolUIPart(parte) && getToolName(parte) === 'guardar_perfil') {
+        if (isToolUIPart(parte) && getToolName(parte) === HERRAMIENTA_ANOTAR) {
           if (parte.state === 'output-available') {
+            // Cada respuesta se anota sin ruido; solo el cierre se muestra.
+            if (!(parte.output as ResultadoAnotar).terminada) return null;
             return (
               <p key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Check className="size-4" aria-hidden /> Perfil guardado
@@ -249,13 +262,13 @@ function Mensaje({ mensaje }: { mensaje: UIMessage }) {
           if (parte.state === 'output-error') {
             return (
               <p key={i} className="text-sm text-destructive">
-                No pudimos guardar el perfil: {parte.errorText}
+                No pudimos anotar tu respuesta: {parte.errorText}
               </p>
             );
           }
           return (
             <p key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Spinner /> Guardando tu perfil…
+              <Spinner /> Anotando lo que dijiste…
             </p>
           );
         }
@@ -285,13 +298,12 @@ function textoDe(mensaje: UIMessage) {
   return mensaje.parts.map((p) => (p.type === 'text' ? p.text : '')).join('');
 }
 
-function buscarPerfilGuardado(mensajes: UIMessage[]): ResultadoGuardarPerfil | null {
-  for (const mensaje of mensajes) {
-    for (const parte of mensaje.parts) {
-      if (isToolUIPart(parte) && getToolName(parte) === 'guardar_perfil' && parte.state === 'output-available') {
-        return parte.output as ResultadoGuardarPerfil;
-      }
-    }
-  }
-  return null;
+/** Perfil final: la última anotación dijo que la entrevista terminó (agenda vacía, máximo de preguntas o pedido de la persona). */
+function buscarPerfilGuardado(mensajes: UIMessage[]): { perfil: PerfilEmpresa; extraido: Partial<PerfilEmpresa> } | null {
+  const ultima = ultimaAnotacion(mensajes);
+  return ultima?.terminada && ultima.perfil ? { perfil: ultima.perfil, extraido: ultima.extraido } : null;
+}
+
+function enumerar(items: string[]) {
+  return items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} y ${items.at(-1)}`;
 }
