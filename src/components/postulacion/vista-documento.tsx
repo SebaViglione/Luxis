@@ -34,33 +34,33 @@ function BloqueVista({ bloque: b }: { bloque: Bloque }) {
       );
     case 'campos':
       return (
-        <dl className="grid grid-cols-[minmax(0,14rem)_1fr] border-t border-l">
+        <dl className="divide-y overflow-hidden rounded-md border">
           {b.filas.map(([etiqueta, valor]) => (
-            <div key={etiqueta} className="contents">
-              <dt className="border-r border-b bg-muted/50 px-2 py-1.5 font-medium">{etiqueta}</dt>
-              <dd className="border-r border-b px-2 py-1.5">{valor}</dd>
+            <div key={etiqueta} className="grid grid-cols-[minmax(0,13rem)_1fr]">
+              <dt className="bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">{etiqueta}</dt>
+              <dd className="px-3 py-2">{valor}</dd>
             </div>
           ))}
         </dl>
       );
     case 'tabla':
       return (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-xs">
-            <thead>
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-xs">
+            <thead className="bg-muted/40">
               <tr>
                 {b.columnas.map((c, i) => (
-                  <th key={c} className={cn('border bg-muted/50 px-2 py-1.5 font-medium', b.alineacion?.[i] === 'der' ? 'text-right' : 'text-left')}>
+                  <th key={c} className={cn('border-b px-3 py-2 font-mono text-[11px] font-medium tracking-wide whitespace-nowrap text-muted-foreground uppercase', b.alineacion?.[i] === 'der' ? 'text-right' : 'text-left')}>
                     {c}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y">
               {b.filas.map((fila, i) => (
                 <tr key={i}>
                   {fila.map((v, j) => (
-                    <td key={j} className={cn('border px-2 py-1.5 align-top', b.alineacion?.[j] === 'der' && 'text-right font-mono tabular-nums')}>
+                    <td key={j} className={cn('px-3 py-2 align-top', b.alineacion?.[j] === 'der' ? 'text-right font-mono whitespace-nowrap tabular-nums' : 'min-w-32')}>
                       {v}
                     </td>
                   ))}

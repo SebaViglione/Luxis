@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Moneda } from '@/lib/types';
 import type { PuntoPrecio } from '@/server/precios/historial';
 import { cn } from '@/lib/utils';
-import { cantidad, fecha, monto } from './formato';
+import { cantidad, fecha, monto, montoCorto, nombrePropio } from './formato';
 
 const ALTO = 190;
 const M = { arriba: 16, derecha: 16, abajo: 28, izquierda: 80 };
@@ -93,7 +93,7 @@ export function GraficoPrecios({ puntos, n, precioSugerido, moneda, unidad, desc
             {ticksY.map((v) => (
               <g key={v}>
                 <line x1={M.izquierda} x2={ancho - M.derecha} y1={y(v)} y2={y(v)} className="stroke-border" strokeWidth={1} />
-                <text x={M.izquierda - 8} y={y(v)} dy="0.32em" textAnchor="end" className="fill-muted-foreground font-mono text-[11px]">{monto(v, moneda)}</text>
+                <text x={M.izquierda - 8} y={y(v)} dy="0.32em" textAnchor="end" className="fill-muted-foreground font-mono text-[11px]">{montoCorto(v, moneda)}</text>
               </g>
             ))}
             {ticksX.map((t, i) => (
@@ -102,18 +102,19 @@ export function GraficoPrecios({ puntos, n, precioSugerido, moneda, unidad, desc
               </text>
             ))}
             {precioSugerido !== null && (
-              <g>
-                <line x1={M.izquierda} x2={ancho - M.derecha} y1={y(precioSugerido)} y2={y(precioSugerido)} className="stroke-foreground" strokeWidth={1} strokeDasharray="4 4" />
-                <text x={ancho - M.derecha} y={y(precioSugerido) - 6} textAnchor="end" className="fill-foreground stroke-card font-mono text-[11px]" strokeWidth={3} paintOrder="stroke">
-                  Sugerido {monto(precioSugerido, moneda)}
-                </text>
-              </g>
+              <line x1={M.izquierda} x2={ancho - M.derecha} y1={y(precioSugerido)} y2={y(precioSugerido)} className="stroke-foreground" strokeWidth={1} strokeDasharray="4 4" />
             )}
             <path d={trazo} fill="none" className="stroke-primary" strokeOpacity={0.45} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
             {punto && <line x1={x(punto.t)} x2={x(punto.t)} y1={M.arriba} y2={ALTO - M.abajo} className="stroke-foreground/30" strokeWidth={1} />}
             {datos.map((d, i) => (
               <circle key={`${d.idCompra}-${i}`} cx={x(d.t)} cy={y(d.precioUnit)} r={activo === i ? 6 : 4} className="fill-primary stroke-card" strokeWidth={2} />
             ))}
+            {/* El rótulo va último para que quede legible por encima de los puntos (halo del color de la tarjeta). */}
+            {precioSugerido !== null && (
+              <text x={ancho - M.derecha} y={y(precioSugerido) - 7} textAnchor="end" className="fill-foreground stroke-card font-mono text-[11px] font-medium" strokeWidth={4} strokeLinejoin="round" paintOrder="stroke">
+                Sugerido {monto(precioSugerido, moneda)}
+              </text>
+            )}
           </svg>
         )}
         {punto && (
@@ -121,7 +122,7 @@ export function GraficoPrecios({ puntos, n, precioSugerido, moneda, unidad, desc
             style={{ left: x(punto.t) + (aLaIzquierda ? -12 : 12), top: Math.min(Math.max(y(punto.precioUnit) - 40, 0), ALTO - 110) }}>
             <p className="font-mono text-muted-foreground">{fecha(punto.fecha)}</p>
             <p className="mt-0.5 font-mono text-sm font-semibold text-foreground">{monto(punto.precioUnit, moneda)} <span className="font-sans text-xs font-normal text-muted-foreground">por {unidad}</span></p>
-            <p className="mt-1 text-foreground">{punto.ganador ?? 'Ganador sin nombre'}</p>
+            <p className="mt-1 text-foreground">{punto.ganador ? nombrePropio(punto.ganador) : 'Ganador sin nombre'}</p>
             {punto.cantidad !== null && <p className="text-muted-foreground">Cantidad: <span className="font-mono">{cantidad(punto.cantidad)}</span> {punto.unidad?.toLowerCase() ?? ''}</p>}
             {punto.organismo && <p className="text-muted-foreground">{punto.organismo}</p>}
           </div>
@@ -134,17 +135,23 @@ export function GraficoPrecios({ puntos, n, precioSugerido, moneda, unidad, desc
           <div className="mt-2 max-h-64 overflow-auto rounded-md border bg-card">
             <table className="w-full text-left text-xs">
               <caption className="sr-only">{resumen}</caption>
-              <thead className="sticky top-0 bg-card text-muted-foreground">
-                <tr><th scope="col" className="px-2 py-1.5 font-medium">Fecha</th><th scope="col" className="px-2 py-1.5 text-right font-medium">Precio</th><th scope="col" className="px-2 py-1.5 font-medium">Ganador</th><th scope="col" className="px-2 py-1.5 text-right font-medium">Cantidad</th><th scope="col" className="px-2 py-1.5 font-medium">Organismo</th></tr>
+              <thead className="sticky top-0 bg-muted/90 font-mono text-[11px] tracking-wide text-muted-foreground uppercase backdrop-blur-sm">
+                <tr>
+                  <th scope="col" className="px-3 py-2 font-medium">Fecha</th>
+                  <th scope="col" className="px-3 py-2 text-right font-medium">Precio</th>
+                  <th scope="col" className="px-3 py-2 font-medium">Ganador</th>
+                  <th scope="col" className="px-3 py-2 text-right font-medium">Cantidad</th>
+                  <th scope="col" className="px-3 py-2 font-medium">Organismo</th>
+                </tr>
               </thead>
-              <tbody>
+              <tbody className="text-foreground">
                 {[...datos].reverse().map((d, i) => (
                   <tr key={`${d.idCompra}-${i}`} className="border-t">
-                    <td className="px-2 py-1 font-mono whitespace-nowrap">{fecha(d.fecha)}</td>
-                    <td className="px-2 py-1 text-right font-mono whitespace-nowrap tabular-nums">{monto(d.precioUnit, moneda)}</td>
-                    <td className="px-2 py-1">{d.ganador ?? '—'}</td>
-                    <td className="px-2 py-1 text-right font-mono tabular-nums">{d.cantidad !== null ? cantidad(d.cantidad) : '—'}</td>
-                    <td className="px-2 py-1">{d.organismo ?? '—'}</td>
+                    <td className="px-3 py-1.5 font-mono whitespace-nowrap text-muted-foreground">{fecha(d.fecha)}</td>
+                    <td className="px-3 py-1.5 text-right font-mono whitespace-nowrap tabular-nums">{monto(d.precioUnit, moneda)}</td>
+                    <td className="max-w-56 truncate px-3 py-1.5">{d.ganador ? nombrePropio(d.ganador) : '—'}</td>
+                    <td className="px-3 py-1.5 text-right font-mono whitespace-nowrap tabular-nums">{d.cantidad !== null ? cantidad(d.cantidad) : '—'}{d.unidad ? <span className="ml-1 text-muted-foreground">{d.unidad.toLowerCase()}</span> : null}</td>
+                    <td className="max-w-64 truncate px-3 py-1.5 text-muted-foreground">{d.organismo ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>

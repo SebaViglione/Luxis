@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { motion } from 'motion/react';
 import { ArrowRight, CalendarClock, ExternalLink, FileText } from 'lucide-react';
-import CountUp from '@/components/reactbits/count-up';
 import { buttonVariants } from '@/components/ui/button';
 import type { DetalleLicitacion } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -31,34 +30,13 @@ function resumenPapeles(match: NonNullable<DetalleLicitacion['match']>) {
 }
 
 /**
- * Panel de decisión: responde de un vistazo si conviene, a qué precio y si llegás con los papeles.
- * Es el momento visual de la pantalla (textura de puntos + monto que cuenta una vez).
+ * Panel de decisión: responde de un vistazo si conviene y si llegás con los papeles.
+ * Es el momento visual de la pantalla (textura de puntos + barra de puntaje que se llena una vez).
  */
-/** Monto total posible (precio sugerido × cantidad de lo que podés ofertar). Lo arma el servidor con los mismos precios de la pestaña Precios. */
-export function MontoPosible({ total, moneda }: { total: number; moneda: string }) {
-  if (total <= 0) {
-    return (
-      <div className="space-y-2">
-        <p className="text-sm">Sin precios de referencia</p>
-        <p className="text-sm text-muted-foreground">No encontramos ventas parecidas al Estado. Usá tu lista de precios.</p>
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-2">
-      <p className="text-sm text-muted-foreground">Podrías vender por</p>
-      <p className="font-mono text-3xl font-semibold tabular-nums">
-        ≈ <CountUp to={Math.round(total)} duration={1} separator="." trigger="load" prefix={moneda === 'USD' ? 'US$ ' : '$ '} />
-      </p>
-    </div>
-  );
-}
-
-export function PanelDecision({ d, diasCierre, irA, montoPrecio }: { d: DetalleLicitacion; diasCierre: number | null; irA: (pestana: string) => void; montoPrecio: React.ReactNode }) {
+export function PanelDecision({ d, diasCierre, irA }: { d: DetalleLicitacion; diasCierre: number | null; irA: (pestana: string) => void }) {
   const l = d.licitacion;
   const urgente = diasCierre !== null && diasCierre >= 0 && diasCierre <= 3;
   const cerrada = diasCierre !== null && diasCierre < 0;
-  const hayOfertables = (d.match?.itemsOfertables ?? []).some((i) => i.puedeOfertar);
   const nivel = d.match ? nivelConfianza(d.match.confianza) : null;
   const papeles = d.match ? resumenPapeles(d.match) : null;
 
@@ -79,7 +57,7 @@ export function PanelDecision({ d, diasCierre, irA, montoPrecio }: { d: DetalleL
           <h1 className="max-w-4xl text-2xl leading-tight font-semibold tracking-tight sm:text-3xl">{suavizarMayusculas(l.objeto)}</h1>
         </header>
 
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2">
           <Pregunta titulo="¿Te conviene?">
             {d.match && nivel ? (
               <div className="space-y-2" aria-label={`Confianza ${nivel.etiqueta.toLowerCase()}: ${d.match.confianza} sobre 100`}>
@@ -94,15 +72,6 @@ export function PanelDecision({ d, diasCierre, irA, montoPrecio }: { d: DetalleL
                 <p className="line-clamp-3 text-sm text-muted-foreground">{d.match.razon}</p>
               </div>
             ) : <p className="text-sm text-muted-foreground">Todavía no la comparamos con lo que vendés.</p>}
-          </Pregunta>
-
-          <Pregunta titulo="¿A qué precio?">
-            {montoPrecio}
-            {hayOfertables && (
-              <button type="button" onClick={() => irA('precios')} className="mt-2 text-sm text-foreground underline underline-offset-4 hover:text-primary">
-                Ver precio por producto
-              </button>
-            )}
           </Pregunta>
 
           <Pregunta titulo="¿Llegás con los papeles?">
