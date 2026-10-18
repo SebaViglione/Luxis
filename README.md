@@ -24,14 +24,17 @@ Herramientas:
 | `buscar_licitaciones` | Licitaciones con recepción de ofertas abierta, filtradas por palabras y días al cierre, con resumen hecho por IA. |
 | `detalle_licitacion` | Ficha completa de un llamado: ítems, lectura del pliego por IA (requisitos, fechas, condiciones, riesgos), precio ganador por ítem y archivos. |
 
-Conectarlo:
+Conectarlo (sin autenticación, la URL es `https://<dominio>/api/mcp`):
 
-```bash
-# Claude Code
-claude mcp add --transport http luxis https://<dominio>/api/mcp
-# claude.ai / Claude Desktop: Ajustes → Conectores → Agregar conector personalizado → URL https://<dominio>/api/mcp
-# ChatGPT: Ajustes → Conectores (modo desarrollador) → misma URL, sin autenticación
-```
+| Cliente | Cómo |
+|---|---|
+| Claude (claude.ai, Desktop) | Ajustes → Conectores → Agregar conector personalizado → pegar la URL |
+| ChatGPT | Ajustes → Seguridad e inicio de sesión → Modo desarrollador; Plugins → + → pegar la URL |
+| Claude Code | `claude mcp add --transport http luxis <URL>` |
+| Codex | `codex mcp add luxis --url <URL>` |
+| Cursor | `~/.cursor/mcp.json`: `{ "mcpServers": { "luxis": { "url": "<URL>" } } }` |
+| VS Code (Copilot) | `.vscode/mcp.json`: `{ "servers": { "luxis": { "type": "http", "url": "<URL>" } } }` |
+| Gemini CLI | `gemini mcp add --transport http luxis <URL>` |
 
 Preguntas que funcionan bien: "¿a qué precio se adjudicó el portland en bolsa este año y quién lo gana?", "¿qué licitaciones de áridos cierran esta semana?", "¿qué papeles pide la licitación 1375519?".
 
