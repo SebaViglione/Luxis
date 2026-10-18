@@ -62,4 +62,4 @@ export const ORGANISMOS = [
   'Intendencia de Maldonado',
 ];
 
-export const RUBROS = ['portland', 'arena y pedregullo', 'hierro', 'pintura', 'sanitaria', 'madera', 'bloques', 'eléctrica'];
+export const RUBROS = ['portland', 'arena y pedregullo', 'hierro', 'pintura', 'madera', 'bloques'];
