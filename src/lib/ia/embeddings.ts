@@ -47,11 +47,11 @@ export async function embedTextos(textos: string[], tipo: TipoEmbedding, opts: {
   return salida.flat();
 }
 
-/** Embedding de una consulta: un solo intento (sin backoff largo) porque se usa en tiempo real. */
-export async function embedConsulta(texto: string): Promise<number[]> {
+/** Embedding de una consulta: un solo intento (sin backoff largo) porque se usa en tiempo real. `tipo` debe coincidir con el de los vectores guardados. */
+export async function embedConsulta(texto: string, tipo: TipoEmbedding = 'RETRIEVAL_QUERY'): Promise<number[]> {
   const { embeddings } = await embedMany({
     model: MODELO, values: [texto.slice(0, MAX_CHARS)], maxRetries: 1,
-    providerOptions: { google: { outputDimensionality: DIM_EMBEDDING, taskType: 'RETRIEVAL_QUERY' } },
+    providerOptions: { google: { outputDimensionality: DIM_EMBEDDING, taskType: tipo } },
   });
   return embeddings[0];
 }

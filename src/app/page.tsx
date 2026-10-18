@@ -6,6 +6,7 @@ import { Encabezado } from '@/components/landing/encabezado';
 import { Funciones } from '@/components/landing/funciones';
 import { Hero } from '@/components/landing/hero';
 import { MarqueeOrganismos } from '@/components/landing/marquee-organismos';
+import { Mcp } from '@/components/landing/mcp';
 import { Pasos } from '@/components/landing/pasos';
 import { Preguntas } from '@/components/landing/preguntas';
 
@@ -22,6 +23,7 @@ export default function Inicio() {
         <Suspense fallback={null}>
           <Cobertura />
         </Suspense>
+        <Mcp />
         <Preguntas />
         <CtaFinal />
       </main>
