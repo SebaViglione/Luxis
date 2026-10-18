@@ -14,7 +14,7 @@ import { EstadoVacio } from '@/components/ui/estado-vacio';
 import { BuscandoLicitaciones, SiguenLlegando } from '@/components/licitaciones/buscando-licitaciones';
 import { db, schema } from '@/db';
 import { requerirSesion } from '@/server/auth/sesion';
-import { listarMatches, listarOrganismos, progresoMatching, tieneMatches } from '@/server/consultas/licitaciones';
+import { contarPorPestana, listarMatches, listarOrganismos, progresoMatching, tieneMatches } from '@/server/consultas/licitaciones';
 import { ListaConEstado, ProveedorFiltros } from '@/components/licitaciones/estado-filtros';
 import { TituloDashboard } from '@/components/licitaciones/titulo-dashboard';
 import { ListaTarjetas } from '@/components/licitaciones/lista-tarjetas';
@@ -64,11 +64,12 @@ function EncabezadoCargando() {
   );
 }
 
-async function FiltrosConOpciones() {
+async function FiltrosConOpciones({ searchParams }: { searchParams: ParametrosUrl }) {
+  const filtros = filtrosDesdeUrl(await searchParams);
   await connection();
   const { empresaId } = await requerirSesion();
-  const organismos = await listarOrganismos(empresaId);
-  return <Filtros organismos={organismos} />;
+  const [organismos, conteos] = await Promise.all([listarOrganismos(empresaId), contarPorPestana(empresaId, filtros)]);
+  return <Filtros organismos={organismos} conteos={conteos} />;
 }
 
 async function Lista({ searchParams }: { searchParams: ParametrosUrl }) {
@@ -115,7 +116,7 @@ export default function DashboardPage({ searchParams }: PageProps<'/dashboard'>)
   return (
     <div className="space-y-6">
       {/* data-guia: anclas de la guía inicial (src/components/guia/guia-inicial.tsx). */}
-      <section className="relative grid gap-6 overflow-hidden rounded-xl border bg-card p-5 sm:p-7 lg:grid-cols-[1fr_22rem] lg:items-center">
+      <section className="relative grid gap-4 overflow-hidden rounded-xl border bg-card p-4 sm:gap-6 sm:p-7 lg:grid-cols-[1fr_22rem] lg:items-center">
         {/* Textura de puntos estática (la misma de los estados vacíos): da profundidad sin animar. */}
         <div aria-hidden className="pointer-events-none absolute inset-0 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:linear-gradient(to_right,black,transparent_70%)]" />
         <div data-guia="resumen" className="relative">
@@ -131,7 +132,7 @@ export default function DashboardPage({ searchParams }: PageProps<'/dashboard'>)
       <ProveedorFiltros>
         <div data-guia="filtros">
           <Suspense fallback={<Skeleton className="h-[13rem] w-full rounded-md" />}>
-            <FiltrosConOpciones />
+            <FiltrosConOpciones searchParams={searchParams} />
           </Suspense>
         </div>
         <div data-guia="lista" className="pt-2">

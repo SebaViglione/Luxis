@@ -84,7 +84,7 @@ async function Detalle({ params }: { params: Promise<{ id: string }> }) {
   return (
     <div className="space-y-4">
       <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft aria-hidden className="size-4" /> Volver a mis licitaciones
+        <ArrowLeft aria-hidden className="size-4" /> Volver a licitaciones
       </Link>
       <VistaLicitacion
         d={d}

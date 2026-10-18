@@ -24,7 +24,9 @@ export function ListaEventos({ eventos, hoy }: { eventos: EventoCalendario[]; ho
                   <span aria-hidden className={cn('mt-1 h-4 w-1 shrink-0 rounded-full', TIPO_EVENTO[e.tipo].marca)} />
                   <span className="min-w-0 flex-1">
                     <span className="block text-xs text-muted-foreground">
-                      {TIPO_EVENTO[e.tipo].etiqueta}{e.obligatoria && e.tipo === 'visita' ? ' (obligatoria)' : ''} · <span className="font-mono">{fechaHora(e.fecha).slice(11)} h</span>
+                      {TIPO_EVENTO[e.tipo].etiqueta}{e.obligatoria && e.tipo === 'visita' ? ' (obligatoria)' : ''}
+                      {/* 00:00 es una fecha sin hora: no se muestra. */}
+                      {fechaHora(e.fecha).slice(11) !== '00:00' && <> · <span className="font-mono">{fechaHora(e.fecha).slice(11)} h</span></>}
                     </span>
                     <span className="line-clamp-2 text-sm">{suavizarMayusculas(objetoDelEvento(e))}</span>
                   </span>

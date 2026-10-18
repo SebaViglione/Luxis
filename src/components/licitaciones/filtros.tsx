@@ -55,7 +55,10 @@ function Pregunta({ children, id }: { children: React.ReactNode; id?: string }) 
   return <span id={id} className="text-sm font-medium text-foreground">{children}</span>;
 }
 
-export function Filtros({ organismos }: { organismos: string[] }) {
+/** Cuántas licitaciones hay en cada pestaña con los filtros actuales (contarPorPestana). */
+export type ConteoPestanas = Record<'nuevas' | 'guardadas' | 'descartadas' | 'todas', number>;
+
+export function Filtros({ organismos, conteos }: { organismos: string[]; conteos?: ConteoPestanas }) {
   const { params: sp, pendiente, aplicar } = useEstadoFiltros();
   const [abiertoOrganismo, setAbiertoOrganismo] = useState(false);
 
@@ -66,6 +69,8 @@ export function Filtros({ organismos }: { organismos: string[] }) {
   const estado = sp.get('estado') ?? 'nuevas';
   const orden = sp.get('orden') ?? 'cierre';
   const [masAbierto, setMasAbierto] = useState(tipos.length > 0 || organismo !== '');
+  // En el celular, coincidencia, fecha, orden y tipo quedan detrás de un botón para que la lista se vea enseguida.
+  const [abiertoMovil, setAbiertoMovil] = useState(false);
   const extras = tipos.length + (organismo ? 1 : 0);
 
   const alternarTipo = (t: string) => {
@@ -86,9 +91,16 @@ export function Filtros({ organismos }: { organismos: string[] }) {
       <BarraBuscando activa={pendiente} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Segmentado id="mostrar" etiqueta="Qué licitaciones mostrar" opciones={MOSTRAR} valor={estado}
+        <Segmentado id="mostrar" etiqueta="Qué licitaciones mostrar" valor={estado}
+          opciones={MOSTRAR.map((o) => ({ ...o, cantidad: conteos?.[o.valor as keyof ConteoPestanas] }))}
           onCambio={(v) => aplicar({ estado: v !== 'nuevas' ? v : null })} />
-        <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={() => setAbiertoMovil((a) => !a)} aria-expanded={abiertoMovil} aria-controls="filtros-detalle" className="sm:hidden">
+          <SlidersHorizontal aria-hidden /> {abiertoMovil ? 'Ocultar filtros' : 'Filtrar y ordenar'}
+          {!abiertoMovil && activos.length + (orden !== 'cierre' ? 1 : 0) > 0 && (
+            <span className="rounded-full bg-primary px-1.5 font-mono text-xs text-primary-foreground">{activos.length + (orden !== 'cierre' ? 1 : 0)}</span>
+          )}
+        </Button>
+        <div className={cn('items-center gap-2', abiertoMovil ? 'flex' : 'hidden sm:flex')}>
           <span id="f-orden" className="text-sm text-muted-foreground">Ordenar por</span>
           <Select items={ORDENES} value={orden} onValueChange={(v) => aplicar({ orden: v && v !== 'cierre' ? v : null })}>
             <SelectTrigger size="sm" aria-labelledby="f-orden" className="w-52"><SelectValue /></SelectTrigger>
@@ -97,6 +109,7 @@ export function Filtros({ organismos }: { organismos: string[] }) {
         </div>
       </div>
 
+      <div id="filtros-detalle" className={cn('space-y-4', abiertoMovil ? 'block' : 'hidden sm:block')}>
       {/* Fila que baja a dos renglones solo cuando los dos selectores no entran juntos: un selector nunca se parte. */}
       <div className="flex flex-wrap gap-x-10 gap-y-4 border-t pt-4">
         <div className="flex w-full flex-col gap-2 sm:w-auto">
@@ -175,6 +188,7 @@ export function Filtros({ organismos }: { organismos: string[] }) {
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
       </div>
 
       {activos.length > 0 && (

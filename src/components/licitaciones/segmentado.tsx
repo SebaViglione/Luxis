@@ -8,6 +8,8 @@ export interface OpcionSegmentada<T extends string> {
   texto: string;
   /** Explicación corta (tooltip nativo y lectores de pantalla). */
   ayuda?: string;
+  /** Cantidad que se muestra al lado del texto (p. ej. cuántas licitaciones hay en esa pestaña). */
+  cantidad?: number;
 }
 
 /**
@@ -57,7 +59,12 @@ export function Segmentado<T extends string>({
                 aria-hidden
               />
             )}
-            <span className="relative">{o.texto}</span>
+            <span className="relative">
+              {o.texto}
+              {o.cantidad !== undefined && (
+                <span className={cn('ml-1.5 font-mono text-xs tabular-nums', activo ? 'text-muted-foreground' : 'text-muted-foreground/80')}>{o.cantidad}</span>
+              )}
+            </span>
           </button>
         );
       })}

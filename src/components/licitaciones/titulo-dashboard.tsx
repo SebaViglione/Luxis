@@ -22,12 +22,12 @@ export function TituloDashboard({ total }: { total: number }) {
   const frase = total === 1 ? 'licitación donde podés vender' : 'licitaciones donde podés vender';
   return (
     <h1 aria-label={`${total} ${frase}`} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-      <ContadorTotal total={total} className="font-mono text-5xl font-semibold tracking-tighter tabular-nums sm:text-6xl" />
+      <ContadorTotal total={total} className="font-mono text-4xl font-semibold tracking-tighter tabular-nums sm:text-5xl lg:text-6xl" />
       {animar ? (
         <BlurText as="span" text={frase} trigger="load" delay={60} distance={14} blur={8} animateBy="words"
-          className="text-2xl font-semibold tracking-tight sm:text-3xl" />
+          className="text-xl font-semibold tracking-tight sm:text-2xl lg:text-3xl" />
       ) : (
-        <span className="text-2xl font-semibold tracking-tight sm:text-3xl">{frase}</span>
+        <span className="text-xl font-semibold tracking-tight sm:text-2xl lg:text-3xl">{frase}</span>
       )}
     </h1>
   );
