@@ -1,8 +1,9 @@
 // Checklist de postulación: qué hace falta para presentarse a una licitación, sin IA.
 // Cruza el gap documental (seba) con lo que exige el proceso de ARCE (RUPE, SICE, visita, muestras…).
 import { fecha, fechaHora, monto } from '@/components/licitaciones/formato';
+import { NOTA_POST_ADJUDICACION, NOTA_REGLAS_GENERALES, NOTA_SIN_DATO, buscarPlazo } from '@/config/plazos-documentales';
 import type { DetalleLicitacion, GapDocumental, PerfilEmpresa } from '@/lib/types';
-import { diasHabilesHasta } from '@/server/ia/gap-documental';
+import { calcularGap, diasHabilesHasta, estadoDocumento } from '@/server/ia/gap-documental';
 import { ajusteConfianza, textoAjuste } from './preparacion';
 import type { ItemChecklist, ResumenPreparacion } from './tipos';
 
@@ -12,14 +13,9 @@ const normalizar = (s: string) =>
     .replace(/[̀-ͯ]/g, '')
     .toUpperCase();
 
-// Lo que arma Luxis en el paso de documentos o en la planilla.
-const LO_ARMA_LUXIS =
-  /FORMULARIO|IDENTIFICACION DEL OFERENTE|DATOS (DE LA EMPRESA|DEL OFERENTE|IDENTIFICATORIOS)|DECLARACION JURADA|DECLARACION DE|PLANILLA|COTIZACION|PROPUESTA ECONOMICA|OFERTA ECONOMICA|ESPECIFICA|TOTALIDAD DE LA INFORMACION|CARTA DE PRESENTACION|NOTA DE PRESENTACION|MONEDA/;
-// Presentar la oferta es el envío, no un papel: lo cubre el ítem del canal (ARCE en línea o mail/papel).
-const ENVIO_DE_OFERTA =
-  /^(?!.*(FORMULARIO|CARTA|NOTA|PLANILLA|DECLARACION|ANEXO)).*(OFERTA ENVIADA|OFERTA POR CORREO|OFERTA EN LINEA|PRESENTACION DE (LA )?OFERTA|CARGAR? (DE )?(LA )?OFERTA)/;
-// Se exige recién si te adjudican: no frena la oferta.
-const POST_ADJUDICACION = /FIEL CUMPLIMIENTO|CUMPLIMIENTO DE CONTRATO|GARANTIA DE CUMPLIMIENTO/;
+// Qué arma Luxis, qué es el envío y qué se pide después de adjudicar sale de las mismas reglas que el gap
+// (src/config/plazos-documentales.ts): así Papeles, la confianza y esta lista dicen lo mismo.
+const GARANTIA_CUMPLIMIENTO = /FIEL CUMPLIMIENTO|CUMPLIMIENTO DEL? CONTRATO|GARANTIA DE CUMPLIMIENTO/;
 // Se pide al entregar la mercadería.
 const AL_ENTREGAR = /\bREMITO|\bFACTURA/;
 const SIN_MUESTRAS = /^no\b|no se (exigen|piden|requieren|solicitan)|no corresponde/i;
@@ -82,7 +78,8 @@ export function armarChecklist(
   );
 
   // 2. RUPE (habilita a ofertar; activo para que te adjudiquen)
-  const rupe = perfil.documentacion.find((x) => x.tipo === 'RUPE')?.estado ?? 'desconocido';
+  const docRupe = perfil.documentacion.find((x) => x.tipo === 'RUPE');
+  const rupe = docRupe ? estadoDocumento(docRupe, cierre) : 'desconocido';
   const seccionRupe = [...seccionDe].find(([doc]) => /RUPE/.test(normalizar(doc)))?.[1] ?? null;
   // Si el gap (que descuenta la confianza) dice que el RUPE no llega, el ítem lo muestra como riesgo: si no, la página
   // diría "te falta 1 cosa" al lado de "baja 25 puntos: hay papeles que no llegás a tener".
@@ -103,31 +100,30 @@ export function armarChecklist(
           }
         : {
             id: 'rupe',
-            titulo: 'Inscribite en RUPE',
-            detalle:
-              'Es gratis y en línea (comprasestatales.gub.uy → RUPE). Con quedar EN INGRESO ya podés ofertar; para que te adjudiquen tiene que estar ACTIVO.',
+            titulo: rupe === 'desconocido' ? 'Confirmá tu RUPE' : 'Inscribite en RUPE',
+            detalle: `${
+              rupe === 'desconocido' ? 'No nos dijiste si estás inscripto: si ya lo estás, marcalo en Cuenta. Si no, inscribite: es' : 'Es'
+            } gratis y en línea (comprasestatales.gub.uy → RUPE). Con quedar EN INGRESO ya podés ofertar; para que te adjudiquen tiene que estar ACTIVO.`,
             estado: rupeNoLlega || (habilesAlCierre !== null && habilesAlCierre < 2) ? 'riesgo' : 'pendiente',
-            plazo: '1 a 5 días hábiles',
+            plazo: '1 día hábil',
             seccion: seccionRupe,
           },
   );
 
   // 3. Requisitos documentales del pliego (gap de seba, reinterpretado para el momento de ofertar)
-  // Si no hay gap (el match no era relevante) pero el pliego se leyó, listamos los requisitos tal cual.
+  // Si no hay gap guardado (el match no era relevante) pero el pliego se leyó, lo calculamos con las mismas reglas.
+  const fechasClave = d.analisis?.fechasClave ?? [];
   const requisitos: GapDocumental[] = d.match?.gapDocumental?.length
     ? d.match.gapDocumental
-    : (d.analisis?.requisitosDocumentales ?? []).map((r) => ({
-        documento: r.documento,
-        tipo: r.tipo,
-        obligatorio: r.obligatorio,
-        tiene: false,
-        estadoEmpresa: 'desconocido',
-        diasEstimados: null,
-        alcanzableAntesCierre: null,
-        nota: r.detalle,
-      }));
+    : calcularGap(d.analisis?.requisitosDocumentales ?? [], perfil.documentacion, cierre, fechasClave).gap;
+  // La visita, las muestras con fecha y la compra del pliego ya tienen su propio ítem (abajo): no se repiten.
+  const omitir = {
+    visita: fechasClave.some((f) => f.tipo === 'visita'),
+    muestras: fechasClave.some((f) => f.tipo === 'muestras' && !SIN_MUESTRAS.test(f.descripcion)),
+    pagoPliego: Boolean(l.precioPliego && l.precioPliego > 0),
+  };
   for (const g of requisitos) {
-    const item = itemDeGap(g, seccionDe.get(g.documento) ?? null);
+    const item = itemDeGap(g, seccionDe.get(g.documento) ?? null, omitir);
     if (item) items.push(item);
   }
   if (!requisitos.length) {
@@ -140,7 +136,7 @@ export function armarChecklist(
   }
 
   // 4. Fechas que pueden dejarte afuera: visita y muestras
-  for (const f of d.analisis?.fechasClave ?? []) {
+  for (const f of fechasClave) {
     if (f.tipo === 'visita') items.push(itemVisita(f.fecha, f.obligatoria, f.descripcion, f.fuente, ahora));
     if (f.tipo === 'muestras' && !SIN_MUESTRAS.test(f.descripcion)) {
       items.push({
@@ -155,7 +151,8 @@ export function armarChecklist(
     }
   }
   const muestras = d.analisis?.condiciones?.muestras;
-  if (muestras && !SIN_MUESTRAS.test(muestras) && !items.some((i) => i.id.startsWith('muestras'))) {
+  const muestrasEnPapeles = requisitos.some((g) => buscarPlazo(g.documento).muestras);
+  if (muestras && !SIN_MUESTRAS.test(muestras) && !muestrasEnPapeles && !items.some((i) => i.id.startsWith('muestras'))) {
     items.push({ id: 'muestras', titulo: 'Muestras', detalle: muestras, estado: 'pendiente' });
   }
 
@@ -181,40 +178,43 @@ export function armarChecklist(
   return { checklist: items, resumen: resumir(items, d.match) };
 }
 
-function itemDeGap(g: GapDocumental, seccion: string | null): ItemChecklist | null {
+function itemDeGap(
+  g: GapDocumental,
+  seccion: string | null,
+  omitir: { visita: boolean; muestras: boolean; pagoPliego: boolean },
+): ItemChecklist | null {
   const nombre = normalizar(g.documento);
+  const plazo = buscarPlazo(g.documento);
   const base = { id: `doc-${nombre}`, titulo: g.documento, seccion, obligatorio: g.obligatorio };
+  // Mismo criterio que el ajuste de confianza: solo lo obligatorio que no llega es un riesgo o algo pendiente.
+  const sinCumplir: ItemChecklist['estado'] = g.obligatorio ? (g.alcanzableAntesCierre === false ? 'riesgo' : 'pendiente') : 'info';
+  const nota = g.nota.startsWith(NOTA_SIN_DATO) ? g.nota.slice(NOTA_SIN_DATO.length).trim() : g.nota;
 
-  if (ENVIO_DE_OFERTA.test(nombre)) return null;
+  // El envío de la oferta lo cubre el ítem del canal; las reglas generales (Pliego Único, TOCAF) no son un papel.
+  if (plazo.envio || plazo.reglasGenerales || g.nota === NOTA_REGLAS_GENERALES) return null;
   // Primero lo que arma Luxis: "Formulario de identificación… validado en RUPE" es un formulario, no el RUPE.
-  if (LO_ARMA_LUXIS.test(nombre)) {
+  if (plazo.preparaLuxis) {
+    // Una declaración opcional (preferencia nacional, MIPYME) no la armamos: se completa con el modelo del pliego si corresponde.
+    if (!g.obligatorio) return { ...base, estado: 'info', detalle: 'Opcional o solo si te corresponde: usá el modelo del pliego.' };
     return { ...base, estado: 'luxis', detalle: 'Lo armamos con tus datos en el paso de documentos o en la planilla. Revisalo y firmalo.' };
   }
-  if (g.tipo === 'RUPE' || /\bRUPE\b/.test(nombre)) return null; // ya lo cubre el ítem de RUPE
-  if (AL_ENTREGAR.test(nombre)) {
-    return { ...base, estado: 'info', detalle: 'Se pide al entregar la mercadería, no para ofertar.' };
+  if (g.tipo === 'RUPE' || /\bRUPE\b|R\.U\.P\.E/.test(nombre)) return null; // ya lo cubre el ítem de RUPE
+  if (g.nota === NOTA_POST_ADJUDICACION) {
+    const detalle = AL_ENTREGAR.test(nombre)
+      ? 'Se pide al entregar la mercadería, no para ofertar.'
+      : GARANTIA_CUMPLIMIENTO.test(nombre)
+        ? 'Se pide recién si te adjudican (en general, 5 % del monto adjudicado dentro de los días que fije el pliego). No frena la oferta.'
+        : 'Se pide recién si te adjudican (para firmar, empezar o cobrar). No frena la oferta.';
+    return { ...base, obligatorio: false, estado: 'info', detalle };
   }
-  if (POST_ADJUDICACION.test(nombre)) {
-    return {
-      ...base,
-      estado: 'info',
-      detalle: 'Se pide recién si te adjudican (en general, 5 % del monto adjudicado dentro de los días que fije el pliego). No frena la oferta.',
-    };
-  }
+  if ((plazo.visita && omitir.visita) || (plazo.muestras && omitir.muestras) || (plazo.pagoPliego && omitir.pagoPliego)) return null;
   if (VERIFICADO_EN_RUPE.test(g.tipo)) {
-    // Mismo criterio que el ajuste de confianza: si no llega antes del cierre es un riesgo, no algo pendiente.
-    return g.tiene
-      ? { ...base, estado: 'listo', detalle: 'El organismo lo verifica en RUPE: no hace falta adjuntarlo.' }
-      : {
-          ...base,
-          estado: g.alcanzableAntesCierre === false ? 'riesgo' : 'pendiente',
-          detalle: `Ponelo al día: el organismo lo verifica en RUPE. ${g.nota}`,
-          plazo: plazoGap(g),
-        };
+    if (g.tiene) return { ...base, estado: 'listo', detalle: 'El organismo lo verifica en RUPE: no hace falta adjuntarlo.' };
+    const pedido = g.estadoEmpresa === 'desconocido' ? 'No nos dijiste si lo tenés al día (si ya lo tenés, marcalo en Cuenta)' : 'Ponelo al día';
+    return { ...base, estado: sinCumplir, detalle: `${pedido}: el organismo lo verifica en RUPE. ${nota}`, plazo: plazoGap(g) };
   }
-  if (g.tiene) return { ...base, estado: 'listo', detalle: g.nota || 'Ya lo tenés.' };
-  if (g.alcanzableAntesCierre === false) return { ...base, estado: 'riesgo', detalle: g.nota, plazo: plazoGap(g) };
-  return { ...base, estado: g.obligatorio ? 'pendiente' : 'info', detalle: g.nota, plazo: plazoGap(g) };
+  if (g.tiene) return { ...base, estado: 'listo', detalle: nota || 'Ya lo tenés.' };
+  return { ...base, estado: sinCumplir, detalle: nota, plazo: plazoGap(g) };
 }
 
 /** Fechas sin hora (00:00) se muestran solo con el día. */
@@ -224,7 +224,8 @@ function fechaLegible(iso: string) {
 }
 
 function plazoGap(g: GapDocumental) {
-  return g.diasEstimados != null ? `~${g.diasEstimados} ${g.diasEstimados === 1 ? 'día hábil' : 'días hábiles'}` : null;
+  if (g.diasEstimados == null) return null;
+  return g.diasEstimados === 0 ? 'en el día' : `~${g.diasEstimados} ${g.diasEstimados === 1 ? 'día hábil' : 'días hábiles'}`;
 }
 
 function itemVisita(fechaVisita: string | null, obligatoria: boolean, descripcion: string, fuente: string | null, ahora: Date): ItemChecklist {

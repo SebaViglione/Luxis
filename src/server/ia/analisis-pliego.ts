@@ -33,6 +33,9 @@ const SchemaAnalisis = z.object({
 const SYSTEM = `Leés pliegos de licitaciones del Estado uruguayo para el dueño de una barraca de materiales de construcción.
 Devolvés solo el objeto del schema, en español rioplatense, claro y concreto.
 - requisitosDocumentales: cada documento, certificado, formulario, garantía o inscripción exigida (RUPE, certificados DGI/BPS, BSE, UNIT, ISO, formularios, declaraciones juradas, garantías, muestras, fichas técnicas). Indicá si es obligatorio y la sección del pliego. No incluyas el pliego mismo (pliego único, de condiciones generales o particulares): lo publica el organismo, el oferente no lo presenta.
+  - obligatorio: false si es opcional, suma puntos o aplica solo en ciertos casos (consorcio, MIPYME, preferencia nacional, representación, información confidencial).
+  - detalle: empezá diciendo cuándo se presenta: "Con la oferta.", "Si te adjudican." (al adjudicatario, para firmar el contrato o dentro de X días de notificada la adjudicación), "Antes de empezar." (inicio de obra o entrega) o "Para cobrar.".
+  - tipo UNIT o ISO solo si el oferente tiene que tener esa certificación. Una norma que tiene que cumplir el producto (ej. UNIT 20 del portland) la acredita el fabricante: listala como "Cumplimiento de la norma … (certificado o ficha del fabricante)", tipo OTRO.
 - fechasClave: visita (y si es obligatoria), plazo de consultas, prórroga, apertura, entrega, muestras. "apertura" = recepción/entrega de OFERTAS y acto de apertura; "entrega" = entrega de la MERCADERÍA (plazo o fecha de suministro). No dupliques la apertura como entrega. Nunca inventes fechas: si no hay fecha concreta, fecha = null.
 - condiciones: lo que diga el pliego; null si no lo dice.
 - Si solo tenés la metadata (sin texto del pliego), decilo en el resumen y bajá la confianza a 50 o menos.
