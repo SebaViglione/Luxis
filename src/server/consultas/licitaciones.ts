@@ -43,18 +43,41 @@ export function leerMontoEstimado(valor: string | null): Pick<LicitacionCard, 'm
 /** Confianza efectiva en SQL (mismos valores que AJUSTE_DOCUMENTAL en lib/types). */
 const CONF_EF = sql`(${schema.matches.confianza} - case ${schema.matches.estadoDocumental} when 'dificil' then 25 when 'alcanzable' then 10 else 0 end)`;
 
+/** Filtros que no dependen de la pestaña: empresa, abiertas, tipo de compra, organismo y cierre. */
+function condicionesComunes(empresaId: string, filtros: FiltrosDashboard) {
+  const L = schema.licitaciones, M = schema.matches;
+  const conds = [eq(M.empresaId, empresaId), sql`${L.fechaTopeOfertas} > now()`];
+  if (filtros.tipos?.length) conds.push(sql`${L.tipoCompra} in (${sql.join(filtros.tipos.map((t) => sql`${t}`), sql`, `)})`);
+  if (filtros.organismo) conds.push(sql`${L.organismo} ilike ${'%' + filtros.organismo + '%'}`);
+  if (filtros.cierreDias) conds.push(sql`${L.fechaTopeOfertas} < now() + make_interval(days => ${filtros.cierreDias})`);
+  return conds;
+}
+
+export type ConteoPestanas = Record<'nuevas' | 'guardadas' | 'descartadas' | 'todas', number>;
+
+/** Cuántas licitaciones hay en cada pestaña del dashboard con los filtros actuales (una sola consulta). */
+export async function contarPorPestana(empresaId: string, filtros: FiltrosDashboard = {}): Promise<ConteoPestanas> {
+  const L = schema.licitaciones, M = schema.matches;
+  const minimo = sql`${CONF_EF} >= ${filtros.confianzaMin ?? 40}`;
+  const [r] = await db.select({
+    nuevas: sql<number>`count(*) filter (where ${minimo} and ${M.estadoUsuario} <> 'descartada')::int`,
+    guardadas: sql<number>`count(*) filter (where ${M.estadoUsuario} in ('guardada','presentada'))::int`,
+    descartadas: sql<number>`count(*) filter (where ${M.estadoUsuario} = 'descartada')::int`,
+    todas: sql<number>`count(*) filter (where ${minimo})::int`,
+  }).from(M).innerJoin(L, eq(L.idCompra, M.idCompra)).where(and(...condicionesComunes(empresaId, filtros)));
+  return { nuevas: r?.nuevas ?? 0, guardadas: r?.guardadas ?? 0, descartadas: r?.descartadas ?? 0, todas: r?.todas ?? 0 };
+}
+
 /** Licitaciones con match para el dashboard. */
 export async function listarMatches(empresaId: string, filtros: FiltrosDashboard = {}): Promise<LicitacionCard[]> {
   const L = schema.licitaciones, M = schema.matches, A = schema.analisisLicitacion;
   const estado = filtros.estado ?? 'nuevas';
-  const conds = [eq(M.empresaId, empresaId), sql`${L.fechaTopeOfertas} > now()`];
-  conds.push(sql`${CONF_EF} >= ${filtros.confianzaMin ?? 40}`);
+  const conds = condicionesComunes(empresaId, filtros);
+  // Lo que el usuario guardó o descartó se muestra siempre, aunque la coincidencia sea baja.
+  if (estado === 'nuevas' || estado === 'todas') conds.push(sql`${CONF_EF} >= ${filtros.confianzaMin ?? 40}`);
   if (estado === 'nuevas') conds.push(sql`${M.estadoUsuario} not in ('descartada')`);
   if (estado === 'guardadas') conds.push(sql`${M.estadoUsuario} in ('guardada','presentada')`);
   if (estado === 'descartadas') conds.push(eq(M.estadoUsuario, 'descartada'));
-  if (filtros.tipos?.length) conds.push(sql`${L.tipoCompra} in (${sql.join(filtros.tipos.map((t) => sql`${t}`), sql`, `)})`);
-  if (filtros.organismo) conds.push(sql`${L.organismo} ilike ${'%' + filtros.organismo + '%'}`);
-  if (filtros.cierreDias) conds.push(sql`${L.fechaTopeOfertas} < now() + make_interval(days => ${filtros.cierreDias})`);
   const orden = filtros.orden === 'confianza' ? [desc(CONF_EF), L.fechaTopeOfertas] : [L.fechaTopeOfertas, desc(CONF_EF)];
 
   const monto = montoEstimadoSql(M.idCompra);

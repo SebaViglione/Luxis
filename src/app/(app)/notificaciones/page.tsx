@@ -25,7 +25,7 @@ async function Lista({ searchParams }: { searchParams: Promise<Record<string, st
   ]);
   const filtros: { valor?: Notificacion['tipo']; etiqueta: string }[] = [
     { etiqueta: 'Todas' },
-    ...TIPOS_NOTIFICACION.filter((t) => t !== 'sistema').map((t) => ({ valor: t, etiqueta: TIPO_NOTIFICACION[t].etiqueta })),
+    ...TIPOS_NOTIFICACION.filter((t) => t !== 'sistema').map((t) => ({ valor: t, etiqueta: TIPO_NOTIFICACION[t].filtro })),
   ];
 
   // Agrupadas por día: Hoy, Ayer y fecha.
@@ -62,7 +62,7 @@ async function Lista({ searchParams }: { searchParams: Promise<Record<string, st
         </div>
       ) : (
         <EstadoVacio icono={Bell} titulo={tipo ? 'No hay avisos de este tipo' : 'No tenés avisos'}
-          descripcion="Te avisamos acá cuando aparezca una licitación para vos, cuando una esté por cerrar, cuando haya una visita o cuando cambien el pliego. Tocá Actualizar arriba para buscar novedades." />
+          descripcion="Te avisamos acá cuando aparezca una licitación para vos, cuando una esté por cerrar, cuando haya una visita o cuando cambien el pliego. Tocá «Buscar novedades» arriba para traer lo último de ARCE." />
       )}
     </div>
   );

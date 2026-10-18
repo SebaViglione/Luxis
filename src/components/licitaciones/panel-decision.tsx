@@ -65,7 +65,7 @@ export function PanelDecision({ d, diasCierre, irA, montoPrecio }: { d: DetalleL
   return (
     <section className="relative overflow-hidden rounded-xl border bg-card p-5 sm:p-7">
       <div aria-hidden className="pointer-events-none absolute inset-0 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:linear-gradient(to_bottom,black,transparent_60%)]" />
-      <div className="relative space-y-6">
+      <div className="relative flex flex-col gap-6">
         <header className="space-y-3">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
             <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
@@ -79,7 +79,7 @@ export function PanelDecision({ d, diasCierre, irA, montoPrecio }: { d: DetalleL
           <h1 className="max-w-4xl text-2xl leading-tight font-semibold tracking-tight sm:text-3xl">{suavizarMayusculas(l.objeto)}</h1>
         </header>
 
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="order-3 grid gap-3 md:order-2 md:grid-cols-3">
           <Pregunta titulo="¿Te conviene?">
             {d.match && nivel ? (
               <div className="space-y-2" aria-label={`Confianza ${nivel.etiqueta.toLowerCase()}: ${d.match.confianza} sobre 100`}>
@@ -120,7 +120,8 @@ export function PanelDecision({ d, diasCierre, irA, montoPrecio }: { d: DetalleL
           </Pregunta>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-t pt-4">
+        {/* En el celular la acción principal va arriba de las tres preguntas para verse sin bajar. */}
+        <div className="order-2 flex flex-wrap items-center gap-2 border-y py-3 md:order-3 md:border-b-0 md:pt-4 md:pb-0">
           <Link href={`/licitaciones/${encodeURIComponent(l.idCompra)}/postular`} className={buttonVariants()}>
             <FileText aria-hidden /> Preparar mi oferta <ArrowRight aria-hidden />
           </Link>

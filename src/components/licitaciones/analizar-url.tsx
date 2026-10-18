@@ -92,17 +92,17 @@ export function AnalizarUrl({ compacto = false }: { compacto?: boolean }) {
     <section aria-labelledby="titulo-analizar" className={cn('space-y-3 rounded-md border bg-card', compacto ? 'p-4' : 'p-4')}>
       <div>
         <h2 id="titulo-analizar" className="text-base">{compacto ? '¿Viste una licitación en ARCE?' : 'Analizar una licitación puntual'}</h2>
-        <p className="text-sm text-muted-foreground">
+        <p className={cn('text-sm text-muted-foreground', compacto && 'hidden sm:block')}>
           {compacto
             ? 'Pegá el link o el número y te decimos si te conviene, qué papeles piden y a qué precio se gana.'
             : 'Pegá el link de un llamado de comprasestatales.gub.uy o su número. Tarda entre 20 segundos y un minuto y medio.'}
         </p>
       </div>
-      <form onSubmit={analizar} className={cn('flex flex-col gap-2', !compacto && 'sm:flex-row')}>
+      <form onSubmit={analizar} className={cn('flex gap-2', compacto ? 'flex-row' : 'flex-col sm:flex-row')}>
         <Input value={url} onChange={(e) => setUrl(e.target.value)} disabled={enCurso} aria-label="URL o ID de ARCE"
-          placeholder={compacto ? 'Link de comprasestatales.gub.uy o número' : 'https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1375519'} className="flex-1" />
+          placeholder={compacto ? 'Pegá el link o el número' : 'https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1375519'} className="flex-1" />
         <Button type="submit" disabled={enCurso || !url.trim()}>
-          <ScanSearch aria-hidden /> {enCurso ? 'Analizando…' : compacto ? 'Analizar esta licitación' : 'Analizar'}
+          <ScanSearch aria-hidden /> {enCurso ? 'Analizando…' : 'Analizar'}
         </Button>
       </form>
       {estados && (

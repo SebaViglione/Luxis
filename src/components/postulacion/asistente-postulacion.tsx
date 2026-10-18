@@ -58,7 +58,7 @@ export function AsistentePostulacion({ datos }: { datos: DatosPagina }) {
   return (
     <div className="space-y-6">
       <Link href={`/licitaciones/${encodeURIComponent(l.idCompra)}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft aria-hidden className="size-4" /> Volver al detalle
+        <ArrowLeft aria-hidden className="size-4" /> Volver a la licitación
       </Link>
 
       <header className="space-y-1">

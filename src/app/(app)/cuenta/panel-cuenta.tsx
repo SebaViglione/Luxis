@@ -34,10 +34,11 @@ interface PanelCuentaProps {
 
 export function PanelCuenta({ nombre, email, perfil }: PanelCuentaProps) {
   return (
-    <Tabs defaultValue="usuario">
+    // Primero la empresa: productos, zonas y papeles son lo que cambia qué licitaciones te mostramos.
+    <Tabs defaultValue="empresa">
       <TabsList>
-        <TabsTrigger value="usuario">Tu usuario</TabsTrigger>
         <TabsTrigger value="empresa">Tu empresa</TabsTrigger>
+        <TabsTrigger value="usuario">Usuario y contraseña</TabsTrigger>
       </TabsList>
       <TabsContent value="usuario" className="mt-4 flex flex-col gap-6">
         <DatosUsuario nombre={nombre} email={email} />
