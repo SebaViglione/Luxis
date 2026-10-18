@@ -2,24 +2,11 @@ import { Info } from 'lucide-react';
 import type { ItemLicitacion, Moneda, PrecioHistorico } from '@/lib/types';
 import type { HistorialItem } from '@/server/precios/historial';
 import { cantidad, fecha, monto, suavizarMayusculas } from './formato';
-import { GraficoPrecios } from './grafico-precios';
+import { CajaPrecios } from './caja-precios';
 
 const NOMBRE_MONEDA: Record<Moneda, string> = {
   UYU: 'pesos uruguayos', USD: 'dólares', UI: 'unidades indexadas', UR: 'unidades reajustables', OTRA: 'otra moneda',
 };
-
-function Banda({ p }: { p: PrecioHistorico }) {
-  if (p.minimo === null || p.maximo === null || p.p25 === null || p.p75 === null || p.maximo <= p.minimo) return null;
-  const pos = (v: number) => `${((v - p.minimo!) / (p.maximo! - p.minimo!)) * 100}%`;
-  return (
-    <div aria-hidden className="relative h-2 rounded-full bg-primary/15">
-      <div className="absolute inset-y-0 origin-left animate-in rounded-full bg-primary/45 duration-700 fade-in-0" style={{ left: pos(p.p25), right: `calc(100% - ${pos(p.p75)})` }} />
-      {p.precioSugerido !== null && (
-        <div className="absolute -top-1 h-4 w-1 -translate-x-1/2 rounded-full bg-primary ring-2 ring-card" style={{ left: pos(p.precioSugerido) }} />
-      )}
-    </div>
-  );
-}
 
 function TarjetaPrecio({ p, item, historial, mostrarMoneda }: { p: PrecioHistorico; item: ItemLicitacion | undefined; historial: HistorialItem | undefined; mostrarMoneda: boolean }) {
   const unidad = p.unidad.toLowerCase();
@@ -46,17 +33,12 @@ function TarjetaPrecio({ p, item, historial, mostrarMoneda }: { p: PrecioHistori
             <p className="text-sm text-muted-foreground">Para ganar, cotizá cerca de</p>
             <p className="font-mono text-3xl font-semibold tabular-nums">{monto(p.precioSugerido, p.moneda)} <span className="font-sans text-sm font-normal text-muted-foreground">por {unidad}</span></p>
           </div>
-          {historial && historial.puntos.length > 0 && (
-            <GraficoPrecios puntos={historial.puntos} n={p.n} precioSugerido={p.precioSugerido} moneda={p.moneda} unidad={unidad} descripcion={suavizarMayusculas(p.descripcion)} />
-          )}
+          <CajaPrecios p={p} puntos={historial?.puntos ?? []} unidad={unidad} />
           {p.p25 !== null && p.p75 !== null && (
-            <div className="space-y-2">
-              {!(historial && historial.puntos.length > 0) && <Banda p={p} />}
-              <p className="text-sm text-muted-foreground">
-                La mitad de las ofertas que ganaron estuvo entre <span className="font-mono text-foreground">{monto(p.p25, p.moneda)}</span> y <span className="font-mono text-foreground">{monto(p.p75, p.moneda)}</span>.
-                {' '}Lo calculamos con {p.n} {p.n === 1 ? 'compra' : 'compras'} del Estado.
-              </p>
-            </div>
+            <p className="text-sm text-muted-foreground">
+              La mitad de las ofertas que ganaron estuvo entre <span className="font-mono text-foreground">{monto(p.p25, p.moneda)}</span> y <span className="font-mono text-foreground">{monto(p.p75, p.moneda)}</span>.
+              {' '}Lo calculamos con {p.n} {p.n === 1 ? 'compra' : 'compras'} del Estado.
+            </p>
           )}
           <dl className="grid gap-3 border-t pt-3 sm:grid-cols-2">
             <div>
