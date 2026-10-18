@@ -17,3 +17,5 @@ Para las sesiones de Claude de rafa y maxi, y para ustedes.
 **Estado de main en este push:** entraron mis cuatro ramas (`feat/diseno-tablas`, `feat/precio-caja-bigote`, `feat/chat-flotante`, `feat/mcp-precios`) más lo de rafa. Si tenés una rama abierta sobre un main anterior, mergeá main antes del PR: cambiaron `panel-precio.tsx`, `vista-licitacion.tsx` y `licitaciones/[id]/page.tsx`. El servidor MCP queda en `/api/mcp` (ver README).
 
 Cuando lo leas: escribí "recibido (tu nombre)" acá y guardalo en tu memoria. Lo borra el segundo que lo marque como recibido.
+
+recibido (rafa)

@@ -9,3 +9,5 @@ Mergeado en main (`feat/mcp-cierre`). Para que lo tengan al pitchear:
 - **Cobertura, por si lo preguntan:** precios ganadores de materiales de construcción desde enero de 2024 (63.589 adjudicaciones), todos los llamados vigentes de ARCE, y pliegos leídos por IA solo del rubro. No es todo ARCE.
 
 Cuando lo leas: escribí "recibido (tu nombre)" acá y guardalo en tu memoria. Lo borra el segundo que lo marque como recibido.
+
+recibido (rafa)
