@@ -7,30 +7,59 @@ import { TIPOS_COMPRA } from '@/lib/types';
 import { calcularPrecios } from './precio';
 import { calcularGapParaMatch } from './gap-documental';
 
+const NIVELES = ['principales', 'relevantes', 'consigue', 'menores', 'ninguno'] as const;
+type Nivel = (typeof NIVELES)[number];
+
+// La IA clasifica y el código pone el número: con un puntaje libre, el mismo caso daba de 30 a 72 según la corrida.
 const SchemaMatch = z.object({
-  confianza: z.number().int().min(0).max(100).describe('0-100 según la guía de calibración'),
-  razon: z.string().describe('1-2 frases concretas en español rioplatense, mencionando ítems'),
   items: z.array(z.object({
     nroItem: z.number().int(),
     descripcion: z.string(),
     puedeOfertar: z.boolean(),
-    productoEmpresa: z.string().nullable().describe('nombre del producto de la empresa que corresponde, o null'),
+    productoEmpresa: z.string().nullable().describe('nombre del producto de la empresa que corresponde, o null si no está en su lista'),
     nota: z.string().describe('muy breve, máximo 12 palabras'),
   })).describe('SOLO los ítems que la empresa puede ofertar (máximo 40); los que no aparecen se entienden como no ofertables'),
+  razon: z.string().describe('1-2 frases concretas en español rioplatense, mencionando ítems'),
+  nivel: z.enum(NIVELES).describe('qué puede ofertar, según la guía'),
+  fueraDeZona: z.boolean().describe('la entrega es fuera de los departamentos donde reparte'),
+  volumenExcesivo: z.boolean().describe('lo pedido supera claramente la capacidad declarada'),
 });
 
 const SYSTEM = `Sos el analista de licitaciones de una barraca de materiales de construcción en Uruguay. Decidís si una licitación del Estado es una oportunidad REAL para esta empresa.
-Contexto clave de las compras públicas uruguayas: casi siempre se puede ofertar y adjudicar POR ÍTEM. La empresa no necesita cubrir todos los ítems: alcanza con que pueda cotizar algunos que valgan la pena.
-Reglas:
-- Evaluá ítem por ítem si la empresa vende ese producto o uno equivalente (ej. "ARENA TERCIADA" ↔ "Arena terciada m3"; "CEMENTO PORTLAND" ↔ "Portland bolsa 25 kg"; "VARILLA DE HIERRO TORSIONADO" ↔ "Varilla torsionada 8 mm").
-- La oportunidad se mide por los ítems que SÍ puede ofertar (cantidad e importancia), no por los que no puede.
-- Zona: si la entrega es fuera de los departamentos donde reparte, bajá la confianza 10 a 20 puntos y mencioná el costo de flete; no la descartes por eso solo.
-- Volumen muy superior a su capacidad: bajá 10 a 20 puntos y mencionalo (puede ofertar parcial o con entregas escalonadas si el pliego lo permite).
-- Obras llave en mano, servicios de mano de obra, mantenimiento, maquinaria, medicamentos, mobiliario, electricidad o herramientas NO son oportunidad aunque mencionen materiales.
-- Si no hay ítems publicados, decidí por el objeto y lo que diga el pliego; tope de confianza 70.
-- Calibración: 85-100 la mayoría de los ítems (o los principales) son productos que vende y la zona es alcanzable; 65-84 puede ofertar ítems relevantes con algún reparo (zona, volumen, ítems ajenos); 40-64 solo pocos ítems menores o reparos fuertes; menos de 40 no es para esta empresa.
+Contexto clave de las compras públicas uruguayas: casi siempre se puede ofertar y adjudicar POR ÍTEM. La empresa no necesita cubrir todos los ítems: alcanza con que pueda cotizar algunos que valgan la pena. Los ítems que no puede ofertar NO restan.
+1. Ítem por ítem, decidí si la empresa lo puede ofertar:
+   - Lo vende, o vende uno equivalente (ej. "ARENA TERCIADA" ↔ "Arena terciada m3"; "CEMENTO PORTLAND" ↔ "Portland bolsa 25 kg"; "VARILLA DE HIERRO TORSIONADO" ↔ "Varilla torsionada 8 mm").
+   - No está en su lista pero es un material típico de barraca, que consigue con sus proveedores: áridos, cemento y cal, hierro de construcción y perfiles, premoldeados de hormigón (bloques, cordones, columnas, caños), ladrillos, maderas de obra y tableros, yeso y steel frame (placas, perfiles, cielorrasos), chapas y zinguería, caños y accesorios de PVC, membranas e impermeabilizantes, pinturas de obra, alambres y tejidos, clavos y tornillería, herramientas de albañil (baldes, fratachos, cucharas). También es ofertable: productoEmpresa null y en la nota "no está en su lista".
+   - No son de barraca: aberturas de aluminio a medida, cerrajería, material eléctrico, grifería y sanitaria fina, herramientas eléctricas, maquinaria, repuestos, muebles.
+2. "nivel", según lo que SÍ puede ofertar:
+   - principales: vende (está en su lista) los ítems principales, los de más cantidad o valor, o lo que es el objeto de la compra.
+   - relevantes: vende algunos ítems que valen la pena, aunque no sean los principales.
+   - consigue: los ítems que valen la pena son de barraca pero no están en su lista.
+   - menores: solo puede ofertar ítems chicos o de poco valor.
+   - ninguno: no puede ofertar nada; o es una obra llave en mano, un servicio (mano de obra, mantenimiento, instalación, colocación), maquinaria, vehículos, medicamentos, mobiliario, electricidad, informática o herramientas, aunque mencione materiales.
+3. "fueraDeZona": la entrega es fuera de los departamentos donde reparte (false si no indica zonas). Si es true, mencioná el costo de flete; no la descartes por eso solo.
+4. "volumenExcesivo": lo pedido supera claramente la capacidad declarada (false si no la declara). Si es true, mencionalo: puede ofertar parcial o con entregas escalonadas si el pliego lo permite.
+5. Si no hay ítems publicados, decidí por el objeto y lo que diga el pliego. Si además no hay pliego leído y el objeto es una compra de materiales de barraca, elegí "relevantes": el detalle se confirma al leer el pliego.
 - En "items" devolvé SOLO los ítems que la empresa puede ofertar (máximo 40, los más importantes primero). No listes los que no puede.
 - No inventes ítems ni productos. Usá solo los nroItem que aparecen.`;
+
+// "menores" queda debajo de 40 (no se muestra): en la práctica son compras de otro rubro con un ítem suelto de barraca.
+const BASE_NIVEL: Record<Nivel, number> = { principales: 88, relevantes: 75, consigue: 60, menores: 35, ninguno: 10 };
+
+/**
+ * Confianza 0-100 a partir de la clasificación. Bandas de la UI: alta ≥ 75, media ≥ 50, se muestra desde 40.
+ * Hasta +7 por la parte de los ítems que puede ofertar; fuera de zona −15 y nunca "alta"; volumen −10; sin ítems ni pliego, tope 70.
+ */
+export function calcularConfianza(c: { nivel: Nivel; fueraDeZona: boolean; volumenExcesivo: boolean; ofertables: number; totalItems: number; aCiegas: boolean }) {
+  let v = BASE_NIVEL[c.nivel];
+  if (c.nivel !== 'ninguno') {
+    if (c.totalItems > 0) v += Math.round((7 * Math.min(c.ofertables, c.totalItems)) / c.totalItems);
+    if (c.fueraDeZona) v = Math.min(v - 15, 74);
+    if (c.volumenExcesivo) v -= 10;
+  }
+  if (c.aCiegas) v = Math.min(v, 70);
+  return Math.max(0, Math.min(100, v));
+}
 
 export interface PerfilParaMatch {
   empresaId: string; nombre: string; departamento: string | null; zonas: string[]; capacidad: string | null;
@@ -64,13 +93,14 @@ async function contextoLicitacion(idCompra: string) {
   const fecha = l.fechaTopeOfertas?.toLocaleString('es-UY', { timeZone: 'America/Montevideo' }) ?? 'sin fecha';
   const lineas = items.slice(0, 80).map((i) => `  ${i.nroItem}. ${i.descArticulo} — ${i.cantPedida ?? '?'} ${i.unidad ?? ''}`.trimEnd());
   if (items.length > 80) lineas.push(`  … y ${items.length - 80} ítems más`);
-  return `${TIPOS_COMPRA[l.tipoCompra] ?? l.tipoCompra} ${l.numCompra ?? ''}/${l.anioCompra ?? ''} · ${l.organismo ?? ''}${l.unidadEjecutora ? ` — ${l.unidadEjecutora}` : ''}
+  const texto = `${TIPOS_COMPRA[l.tipoCompra] ?? l.tipoCompra} ${l.numCompra ?? ''}/${l.anioCompra ?? ''} · ${l.organismo ?? ''}${l.unidadEjecutora ? ` — ${l.unidadEjecutora}` : ''}
 Objeto: ${l.objeto ?? '(sin objeto)'}
 Lugar de entrega: ${l.lugarEntrega ?? 'no indicado'}
 Cierre de ofertas: ${fecha}
 Ítems:
 ${lineas.join('\n') || '  (sin ítems publicados)'}
 Qué piden según el pliego: ${a?.quePiden ?? 'sin pliego leído'}`;
+  return { texto, totalItems: items.length, aCiegas: items.length === 0 && !a };
 }
 
 function textoPerfil(p: PerfilParaMatch) {
@@ -81,17 +111,26 @@ Capacidad: ${p.capacidad ?? 'no indicada'}
 Documentación: ${p.documentos.join('; ') || 'no indicada'}`;
 }
 
-/** Evalúa una licitación para una empresa y guarda el match. */
-export async function evaluarLicitacion(perfil: PerfilParaMatch, idCompra: string, opts: { sinExtras?: boolean } = {}) {
+/** Evalúa una licitación para una empresa sin guardar nada. */
+export async function puntuarLicitacion(perfil: PerfilParaMatch, idCompra: string) {
   const ctx = await contextoLicitacion(idCompra);
   if (!ctx) return null;
   const { objeto } = await generarObjeto({
     modelo: modeloRapido, schema: SchemaMatch, system: SYSTEM,
-    prompt: `EMPRESA:\n${textoPerfil(perfil)}\n\nLICITACIÓN:\n${ctx}`, maxOutputTokens: 3000,
+    prompt: `EMPRESA:\n${textoPerfil(perfil)}\n\nLICITACIÓN:\n${ctx.texto}`, maxOutputTokens: 3000,
   });
+  const items = objeto.items.filter((i) => i.puedeOfertar);
+  const confianza = calcularConfianza({ ...objeto, ofertables: items.length, totalItems: ctx.totalItems, aCiegas: ctx.aCiegas });
+  return { ...objeto, items, confianza, modelo: nombreModeloRapido };
+}
+
+/** Evalúa una licitación para una empresa y guarda el match. */
+export async function evaluarLicitacion(perfil: PerfilParaMatch, idCompra: string, opts: { sinExtras?: boolean } = {}) {
+  const objeto = await puntuarLicitacion(perfil, idCompra);
+  if (!objeto) return null;
   const fila = {
     empresaId: perfil.empresaId, idCompra, relevante: objeto.confianza >= 40, confianza: objeto.confianza, razon: objeto.razon,
-    itemsOfertables: objeto.items.filter((i) => i.puedeOfertar), perfilVersion: perfil.perfilActualizadoEn ?? new Date(), updatedAt: new Date(),
+    itemsOfertables: objeto.items, perfilVersion: perfil.perfilActualizadoEn ?? new Date(), updatedAt: new Date(),
   };
   await db.insert(schema.matches).values(fila).onConflictDoUpdate({
     target: [schema.matches.empresaId, schema.matches.idCompra],
@@ -100,7 +139,7 @@ export async function evaluarLicitacion(perfil: PerfilParaMatch, idCompra: strin
   if (fila.relevante && !opts.sinExtras) {
     await Promise.all([calcularPrecios(idCompra).catch(() => null), calcularGapParaMatch(perfil.empresaId, idCompra).catch(() => null)]);
   }
-  return { ...objeto, modelo: nombreModeloRapido };
+  return objeto;
 }
 
 /** Si otra corrida ya evaluó esta licitación con el perfil actual mientras esta esperaba su turno. */

@@ -67,20 +67,30 @@ async function procesarPendientes() {
 }
 
 /**
- * Pliegos ya leídos de licitaciones que le interesan a alguna empresa (match de 40 o más) y que todavía no se analizaron:
- * se analizan y se recalculan los papeles de esos matches. Así el ajuste por papeles ya está cuando el usuario abre la
- * licitación, en vez de que la confianza "salte" recién al tocar Analizar.
+ * Pliegos ya leídos que todavía no se analizaron, de licitaciones que le interesan a alguna empresa (match de 40 o más)
+ * o que no tienen ítems publicados. Se analizan y se recalculan los papeles de esos matches, así el ajuste por papeles
+ * ya está cuando el usuario abre la licitación. Las sin ítems se evaluaron solo por el objeto ("VER PLIEGO…"): se vuelven
+ * a evaluar con lo que dice el pliego, porque si el primer puntaje dio menos de 40 nunca se iban a leer.
  */
 async function analizarRelevantes() {
-  const pendientes = await db.execute<{ id_compra: string }>(sql`
-    select l.id_compra from licitaciones l left join analisis_licitacion a on a.id_compra = l.id_compra
-    where l.es_rubro and l.archivos_procesados and l.fecha_tope_ofertas > now() and a.id_compra is null
-      and exists (select 1 from matches m where m.id_compra = l.id_compra and m.confianza >= 40)
-    order by l.fecha_tope_ofertas limit 6`);
+  const pendientes = await db.execute<{ id_compra: string; sin_items: boolean }>(sql`
+    with c as (
+      select l.id_compra, l.fecha_tope_ofertas, not exists (select 1 from licitacion_items i where i.id_compra = l.id_compra) as sin_items
+      from licitaciones l left join analisis_licitacion a on a.id_compra = l.id_compra
+      where l.es_rubro and l.archivos_procesados and l.fecha_tope_ofertas > now() and a.id_compra is null)
+    select id_compra, sin_items from c
+    where sin_items or exists (select 1 from matches m where m.id_compra = c.id_compra and m.confianza >= 40)
+    order by fecha_tope_ofertas limit 6`);
   await enParalelo([...pendientes], 3, async (p) => {
     try {
       await analizarLicitacion(p.id_compra);
       const M = schema.matches;
+      if (p.sin_items) {
+        // evaluarLicitacion también calcula precios y papeles si queda en 40 o más.
+        const evaluadas = await db.select({ empresaId: M.empresaId }).from(M).where(eq(M.idCompra, p.id_compra));
+        for (const e of evaluadas) await evaluarEmpresa(e.empresaId, { idCompras: [p.id_compra] }).catch(() => null);
+        return;
+      }
       const interesadas = await db.select({ empresaId: M.empresaId }).from(M).where(and(eq(M.idCompra, p.id_compra), gte(M.confianza, 40)));
       for (const e of interesadas) await calcularGapParaMatch(e.empresaId, p.id_compra).catch(() => null);
     } catch (e) {
