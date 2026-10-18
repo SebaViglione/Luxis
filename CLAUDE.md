@@ -14,6 +14,7 @@ Analizador de licitaciones públicas de Uruguay (ARCE) para barracas de material
 6. Secretos solo en `.env.local`. Base de datos compartida: no borres datos ajenos.
 7. `npm run lint && npm run build` antes del PR. Commits convencionales en español. PR `S1:`/`R1:`/`M1:`.
 8. Una tarea por conversación. Decisión faltante → la más simple que funcione hoy, anotada en el PR.
+9. Deploy: solo seba, a mano, con `vercel --prod --yes` desde `main` (proyecto `luxis-hackaton`, sin GitHub conectado). Los push no deployan. Nadie más corre `vercel`.
 
 ## Comandos
 `npm run dev` · `npm run db:check` · `npm run db:push` (solo seba) · `npm run ingest:vigentes` · `npm run ingest:adjudicaciones -- --desde 2024-01-01` · `npm run analizar:pendientes` · `npm run seed:demo` · `npm run eval:matching`

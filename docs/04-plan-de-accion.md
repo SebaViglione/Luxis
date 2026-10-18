@@ -37,7 +37,7 @@ Tres personas, tres carriles, cuatro puntos de sincronización. Cada uno ejecuta
 - Branch por tarea, PR con título `S1: ...`, `R1: ...`, `M1: ...`; squash-merge.
 - Conflictos: el dueño de la carpeta resuelve; `src/lib/types.ts` y `src/db/schema.ts` solo los toca seba.
 - Cualquier cambio de contrato (`docs/03`) se anuncia en el canal antes de hacerlo.
-- Deploy: automático desde `main` a Vercel; si el deploy falla no bloquea, la demo corre local.
+- Deploy: **manual y solo seba**, con `vercel --prod --yes` desde `main` al proyecto `luxis-hackaton` (https://luxis-hackaton.vercel.app, sin GitHub conectado; el proyecto viejo quedó bloqueado por el tope Hobby). Los push a GitHub no deployan nada. Si el deploy falla no bloquea, la demo corre local.
 
 ## Comunicación
 
