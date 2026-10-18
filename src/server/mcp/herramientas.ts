@@ -18,6 +18,8 @@ const IDS_MONEDA: Record<MonedaConsulta, number[]> = { UYU: [0], USD: [1, 2], UI
 /** Distancia coseno máxima para "el mismo artículo" (sim ≥ 0,92) y para "artículos parecidos" (sim ≥ 0,82). */
 const DIST_MISMO = 0.08;
 const DIST_PARECIDO = 0.18;
+/** Con menos adjudicaciones que esto entre los "mismo artículo", se suman también los "parecidos". */
+const MIN_ADJ_MISMO = 10;
 
 // Misma regla que sugerir() de src/server/ia/precio.ts: mediana con pocas muestras, promedio p25–mediana con 5 o más.
 function sugerir(n: number, p25: number | null, med: number | null): number | null {
@@ -50,10 +52,16 @@ export async function precioGanador(c: ConsultaPrecio) {
   const meses = Math.min(Math.max(Math.round(c.meses ?? 24), 1), 36);
   const unidad = (c.unidad ?? '').trim().toUpperCase();
 
-  // Vector de la consulta con el mismo taskType con que se guardaron los artículos (SEMANTIC_SIMILARITY).
+  // Vector de la consulta. Si la descripción ya está en articulos_vec se usa ese vector (determinístico y sin llamada a Gemini);
+  // si no, se embebe con el mismo taskType con que se guardaron los artículos; si Gemini falla, queda la búsqueda por texto.
   let vec: string | null = null;
-  if (embeddingsDisponibles()) {
-    try { vec = vectorSql(await embedConsulta(descNorm, 'SEMANTIC_SIMILARITY')); } catch { vec = null; }
+  let busqueda: 'vector guardado' | 'vector nuevo' | 'texto' = 'texto';
+  const [guardado] = await db.execute<{ e: string }>(sql`select embedding::text as e from articulos_vec where desc_normalizada = ${descNorm}`);
+  if (guardado?.e) {
+    vec = guardado.e; busqueda = 'vector guardado';
+  } else if (embeddingsDisponibles()) {
+    try { vec = vectorSql(await embedConsulta(descNorm, 'SEMANTIC_SIMILARITY')); busqueda = 'vector nuevo'; }
+    catch (e) { console.warn('[mcp] embedding de consulta falló, sigo por texto:', (e as Error).message); vec = null; }
   }
 
   const filas = await db.execute<FilaPrecio>(sql`
@@ -75,10 +83,15 @@ export async function precioGanador(c: ConsultaPrecio) {
         select distinct desc_normalizada from adjudicaciones a where q.v is null and a.desc_normalizada % q.d and similarity(a.desc_normalizada, q.d) >= 0.45 limit 40
       ) a
     ),
+    mismo as (
+      -- Cuántas adjudicaciones juntan los candidatos "mismo artículo" (exacto incluido).
+      select coalesce(sum((select count(*) from adjudicaciones a where a.desc_normalizada = m.desc_normalizada)), 0)::int as adj
+      from (select distinct desc_normalizada from cand where dist <= ${DIST_MISMO}) m
+    ),
     cands as (
-      -- Si hay "mismo artículo", no mezclamos con los "parecidos" (distorsionan la banda).
+      -- Los "parecidos" entran solo cuando los "mismo artículo" tienen pocas adjudicaciones (si no, distorsionan la banda).
       select desc_normalizada, min(dist) as dist, min(via) as via from cand
-      where dist <= ${DIST_MISMO} or not exists (select 1 from cand c2 where c2.dist <= ${DIST_MISMO} and c2.via <> 'exacta' and exists (select 1 from adjudicaciones a where a.desc_normalizada = c2.desc_normalizada))
+      where dist <= ${DIST_MISMO} or (select adj from mismo) < ${MIN_ADJ_MISMO}
       group by desc_normalizada
     ),
     comp as materialized (
@@ -113,7 +126,7 @@ export async function precioGanador(c: ConsultaPrecio) {
   const grupos = [...filas].filter((f) => f.n !== null).map((f) => {
     const sugerido = sugerir(f.n ?? 0, f.p25, f.mediana);
     return {
-      unidad: f.un || 'sin unidad', n: f.n, p25: f.p25, mediana: f.mediana, p75: f.p75, minimo: f.minimo, maximo: f.maximo,
+      unidad: f.un || 'sin unidad', n: f.n ?? 0, p25: f.p25, mediana: f.mediana, p75: f.p75, minimo: f.minimo, maximo: f.maximo,
       precioSugerido: sugerido,
       ultimasAdjudicaciones: (f.ultimas ?? []).map((u) => ({ ...u, url: urlDetalleCompra(u.idCompra) })),
       competidores: f.competidores ?? [],
@@ -121,11 +134,11 @@ export async function precioGanador(c: ConsultaPrecio) {
   });
 
   return {
-    consulta: { articulo: c.articulo, descripcionNormalizada: descNorm, moneda, unidad: unidad || 'todas', meses },
+    consulta: { articulo: c.articulo, descripcionNormalizada: descNorm, moneda, unidad: unidad || 'todas', meses, busqueda },
     articulosIncluidos: incluidas,
     porUnidad: grupos,
     sinResultados: grupos.length === 0,
-    nota: grupos.length ? NOTA_PRECIOS : `No encontramos adjudicaciones comparables en ${moneda} en los últimos ${meses} meses. Probá con otra descripción, otra moneda o más meses. ${NOTA_PRECIOS}`,
+    nota: (busqueda === 'texto' ? 'Búsqueda por similitud de texto (la semántica no estuvo disponible): puede faltar algún artículo escrito distinto. ' : '') + (grupos.length ? NOTA_PRECIOS : `No encontramos adjudicaciones comparables en ${moneda} en los últimos ${meses} meses. Probá con otra descripción, otra moneda o más meses. ${NOTA_PRECIOS}`),
   };
 }
 

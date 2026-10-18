@@ -20,6 +20,10 @@ const PREGUNTAS = [
     r: 'Sí. Muchas compras directas son de montos acotados y piden pocos papeles, y Luxis te dice cuáles podés cubrir con lo que ya tenés y en qué zona entregás.',
   },
   {
+    p: '¿Puedo consultar los datos desde mi propio Claude o ChatGPT?',
+    r: 'Sí. Luxis expone un servidor MCP de solo lectura con los precios ganadores, las licitaciones abiertas y la lectura de cada pliego. Lo agregás como conector personalizado en Claude, ChatGPT o Claude Code y le preguntás desde ahí. No pide cuenta ni clave: son datos públicos de ARCE.',
+  },
+  {
     p: '¿Qué pasa con los archivos que subo?',
     r: 'Los usamos para armar el perfil de tu empresa, que podés editar cuando quieras desde tu cuenta. También podés darla de baja.',
   },
