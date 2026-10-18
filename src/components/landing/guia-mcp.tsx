@@ -119,7 +119,7 @@ export function GuiaMcp() {
     <MotionConfig reducedMotion="user">
       <div className="rounded-2xl border bg-card/90 p-6 shadow-[0_40px_80px_-40px_rgba(27,27,27,0.3)] backdrop-blur-[2px] md:p-8">
         <p className="font-mono text-xs tracking-wide text-muted-foreground uppercase">Instalalo en tu cliente</p>
-        <div role="tablist" aria-label="Cliente" className="mt-4 flex flex-wrap gap-1">
+        <div role="tablist" aria-label="Cliente" className="mt-4 flex flex-wrap gap-2">
           {GUIAS.map((g) => {
             const on = g.id === activa;
             return (
@@ -130,9 +130,12 @@ export function GuiaMcp() {
                 aria-selected={on}
                 aria-controls={`guia-${g.id}`}
                 onClick={() => setActiva(g.id)}
-                className={cn('relative rounded-full px-3.5 py-1.5 text-sm transition-colors duration-300', on ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                className={cn(
+                  'relative rounded-full border px-3.5 py-1.5 text-sm transition-colors duration-300 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+                  on ? 'border-primary text-primary-foreground' : 'border-border bg-background text-muted-foreground hover:border-foreground/40 hover:bg-secondary hover:text-foreground',
+                )}
               >
-                {on && <motion.span layoutId="guia-mcp-resaltado" className="absolute inset-0 rounded-full bg-secondary" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
+                {on && <motion.span layoutId="guia-mcp-resaltado" className="absolute inset-0 rounded-full bg-primary" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
                 <span className="relative">{g.nombre}</span>
               </button>
             );
