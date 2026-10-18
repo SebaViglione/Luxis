@@ -4,14 +4,15 @@ import { and, asc, eq } from 'drizzle-orm';
 import type { SystemModelMessage } from 'ai';
 import { db } from '@/db';
 import { licitacionAclaraciones, licitacionArchivos, licitaciones, licitacionItems } from '@/db/schema';
-import type { CategoriaArchivo, PerfilEmpresa } from '@/lib/types';
+import type { CategoriaArchivo, PerfilEmpresa, PrecioHistorico } from '@/lib/types';
 import { PRIORIDAD } from '@/server/arce/clasificar';
 import { buscarParrafos, obtenerParrafo, resumenParrafos } from '@/server/ia/busqueda';
 
 const MAX_CARACTERES = 350_000;
 /** Por encima de este total de texto relevante, el chat usa búsqueda híbrida (extractos) en vez del texto completo. */
 const UMBRAL_EXTRACTOS = 60_000;
-const K_EXTRACTOS = 14;
+// Preguntas tipo "¿qué tengo que presentar?" juntan varios párrafos dispersos: con 14 quedaban afuera.
+const K_EXTRACTOS = 20;
 const LARGO_PARRAFO = 700;
 
 // Mismo orden que usa el análisis del pliego (seba) cuando el texto no entra completo.
@@ -287,28 +288,58 @@ Reglas:
 - Si la respuesta no está, decí claramente "No está en el pliego" y sugerí a quién consultar (el contacto de la licitación si existe) y hasta cuándo se pueden hacer consultas.
 - Respondé en español rioplatense, conciso. Usá viñetas ("- ") cuando enumeres requisitos o documentos.
 - Nunca inventes fechas, montos, cantidades ni requisitos. Si un dato es ambiguo, decilo.
-- Si te preguntan algo que no tiene que ver con esta licitación, respondé en una frase que solo podés ayudar con este pliego.`;
+- Si una aclaración publicada en el portal cambia lo que dice el pliego, vale la aclaración: decilo y citala con [Datos ARCE]. Si el pliego particular y el de condiciones generales dicen cosas distintas, vale el particular.
+- Para plazos y fechas, compará con la fecha de hoy que tenés al final: si un plazo ya venció, decilo claro; si falta poco, decí cuántos días quedan.
+- Si te preguntan un concepto general de compras públicas (qué es el RUPE, cómo se oferta en SICE, qué es una garantía de mantenimiento de oferta), explicalo en una o dos frases aclarando que es información general y no del pliego; después citá lo que diga el pliego sobre eso, si dice algo.
+- Si te preguntan algo que no tiene que ver con esta licitación ni con cómo presentarse, respondé en una frase que solo podés ayudar con este pliego.`;
 
-const REGLAS_PERFIL = `Además del pliego tenés el PERFIL DE LA EMPRESA que pregunta (lo cargó en Luxis; no es parte del pliego). Usalo para responder qué ítems puede ofertar comparando con sus productos, unidades y zonas de entrega, qué documentos le faltan o si la entrega le queda lejos. Lo que salga del perfil citalo como [Perfil de tu empresa]; lo del pliego, con [archivo, pN]. Nunca digas que la empresa vende algo que no figura en sus productos: si hay un equivalente probable, decí que es un equivalente y que lo confirme.`;
+const REGLAS_PERFIL = `Además del pliego tenés el PERFIL DE LA EMPRESA que pregunta (lo cargó en Luxis; no es parte del pliego). Usalo para responder qué ítems puede ofertar comparando con sus productos, unidades y zonas de entrega, qué documentos le faltan o si la entrega le queda lejos. Lo que salga del perfil citalo como [Perfil de tu empresa]; lo del pliego, con [archivo, pN]. Nunca digas que la empresa vende algo que no figura en sus productos: si hay un equivalente probable, decí que es un equivalente y que lo confirme. Los precios de lista son los que cargó la empresa y no aclaran si incluyen IVA: no los des por sin IVA.`;
+
+const REGLAS_PRECIOS = `También tenés los PRECIOS HISTÓRICOS que calculó Luxis con adjudicaciones anteriores de ARCE (no son parte del pliego): precios ganadores sin IVA de artículos comparables en los últimos 24 meses. Usalos si te preguntan a cuánto cotizar, cuánto se pagó antes o quién suele ganar, y citalos como [Precios históricos]. Son una referencia, no una garantía: si la muestra es chica, decilo.`;
 
 const ESTADO_DOC_TEXTO: Record<string, string> = { vigente: 'vigente', en_tramite: 'en trámite', no_tiene: 'no tiene', vencido: 'vencido', desconocido: 'sin dato' };
 
 function bloquePerfil(perfil: PerfilEmpresa): string {
   const precio = (p: PerfilEmpresa['productos'][number]) =>
-    p.precioReferencia == null ? 'sin precio de lista' : `${p.moneda === 'USD' ? 'US$' : '$'} ${p.precioReferencia.toLocaleString('es-UY')} sin IVA`;
+    p.precioReferencia == null ? 'sin precio de lista' : formatearMonto(p.precioReferencia, p.moneda);
   return [
     '=== PERFIL DE LA EMPRESA QUE PREGUNTA ===',
     `Empresa: ${perfil.nombre}${perfil.localidad ? ` (${perfil.localidad}${perfil.departamento ? `, ${perfil.departamento}` : ''})` : ''}`,
     `Entrega en: ${perfil.zonasEntrega.length ? perfil.zonasEntrega.join(', ') : 'sin dato'}`,
     `Capacidad: ${perfil.capacidadNotas || 'sin dato'}`,
     `Documentación: ${perfil.documentacion.map((d) => `${d.tipo === 'OTRO' ? d.nombre : d.tipo}: ${ESTADO_DOC_TEXTO[d.estado] ?? d.estado}`).join('; ')}`,
-    `Productos que vende (${perfil.productos.length}), nombre · unidad · precio de lista:`,
+    `Productos que vende (${perfil.productos.length}), nombre · unidad · precio de lista (sin aclarar si incluye IVA):`,
     ...perfil.productos.slice(0, 300).map((p) => `- ${p.nombre} · ${p.unidad || 'sin unidad'} · ${precio(p)}`),
   ].join('\n');
 }
 
-/** Mensajes de sistema: reglas + contexto del pliego (con breakpoint de prompt caching de Anthropic) + perfil de la empresa. */
-export function instruccionesChatPliego(contexto: ContextoPliego, perfil?: PerfilEmpresa | null): SystemModelMessage[] {
+function formatearMonto(valor: number, moneda: string) {
+  return `${moneda === 'UYU' ? '$' : moneda === 'USD' ? 'US$' : moneda} ${valor.toLocaleString('es-UY', { maximumFractionDigits: 2 })}`;
+}
+
+function bloquePrecios(precios: PrecioHistorico[]): string {
+  const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-UY', { timeZone: 'America/Montevideo' });
+  return [
+    '=== PRECIOS HISTÓRICOS POR ÍTEM (adjudicaciones anteriores, sin IVA) ===',
+    ...precios.slice(0, 80).map((p) => {
+      // Con una sola adjudicación la explicación ya nombra al ganador; con más, se suma la última.
+      const ultima =
+        p.n > 1 && p.ultimoGanador && p.ultimoPrecio != null
+          ? ` Última adjudicación: ${p.ultimoGanador} a ${formatearMonto(p.ultimoPrecio, p.moneda)}${p.ultimaFecha ? ` (${fecha(p.ultimaFecha)})` : ''}.`
+          : '';
+      return `- Ítem ${p.nroItem} · ${p.descripcion} · por ${p.unidad}: ${p.explicacion ?? `${p.n} adjudicaciones comparables.`}${ultima}`;
+    }),
+  ].join('\n');
+}
+
+/**
+ * Mensajes de sistema: reglas + contexto del pliego (con breakpoint de prompt caching de Anthropic) + fecha de hoy,
+ * precios históricos y perfil de la empresa.
+ */
+export function instruccionesChatPliego(
+  contexto: ContextoPliego,
+  { perfil, precios = [] }: { perfil?: PerfilEmpresa | null; precios?: PrecioHistorico[] } = {},
+): SystemModelMessage[] {
   const avisos: string[] = [];
   if (contexto.basadoEn === 'metadata') {
     avisos.push(
@@ -329,7 +360,15 @@ export function instruccionesChatPliego(contexto: ContextoPliego, perfil?: Perfi
     );
   }
 
-  // El perfil va después del pliego: así el prefijo cacheado (reglas + pliego) es el mismo para todas las empresas.
+  const hoy = new Date().toLocaleString('es-UY', { timeZone: 'America/Montevideo', dateStyle: 'full', timeStyle: 'short' });
+  const despuesDelPliego = [
+    `Hoy es ${hoy} (hora de Uruguay).`,
+    ...(precios.length ? [`${REGLAS_PRECIOS}\n\n${bloquePrecios(precios)}`] : []),
+    ...(perfil ? [`${REGLAS_PERFIL}\n\n${bloquePerfil(perfil)}`] : []),
+  ];
+
+  // La fecha, los precios y el perfil van después del pliego: así el prefijo cacheado (reglas + pliego) no cambia
+  // de un día a otro ni entre empresas.
   return [
     { role: 'system', content: [REGLAS, ...avisos].join('\n\n') },
     {
@@ -337,6 +376,6 @@ export function instruccionesChatPliego(contexto: ContextoPliego, perfil?: Perfi
       content: contexto.texto,
       providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
     },
-    ...(perfil ? [{ role: 'system' as const, content: `${REGLAS_PERFIL}\n\n${bloquePerfil(perfil)}` }] : []),
+    { role: 'system', content: despuesDelPliego.join('\n\n') },
   ];
 }

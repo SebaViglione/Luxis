@@ -18,6 +18,7 @@ const SUGERENCIAS = [
   '¿Cuál es el plazo de entrega?',
   '¿Piden muestras o garantía?',
   '¿Cómo se cotiza, con o sin IVA?',
+  '¿Qué ítems puedo ofertar y a qué precio?',
 ];
 
 interface InfoPliego {

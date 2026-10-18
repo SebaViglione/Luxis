@@ -21,11 +21,12 @@ const REFERENCIA_PARRAFO = /\bp\.?\s*(\d+)(?:\s*[-–]\s*p?\.?\s*(\d+))?/gi;
 function parsearCitas(contenido: string): Cita[] | null {
   if (/^datos arce$/i.test(contenido.trim())) return [{ archivo: 'Datos ARCE', parrafo: null }];
   if (/^perfil de (tu|la) empresa$/i.test(contenido.trim())) return [{ archivo: 'Perfil de tu empresa', parrafo: null }];
+  if (/^precios hist[oó]ricos$/i.test(contenido.trim())) return [{ archivo: 'Precios históricos', parrafo: null }];
   const citas: Cita[] = [];
   for (const parte of contenido.split(';')) {
     const m = /^\s*(.+?),\s*(p\.?\s*\d+.*)$/i.exec(parte);
     if (!m) {
-      if (/^\s*datos arce\s*$/i.test(parte)) continue;
+      if (/^\s*(datos arce|perfil de (tu|la) empresa|precios hist[oó]ricos)\s*$/i.test(parte)) continue;
       return null;
     }
     const archivo = m[1].trim();

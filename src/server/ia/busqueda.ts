@@ -18,9 +18,21 @@ const STOP = new Set(['de', 'la', 'el', 'en', 'y', 'a', 'los', 'las', 'del', 'qu
 
 /** Consulta full-text con OR entre términos (las preguntas en lenguaje natural casi nunca matchean todos con AND). */
 function consultaFullText(texto: string): string | null {
-  const terminos = texto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const terminos = texto.toLowerCase().normalize('NFD').replace(/ñ/g, 'ñ').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9ñ ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w));
-  return terminos.length ? [...new Set(terminos)].slice(0, 12).join(' | ') : null;
+  return terminos.length ? [...new Set(terminos)].slice(0, 12).map(conVarianteConTilde).join(' | ') : null;
+}
+
+/**
+ * El stemmer español reconoce algunos sufijos solo con tilde ("garantía" → garant, "garantia" → garanti; igual con
+ * -ción y -sión): al término sin tilde se le suma esa variante. Si la variante no existe ("matería"), su raíz no
+ * aparece en ningún párrafo y no cambia nada.
+ */
+function conVarianteConTilde(termino: string): string {
+  const variantes = new Set([termino]);
+  if (/[cs]ion$/.test(termino)) variantes.add(termino.replace(/ion$/, 'ión'));
+  if (/ias?$/.test(termino)) variantes.add(termino.replace(/ia(s?)$/, 'ía$1'));
+  return variantes.size > 1 ? `(${[...variantes].join(' | ')})` : termino;
 }
 
 /**

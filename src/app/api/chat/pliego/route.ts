@@ -6,9 +6,11 @@ import { IANoConfigurada, verificarIA } from '@/lib/ia/estructurado';
 import { modeloFuerte } from '@/lib/ia/modelos';
 import { obtenerSesion } from '@/server/auth/sesion';
 import { armarContextoPliego, buscarParrafo, instruccionesChatPliego, resumenContextoPliego } from '@/server/ia/chat-pliego';
+import { leerPrecios } from '@/server/ia/precio';
 import { leerPerfil } from '@/server/onboarding/guardar-perfil';
 
-export const maxDuration = 60;
+// Con un pliego largo completo en el contexto (hasta ~350k caracteres), la respuesta puede pasar el minuto.
+export const maxDuration = 120;
 
 const MAX_MENSAJES_HISTORIAL = 20;
 
@@ -47,10 +49,12 @@ export async function POST(request: Request) {
   const preguntasUsuario = messages.filter((m) => m.role === 'user').map(textoDe).filter(Boolean);
   const consulta = preguntasUsuario.slice(-2).join('\n');
 
-  // El perfil deja que el chat diga qué ítems puede ofertar la empresa; si falla, responde solo con el pliego.
-  const [contexto, perfil] = await Promise.all([
+  // El perfil deja que el chat diga qué ítems puede ofertar la empresa, y los precios históricos, a cuánto cotizar;
+  // si alguno falla, responde solo con el pliego.
+  const [contexto, perfil, precios] = await Promise.all([
     armarContextoPliego(idCompra, consulta),
     leerPerfil(sesion.empresaId).catch(() => null),
+    leerPrecios(idCompra).catch(() => []),
   ]);
   if (!contexto) return Response.json({ error: 'No encontramos esa licitación.' }, { status: 404 });
   if (ultimo.role === 'user' && pregunta && trigger !== 'regenerate-message') {
@@ -64,7 +68,7 @@ export async function POST(request: Request) {
     // DeepSeek V4 razona por defecto: tarda hasta 1 min en escribir y además ignora temperature.
     // Sin razonamiento el primer texto llega en ~5 s y las citas siguen igual de precisas.
     providerOptions: { deepseek: { thinking: { type: 'disabled' } } },
-    instructions: instruccionesChatPliego(contexto, perfil),
+    instructions: instruccionesChatPliego(contexto, { perfil, precios }),
     messages: await convertToModelMessages(messages.slice(-MAX_MENSAJES_HISTORIAL)),
     onFinish: async ({ text, usage }) => {
       console.info(
