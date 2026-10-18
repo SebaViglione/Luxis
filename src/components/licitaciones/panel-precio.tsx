@@ -2,7 +2,7 @@ import { Info } from 'lucide-react';
 import type { ItemLicitacion, Moneda, PrecioHistorico } from '@/lib/types';
 import type { HistorialItem } from '@/server/precios/historial';
 import { cantidad, fecha, monto, nombrePropio, suavizarMayusculas } from './formato';
-import { GraficoPrecios } from './grafico-precios';
+import { CajaPrecios, LeyendaCaja } from './caja-precios';
 
 const NOMBRE_MONEDA: Record<Moneda, string> = {
   UYU: 'pesos uruguayos', USD: 'dólares', UI: 'unidades indexadas', UR: 'unidades reajustables', OTRA: 'otra moneda',
@@ -13,22 +13,8 @@ function Rotulo({ children }: { children: React.ReactNode }) {
   return <dt className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">{children}</dt>;
 }
 
-function Banda({ p }: { p: PrecioHistorico }) {
-  if (p.minimo === null || p.maximo === null || p.p25 === null || p.p75 === null || p.maximo <= p.minimo) return null;
-  const pos = (v: number) => `${((v - p.minimo!) / (p.maximo! - p.minimo!)) * 100}%`;
-  return (
-    <div aria-hidden className="relative h-2 rounded-full bg-primary/15">
-      <div className="absolute inset-y-0 origin-left animate-in rounded-full bg-primary/45 duration-700 fade-in-0" style={{ left: pos(p.p25), right: `calc(100% - ${pos(p.p75)})` }} />
-      {p.precioSugerido !== null && (
-        <div className="absolute -top-1 h-4 w-1 -translate-x-1/2 rounded-full bg-primary ring-2 ring-card" style={{ left: pos(p.precioSugerido) }} />
-      )}
-    </div>
-  );
-}
-
 function TarjetaPrecio({ p, item, historial, mostrarMoneda }: { p: PrecioHistorico; item: ItemLicitacion | undefined; historial: HistorialItem | undefined; mostrarMoneda: boolean }) {
   const unidad = p.unidad.toLowerCase();
-  const conGrafico = Boolean(historial && historial.puntos.length > 0);
   const competidores = p.competidores.slice(0, 3);
   return (
     <article className="flex flex-col rounded-md border bg-card">
@@ -56,10 +42,7 @@ function TarjetaPrecio({ p, item, historial, mostrarMoneda }: { p: PrecioHistori
                 {monto(p.precioSugerido, p.moneda)} <span className="font-sans text-sm font-normal text-muted-foreground">por {unidad}</span>
               </p>
             </div>
-            {conGrafico && historial && (
-              <GraficoPrecios puntos={historial.puntos} n={p.n} precioSugerido={p.precioSugerido} moneda={p.moneda} unidad={unidad} descripcion={suavizarMayusculas(p.descripcion)} />
-            )}
-            {!conGrafico && <Banda p={p} />}
+            <CajaPrecios p={p} puntos={historial?.puntos ?? []} unidad={unidad} />
           </div>
 
           <dl className="grid grid-cols-2 border-t">
@@ -135,6 +118,7 @@ export function PanelPrecio({ precios, items, historial = {}, monedaSupuesta = f
           <Info aria-hidden className="size-4 shrink-0" /> {aclaracion}
         </p>
       </div>
+      <LeyendaCaja />
       <div className="grid gap-3 lg:grid-cols-2">
         {precios.map((p) => (
           <TarjetaPrecio key={p.nroItem} p={p} item={porNro.get(p.nroItem)} historial={historial[p.nroItem]} mostrarMoneda={variasMonedas} />
