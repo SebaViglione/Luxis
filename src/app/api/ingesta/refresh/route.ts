@@ -8,6 +8,7 @@ import { procesarArchivos } from '@/server/arce/procesar-archivos';
 import { evaluarEmpresa } from '@/server/ia/matching';
 import { enParalelo } from '@/lib/ia/estructurado';
 import { empresaIdActual } from '@/server/consultas/empresa-actual';
+import { esPedidoAdmin } from '@/server/auth/admin';
 
 export const maxDuration = 300;
 // ARCE corta conexiones desde datacenters de EE. UU.; São Paulo es la región de Vercel más cercana a Uruguay.
@@ -21,8 +22,7 @@ export const preferredRegion = 'gru1';
  */
 async function handler(req: NextRequest) {
   await connection();
-  const secreto = process.env.CRON_SECRET;
-  const esCron = !!secreto && req.headers.get('authorization') === `Bearer ${secreto}`;
+  const esCron = esPedidoAdmin(req);
   const empresaSesion = esCron ? null : await empresaIdActual();
   if (!esCron && !empresaSesion) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
@@ -34,8 +34,11 @@ async function handler(req: NextRequest) {
       const matching = await evaluarEmpresa(empresaSesion).catch((e) => ({ error: (e as Error).message }));
       const notificaciones = await generarNotificaciones(empresaSesion).catch(() => 0);
       const arceCaido = 'error' in vigentes;
-      if (!arceCaido) after(() => trabajoEnSegundoPlano(dias));
-      return NextResponse.json({ ok: true, dias, vigentes, matching, notificaciones, segundoPlano: !arceCaido, aviso: arceCaido ? 'ARCE no respondió: mostramos lo que ya teníamos.' : undefined });
+      // Adjudicaciones y pliegos solo cuando de verdad se le pidió a ARCE: refreshRapido lo hace como mucho cada 10 min,
+      // así que repetir el botón no apila descargas en segundo plano.
+      const segundoPlano = !arceCaido && !vigentes.omitido;
+      if (segundoPlano) after(() => trabajoEnSegundoPlano(dias));
+      return NextResponse.json({ ok: true, dias, vigentes, matching, notificaciones, segundoPlano, aviso: arceCaido ? 'ARCE no respondió: mostramos lo que ya teníamos.' : undefined });
     }
 
     const datos = await refresh(dias);

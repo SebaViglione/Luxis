@@ -3,7 +3,7 @@ import { and, eq, isNotNull } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { modeloRapido, modeloFuerte, nombreModeloRapido, nombreModeloFuerte } from '@/lib/ia/modelos';
 import { generarObjeto } from '@/lib/ia/estructurado';
-import { TIPOS_COMPRA, type AnalisisPliego, type CategoriaArchivo } from '@/lib/types';
+import { TIPOS_COMPRA, type AnalisisPliego, type CategoriaArchivo, type FechaClave } from '@/lib/types';
 import { PRIORIDAD } from '@/server/arce/clasificar';
 
 const MAX_CHARS = 350_000;
@@ -64,6 +64,11 @@ ${items.map((i) => `  ${i.nroItem}. ${i.descArticulo} — ${i.cantPedida ?? '?'}
   return { meta, bloques, leidos, hayTexto: bloques.length > 0 };
 }
 
+/** Una fecha que no se puede leer (la IA no devolvió ISO) pasa a null: la descripción queda y la pantalla no se rompe. */
+export function fechasLegibles(fechas: FechaClave[]): FechaClave[] {
+  return fechas.map((f) => (f.fecha && Number.isNaN(Date.parse(f.fecha)) ? { ...f, fecha: null } : f));
+}
+
 /** Analiza el pliego de una licitación y guarda el resultado. Idempotente salvo `forzar`. */
 export async function analizarLicitacion(idCompra: string, opts: { forzar?: boolean; modelo?: 'rapido' | 'fuerte' } = {}): Promise<AnalisisPliego> {
   if (!opts.forzar) {
@@ -76,7 +81,7 @@ export async function analizarLicitacion(idCompra: string, opts: { forzar?: bool
   const ctx = await armarContexto(idCompra);
   const fuerte = opts.modelo === 'fuerte';
   const { objeto } = await generarObjeto({
-    modelo: fuerte ? modeloFuerte : modeloRapido, schema: SchemaAnalisis, system: SYSTEM, maxOutputTokens: 6000,
+    modelo: fuerte ? modeloFuerte : modeloRapido, schema: SchemaAnalisis, system: SYSTEM, maxOutputTokens: 6000, timeoutMs: 180_000,
     prompt: `${ctx.meta}\n\n${ctx.hayTexto ? ctx.bloques.join('\n\n') : 'No se pudo leer el texto del pliego: analizá solo con la metadata de arriba.'}`,
   });
   const basadoEn: 'pliego' | 'metadata' = ctx.hayTexto ? 'pliego' : 'metadata';
@@ -84,7 +89,7 @@ export async function analizarLicitacion(idCompra: string, opts: { forzar?: bool
   const condiciones = Object.fromEntries(Object.entries(objeto.condiciones).filter(([, v]) => v !== null));
   const fila = {
     idCompra, resumen: objeto.resumen, quePiden: objeto.quePiden, requisitosDocumentales: objeto.requisitosDocumentales,
-    fechasClave: objeto.fechasClave, condiciones, riesgos: objeto.riesgos, confianza, basadoEn,
+    fechasClave: fechasLegibles(objeto.fechasClave), condiciones, riesgos: objeto.riesgos, confianza, basadoEn,
     modelo: fuerte ? nombreModeloFuerte : nombreModeloRapido, caracteresLeidos: ctx.leidos, updatedAt: new Date(),
   };
   await db.insert(schema.analisisLicitacion).values(fila).onConflictDoUpdate({ target: schema.analisisLicitacion.idCompra, set: fila });

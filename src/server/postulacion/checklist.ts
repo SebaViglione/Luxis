@@ -15,6 +15,9 @@ const normalizar = (s: string) =>
 // Lo que arma Luxis en el paso de documentos o en la planilla.
 const LO_ARMA_LUXIS =
   /FORMULARIO|IDENTIFICACION DEL OFERENTE|DATOS (DE LA EMPRESA|DEL OFERENTE|IDENTIFICATORIOS)|DECLARACION JURADA|DECLARACION DE|PLANILLA|COTIZACION|PROPUESTA ECONOMICA|OFERTA ECONOMICA|ESPECIFICA|TOTALIDAD DE LA INFORMACION|CARTA DE PRESENTACION|NOTA DE PRESENTACION|MONEDA/;
+// Presentar la oferta es el envío, no un papel: lo cubre el ítem del canal (ARCE en línea o mail/papel).
+const ENVIO_DE_OFERTA =
+  /^(?!.*(FORMULARIO|CARTA|NOTA|PLANILLA|DECLARACION|ANEXO)).*(OFERTA ENVIADA|OFERTA POR CORREO|OFERTA EN LINEA|PRESENTACION DE (LA )?OFERTA|CARGAR? (DE )?(LA )?OFERTA)/;
 // Se exige recién si te adjudican: no frena la oferta.
 const POST_ADJUDICACION = /FIEL CUMPLIMIENTO|CUMPLIMIENTO DE CONTRATO|GARANTIA DE CUMPLIMIENTO/;
 // Se pide al entregar la mercadería.
@@ -177,6 +180,7 @@ function itemDeGap(g: GapDocumental, seccion: string | null): ItemChecklist | nu
   const nombre = normalizar(g.documento);
   const base = { id: `doc-${nombre}`, titulo: g.documento, seccion, obligatorio: g.obligatorio };
 
+  if (ENVIO_DE_OFERTA.test(nombre)) return null;
   // Primero lo que arma Luxis: "Formulario de identificación… validado en RUPE" es un formulario, no el RUPE.
   if (LO_ARMA_LUXIS.test(nombre)) {
     return { ...base, estado: 'luxis', detalle: 'Lo armamos con tus datos en el paso de documentos o en la planilla. Revisalo y firmalo.' };

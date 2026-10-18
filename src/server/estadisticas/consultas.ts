@@ -2,6 +2,7 @@ import 'server-only';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { TIPOS_COMPRA, confianzaEfectiva, type EstadoDocumental, type EstadoUsuarioMatch, type LicitacionCard } from '@/lib/types';
+import { leerMontoEstimado, montoEstimadoSql } from '@/server/consultas/licitaciones';
 import { esDeLaEmpresa } from './proveedor';
 import { identidadEmpresa } from './resultados';
 
@@ -14,9 +15,7 @@ const iso = (d: Date | null | undefined) => (d ? d.toISOString() : null);
  */
 export async function listarEnCurso(empresaId: string): Promise<LicitacionCard[]> {
   const L = schema.licitaciones, M = schema.matches, A = schema.analisisLicitacion;
-  const monto = sql<string | null>`(select sum(i.cant_pedida * p.precio_sugerido)::text from licitacion_items i
-    join precios_sugeridos p on p.id_compra = i.id_compra and p.nro_item = i.nro_item
-    where i.id_compra = ${M.idCompra} and p.precio_sugerido is not null)`;
+  const monto = montoEstimadoSql(M.idCompra);
   const filas = await db.select({
     idCompra: L.idCompra, tipoCompra: L.tipoCompra, numCompra: L.numCompra, anioCompra: L.anioCompra, organismo: L.organismo, objeto: L.objeto,
     tope: L.fechaTopeOfertas, publicacion: L.fechaPublicacion, creada: L.createdAt, m: M, resumen: A.resumen, fechas: A.fechasClave, monto,
@@ -38,7 +37,7 @@ export async function listarEnCurso(empresaId: string): Promise<LicitacionCard[]
       fechaPublicacion: iso(f.publicacion) ?? iso(f.creada)!, confianza: e.confianza, confianzaBase: f.m.confianza, ajusteDocumental: e.ajuste,
       razon: f.m.razon ?? '', resumen: f.resumen ?? null, itemsOfertables: f.m.itemsOfertables ?? [],
       estadoDocumental: f.m.estadoDocumental as EstadoDocumental, estadoUsuario: f.m.estadoUsuario as EstadoUsuarioMatch,
-      tieneVisita: (f.fechas ?? []).some((x) => x.tipo === 'visita'), montoEstimado: f.monto ? Number(f.monto) : null, moneda: 'UYU',
+      tieneVisita: (f.fechas ?? []).some((x) => x.tipo === 'visita'), ...leerMontoEstimado(f.monto),
     };
   });
 }

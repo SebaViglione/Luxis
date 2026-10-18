@@ -67,8 +67,12 @@ export async function upsertLlamados(compras: CompraNormalizada[]): Promise<{ co
     }
     const filasAcl = grupo.flatMap((c) => c.aclaraciones.map((a) => ({ idCompra: c.idCompra, fecha: a.fecha, texto: a.texto, nomArchivo: a.nomArchivo, url: a.url })));
     if (filasAcl.length) {
-      await db.delete(schema.licitacionAclaraciones).where(inArray(schema.licitacionAclaraciones.idCompra, [...new Set(filasAcl.map((a) => a.idCompra))]));
-      for (const l of lotes(filasAcl, 500)) await db.insert(schema.licitacionAclaraciones).values(l);
+      // Aclaraciones no tiene índice único: reemplazo atómico y serializado para que dos ingestas a la vez no las dupliquen.
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext('licitacion_aclaraciones'))`);
+        await tx.delete(schema.licitacionAclaraciones).where(inArray(schema.licitacionAclaraciones.idCompra, [...new Set(filasAcl.map((a) => a.idCompra))]));
+        for (const l of lotes(filasAcl, 500)) await tx.insert(schema.licitacionAclaraciones).values(l);
+      });
     }
   }
   return { compras: lista.length, items, rubro };

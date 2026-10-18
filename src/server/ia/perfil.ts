@@ -91,6 +91,8 @@ export async function extraerPerfil(
       `FUENTES:\n${unirFuentes(fuentes)}`,
     ].join('\n\n'),
     maxOutputTokens: MAX_TOKENS_PERFIL,
+    // Hasta 16k tokens de salida: necesita más que el tiempo por defecto, dentro de los 300 s de la ruta.
+    timeoutMs: 240_000,
   });
   console.info(`[perfil] ${objeto.productos.length} productos · tokens entrada=${tokensEntrada} salida=${tokensSalida}`);
 
