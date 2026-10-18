@@ -103,10 +103,33 @@ export async function evaluarLicitacion(perfil: PerfilParaMatch, idCompra: strin
   return { ...objeto, modelo: nombreModeloRapido };
 }
 
+/** Si otra corrida ya evaluó esta licitación con el perfil actual mientras esta esperaba su turno. */
+async function yaEvaluada(perfil: PerfilParaMatch, idCompra: string) {
+  const [m] = await db.select({ v: schema.matches.perfilVersion }).from(schema.matches)
+    .where(and(eq(schema.matches.empresaId, perfil.empresaId), eq(schema.matches.idCompra, idCompra)));
+  return !!m && (perfil.perfilActualizadoEn === null || (!!m.v && m.v >= perfil.perfilActualizadoEn));
+}
+
+type OpcionesEvaluacion = { todas?: boolean; idCompras?: string[]; concurrencia?: number };
+type ResultadoEvaluacion = { evaluadas: number; relevantes: number; errores: number };
+/** Corridas normales en curso en esta instancia, por empresa y versión del perfil: un segundo pedido se suma a la que ya corre. */
+const corridas = new Map<string, Promise<ResultadoEvaluacion>>();
+
 /** Recalcula matches de una empresa contra licitaciones abiertas del rubro. Solo nuevas o desactualizadas salvo `todas`. */
-export async function evaluarEmpresa(empresaId: string, opts: { todas?: boolean; idCompras?: string[]; concurrencia?: number } = {}) {
+export async function evaluarEmpresa(empresaId: string, opts: OpcionesEvaluacion = {}) {
   const perfil = await cargarPerfil(empresaId);
   if (!perfil) throw new Error('Empresa no encontrada');
+  if (opts.todas || opts.idCompras?.length) return evaluarConPerfil(perfil, opts);
+  const clave = `${empresaId}:${perfil.perfilActualizadoEn?.getTime() ?? 0}`;
+  const enCurso = corridas.get(clave);
+  if (enCurso) return enCurso;
+  const corrida = evaluarConPerfil(perfil, opts).finally(() => corridas.delete(clave));
+  corridas.set(clave, corrida);
+  return corrida;
+}
+
+async function evaluarConPerfil(perfil: PerfilParaMatch, opts: OpcionesEvaluacion): Promise<ResultadoEvaluacion> {
+  const empresaId = perfil.empresaId;
   const abiertas = await db.select({ idCompra: schema.licitaciones.idCompra }).from(schema.licitaciones)
     .where(and(eq(schema.licitaciones.esRubro, true), gt(schema.licitaciones.fechaTopeOfertas, new Date()),
       opts.idCompras?.length ? inArray(schema.licitaciones.idCompra, opts.idCompras) : sql`true`));
@@ -117,8 +140,13 @@ export async function evaluarEmpresa(empresaId: string, opts: { todas?: boolean;
     candidatas = candidatas.filter((id) => !vigentes.has(id));
   }
   let relevantes = 0; let errores = 0;
+  const soloPendientes = !opts.todas && !opts.idCompras?.length;
   await enParalelo(candidatas, opts.concurrencia ?? 8, async (id) => {
-    try { const r = await evaluarLicitacion(perfil, id); if (r && r.confianza >= 40) relevantes++; }
+    try {
+      // Otra corrida (otra instancia, u otro pedido) pudo haberla evaluado mientras tanto: no repetir la llamada a la IA.
+      if (soloPendientes && (await yaEvaluada(perfil, id))) return;
+      const r = await evaluarLicitacion(perfil, id); if (r && r.confianza >= 40) relevantes++;
+    }
     catch (e) { errores++; if ((e as Error).name === 'IANoConfigurada') throw e; }
   });
   return { evaluadas: candidatas.length, relevantes, errores };

@@ -13,9 +13,12 @@ export function verificarIA() {
 /** Opciones por proveedor para extracción determinística (DeepSeek: sin "thinking" para que respete temperature 0). */
 const OPCIONES_PROVEEDOR = proveedor === 'deepseek' ? { deepseek: { thinking: { type: 'disabled' as const } } } : undefined;
 
+/** Tiempo máximo por intento: una llamada colgada no se come todo el tiempo de la función (300 s en Vercel). */
+const TIMEOUT_MS = 120_000;
+
 /** Salida estructurada validada con zod (AI SDK 7: generateText + Output.object). Reintenta una vez si el JSON no valida. */
 export async function generarObjeto<S extends z.ZodType>(opts: {
-  modelo: LanguageModel; schema: S; system: string; prompt: string; maxOutputTokens?: number;
+  modelo: LanguageModel; schema: S; system: string; prompt: string; maxOutputTokens?: number; timeoutMs?: number;
 }): Promise<{ objeto: z.infer<S>; tokensEntrada: number; tokensSalida: number }> {
   verificarIA();
   let ultimo: unknown;
@@ -29,6 +32,7 @@ export async function generarObjeto<S extends z.ZodType>(opts: {
         maxOutputTokens: opts.maxOutputTokens ?? 4000,
         output: Output.object({ schema: opts.schema }),
         providerOptions: OPCIONES_PROVEEDOR,
+        timeout: opts.timeoutMs ?? TIMEOUT_MS,
       });
       return { objeto: r.output as z.infer<S>, tokensEntrada: r.usage?.inputTokens ?? 0, tokensSalida: r.usage?.outputTokens ?? 0 };
     } catch (e) {

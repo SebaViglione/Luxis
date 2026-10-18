@@ -19,6 +19,8 @@ type EstadoEtapa = 'pendiente' | 'en_curso' | 'ok';
 // 'aviso' es informativo (p. ej. la URL era una adjudicación y se completó desde la compra original): no cambia la etapa.
 type Evento = { etapa?: string; estado?: 'en_curso' | 'ok' | 'aviso'; mensaje?: string; listo?: boolean; idCompra?: string; error?: string };
 
+const CORTADO = 'Se cortó la conexión antes de terminar. Probá de nuevo: lo que ya se analizó no se pierde.';
+
 export function AnalizarUrl({ compacto = false }: { compacto?: boolean }) {
   const router = useRouter();
   const [url, setUrl] = useState('');
@@ -28,11 +30,12 @@ export function AnalizarUrl({ compacto = false }: { compacto?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [enCurso, setEnCurso] = useState(false);
 
+  /** Aplica un evento del stream; devuelve true cuando llegó el final ("listo"). */
   const aplicar = (ev: Evento) => {
     if (ev.error) throw new Error(ev.error);
     if (ev.estado === 'aviso') {
       if (ev.mensaje) setNotas((prev) => [...prev, ev.mensaje!]);
-      return;
+      return false;
     }
     const { etapa, estado } = ev;
     if (etapa && estado) {
@@ -42,7 +45,9 @@ export function AnalizarUrl({ compacto = false }: { compacto?: boolean }) {
     if (ev.listo && ev.idCompra) {
       setMensaje('Listo. Abriendo la licitación…');
       router.push(`/licitaciones/${encodeURIComponent(ev.idCompra)}`);
+      return true;
     }
+    return false;
   };
 
   const analizar = async (e: React.FormEvent) => {
@@ -61,17 +66,23 @@ export function AnalizarUrl({ compacto = false }: { compacto?: boolean }) {
       const lector = res.body.getReader();
       const decoder = new TextDecoder();
       let resto = '';
+      let listo = false;
       for (;;) {
         const { value, done } = await lector.read();
         resto += decoder.decode(value, { stream: !done });
         const lineas = resto.split('\n');
         resto = lineas.pop() ?? '';
-        for (const l of lineas) if (l.trim()) aplicar(JSON.parse(l) as Evento);
+        for (const l of lineas) if (l.trim()) listo = aplicar(JSON.parse(l) as Evento) || listo;
         if (done) break;
       }
-      if (resto.trim()) aplicar(JSON.parse(resto) as Evento);
+      if (resto.trim()) listo = aplicar(JSON.parse(resto) as Evento) || listo;
+      // El stream terminó sin "listo": se cortó la conexión o la función llegó a su tiempo máximo.
+      if (!listo) throw new Error(CORTADO);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Algo salió mal al analizar.');
+      // Que no queden etapas girando después del error.
+      setEstados((prev) => prev && Object.fromEntries(Object.entries(prev).map(([k, v]) => [k, v === 'en_curso' ? 'pendiente' : v])));
+      // TypeError (red caída) y SyntaxError (línea cortada a la mitad) son cortes de conexión, no errores del análisis.
+      setError(err instanceof TypeError || err instanceof SyntaxError ? CORTADO : err instanceof Error ? err.message : 'Algo salió mal al analizar.');
     } finally {
       setEnCurso(false);
     }

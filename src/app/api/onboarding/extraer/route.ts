@@ -10,7 +10,8 @@ import { fetchWeb, normalizarUrl, WebNoDisponibleError } from '@/server/onboardi
 import { guardarPerfil, leerPerfil } from '@/server/onboarding/guardar-perfil';
 import { fusionarPerfil } from '@/server/onboarding/perfil';
 
-export const maxDuration = 120;
+// Una lista de precios larga puede tardar más de 2 min en extraerse (hasta 16k tokens de salida).
+export const maxDuration = 300;
 
 /**
  * POST multipart: `archivos` (0–5), `url` (opcional) y/o `texto` (transcript de la entrevista por voz).

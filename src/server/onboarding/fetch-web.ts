@@ -1,3 +1,5 @@
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 import * as cheerio from 'cheerio';
 import { textoDeHtml } from './extraer-texto';
 
@@ -12,6 +14,7 @@ const TIMEOUT_MS = 15_000;
 const MAX_BYTES = 3 * 1024 * 1024;
 const MAX_CARACTERES_POR_PAGINA = 40_000;
 const MAX_LINKS_INTERNOS = 3;
+const MAX_REDIRECCIONES = 5;
 const LINKS_INTERESANTES = /producto|catalogo|catálogo|nosotros|quienes|quiénes|empresa|servicio|materiales|lista|precios/i;
 
 export class WebNoDisponibleError extends Error {}
@@ -51,17 +54,34 @@ export async function fetchWeb(entrada: string): Promise<PaginaWeb[]> {
   return paginas.filter((p) => p.texto.length > 0);
 }
 
-async function descargar(url: URL): Promise<string> {
-  let respuesta: Response;
-  try {
-    respuesta = await fetch(url, {
-      headers: { 'User-Agent': UA_NAVEGADOR, Accept: 'text/html,application/xhtml+xml', 'Accept-Language': 'es-UY,es;q=0.9' },
-      redirect: 'follow',
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-  } catch {
-    throw new WebNoDisponibleError(`No pudimos abrir ${url.hostname}: no respondió a tiempo.`);
+/**
+ * Pide la página siguiendo las redirecciones a mano: cada destino (el original y los de cada redirección) tiene que
+ * resolver a una IP pública, para que una web no pueda llevar al servidor a pedir direcciones de la red interna.
+ */
+async function pedir(inicial: URL): Promise<{ url: URL; respuesta: Response }> {
+  let url = inicial;
+  for (let saltos = 0; ; saltos++) {
+    await verificarDestino(url);
+    let respuesta: Response;
+    try {
+      respuesta = await fetch(url, {
+        headers: { 'User-Agent': UA_NAVEGADOR, Accept: 'text/html,application/xhtml+xml', 'Accept-Language': 'es-UY,es;q=0.9' },
+        redirect: 'manual',
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+    } catch {
+      throw new WebNoDisponibleError(`No pudimos abrir ${url.hostname}: no respondió a tiempo.`);
+    }
+    const destino = respuesta.status >= 300 && respuesta.status < 400 ? respuesta.headers.get('location') : null;
+    if (!destino) return { url, respuesta };
+    await respuesta.body?.cancel();
+    if (saltos >= MAX_REDIRECCIONES) throw new WebNoDisponibleError(`${url.hostname} redirige demasiadas veces.`);
+    url = normalizarUrl(new URL(destino, url).toString());
   }
+}
+
+async function descargar(inicial: URL): Promise<string> {
+  const { url, respuesta } = await pedir(inicial);
   if (!respuesta.ok) throw new WebNoDisponibleError(`No pudimos abrir ${url.hostname} (error ${respuesta.status}).`);
 
   const tipo = respuesta.headers.get('content-type') ?? '';
@@ -103,10 +123,31 @@ function linksInternos(html: string, base: URL): URL[] {
 }
 
 function esHostPrivado(hostname: string) {
-  const h = hostname.toLowerCase();
-  if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.internal') || h === '[::1]') return true;
-  const ipv4 = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(h);
-  if (!ipv4) return false;
-  const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
-  return a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.internal')) return true;
+  return isIP(h) !== 0 && esIpPrivada(h);
+}
+
+/** Un nombre que resuelve a una IP interna (ej. un dominio propio apuntado a 127.0.0.1) se rechaza igual que la IP. */
+async function verificarDestino(url: URL) {
+  const host = url.hostname.replace(/^\[|\]$/g, '');
+  let direcciones: string[];
+  try {
+    direcciones = isIP(host) ? [host] : (await lookup(host, { all: true, verbatim: true })).map((d) => d.address);
+  } catch {
+    throw new WebNoDisponibleError(`No encontramos ${url.hostname}: revisá la dirección.`);
+  }
+  if (!direcciones.length || direcciones.some(esIpPrivada)) throw new WebNoDisponibleError('La dirección web no es válida.');
+}
+
+function esIpPrivada(ip: string) {
+  const ipv4 = /^(?:::ffff:)?(\d+)\.(\d+)\.(\d+)\.(\d+)$/i.exec(ip);
+  if (ipv4) {
+    const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
+    return a === 10 || a === 127 || a === 0 || a >= 224 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31)
+      || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127);
+  }
+  const h = ip.toLowerCase();
+  // IPv6: no especificada, loopback, locales únicas (fc00::/7) y de enlace (fe80::/10).
+  return h === '::' || h === '::1' || /^f[cd]/.test(h) || /^fe[89ab]/.test(h);
 }
