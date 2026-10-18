@@ -15,7 +15,6 @@ import { ResumenIa } from '@/components/licitaciones/resumen-ia';
 import { TablaItems } from '@/components/licitaciones/tabla-items';
 import { buttonVariants } from '@/components/ui/button';
 import { VistaLicitacion } from '@/components/licitaciones/vista-licitacion';
-import { MontoPosible } from '@/components/licitaciones/panel-decision';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { DetalleLicitacion } from '@/lib/types';
 import { requerirSesion } from '@/server/auth/sesion';
@@ -30,7 +29,7 @@ function decodificar(id: string) {
 
 
 // Precio e historial solo para los ítems que la empresa puede ofertar. Si ARCE no publicó ítems (p. ej. IM), se arman desde el pliego (maxi).
-// Un solo cálculo por request: lo usan el panel de decisión y la pestaña Precios.
+// Un solo cálculo por request (React cache), lo usa la pestaña Precios.
 const preciosDelDetalle = cache(async (d: DetalleLicitacion) => {
   const ofertables = d.match?.itemsOfertables ?? [];
   const vendibles = new Set(ofertables.filter((o) => o.puedeOfertar).map((o) => o.nroItem));
@@ -56,16 +55,6 @@ async function ItemsYPrecio({ d }: { d: DetalleLicitacion }) {
       <TablaItems items={items} ofertables={ofertables} segunPliego={segunPliego} />
     </div>
   );
-}
-
-async function MontoDecision({ d }: { d: DetalleLicitacion }) {
-  const { items, precios } = await preciosDelDetalle(d);
-  const cantidad = new Map(items.map((i) => [i.nroItem, i.cantidad]));
-  const total = precios.reduce((t, p) => {
-    const c = cantidad.get(p.nroItem);
-    return p.precioSugerido !== null && c !== undefined && Number.isFinite(c) ? t + p.precioSugerido * c : t;
-  }, 0);
-  return <MontoPosible total={total} moneda={precios[0]?.moneda ?? 'UYU'} />;
 }
 
 function ItemsYPrecioCargando() {
@@ -100,11 +89,6 @@ async function Detalle({ params }: { params: Promise<{ id: string }> }) {
       <VistaLicitacion
         d={d}
         diasCierre={diasCierre}
-        montoPrecio={
-          <Suspense fallback={<div aria-hidden className="space-y-2"><Skeleton className="h-4 w-32" /><Skeleton className="h-9 w-44" /></div>}>
-            <MontoDecision d={d} />
-          </Suspense>
-        }
         contenido={{
           resumen: <ResumenIa analisis={d.analisis} match={d.match} accionAnalizar={<BotonAnalizar idCompra={l.idCompra} />} />,
           precios: (

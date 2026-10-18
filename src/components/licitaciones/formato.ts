@@ -7,6 +7,10 @@ const fmtFecha = new Intl.DateTimeFormat('es-UY', {
 const fmtNumero = new Intl.NumberFormat('es-UY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtCantidad = new Intl.NumberFormat('es-UY', { maximumFractionDigits: 2 });
 
+function simbolo(moneda: Moneda): string {
+  return moneda === 'UYU' ? '$' : moneda === 'USD' ? 'US$' : moneda;
+}
+
 function partes(iso: string) {
   return Object.fromEntries(fmtFecha.formatToParts(new Date(iso)).map((p) => [p.type, p.value]));
 }
@@ -31,8 +35,12 @@ export function fechaCorta(iso: string | null): string {
 
 export function monto(valor: number | null, moneda: Moneda = 'UYU'): string {
   if (valor === null) return '—';
-  const prefijo = moneda === 'UYU' ? '$' : moneda === 'USD' ? 'US$' : moneda;
-  return `${prefijo} ${fmtNumero.format(valor)}`;
+  return `${simbolo(moneda)} ${fmtNumero.format(valor)}`;
+}
+
+/** Monto sin decimales de relleno ("$ 6.000", "$ 161,7"): para ejes de gráficos y rótulos chicos. */
+export function montoCorto(valor: number, moneda: Moneda = 'UYU'): string {
+  return `${simbolo(moneda)} ${fmtCantidad.format(valor)}`;
 }
 
 export function cantidad(valor: number): string {
@@ -89,4 +97,24 @@ export function suavizarMayusculas(texto: string): string {
   if (!letras) return texto;
   const mayus = letras.replace(/[^A-ZÁÉÍÓÚÑ]/g, '').length;
   return mayus / letras.length > 0.6 ? capitalizar(texto.trim()) : texto.trim();
+}
+
+const SIGLAS = new Set(['S', 'A', 'SA', 'SRL', 'LTDA', 'SAS', 'SACIF', 'SACI', 'CIA', 'UTE', 'SC', 'SCA', 'SRLA', 'RUT', 'IM', 'MTOP', 'MSP', 'ANEP', 'UTU', 'OSE', 'UTE', 'ANTEL', 'BPS', 'BSE', 'ASSE', 'UDELAR', 'INAU', 'MIDES', 'MGAP', 'MEC', 'MDN', 'MI']);
+const MENORES = new Set(['de', 'del', 'la', 'las', 'los', 'y', 'e', 'el', 'en', 'para', 'por', 'con', 'o', 'u', 'al', 'a']);
+
+// Nombres de empresas y organismos que ARCE publica en mayúsculas sostenidas: "LAGO DORVAL S A" → "Lago Dorval S A".
+export function nombrePropio(texto: string): string {
+  const t = texto.trim();
+  const letras = t.replace(/[^A-Za-zÁÉÍÓÚÑÜáéíóúñü]/g, '');
+  if (!letras || letras.replace(/[^A-ZÁÉÍÓÚÑÜ]/g, '').length / letras.length < 0.6) return t;
+  return t
+    .toLowerCase()
+    .split(/\s+/)
+    .map((palabra, i) => {
+      const limpia = palabra.replace(/[.,;:()"']/g, '').toUpperCase();
+      if (SIGLAS.has(limpia)) return palabra.toUpperCase();
+      if (i > 0 && MENORES.has(palabra)) return palabra;
+      return palabra.charAt(0).toUpperCase() + palabra.slice(1);
+    })
+    .join(' ');
 }
