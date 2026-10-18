@@ -30,7 +30,7 @@ export const PLAZOS_DOCUMENTALES: PlazoDocumental[] = [
     diasHabiles: 0, alcanzable: true, preparaLuxis: true,
     nota: 'No es un papel: es el envío. La oferta la cargás vos en ARCE (o como pida el pliego) con lo que prepara Luxis en Postulación.' },
   { tipo: 'OTRO', patrones: [/FORMULARIO/, /DECLARACION/, /PLANILLA/, /ESPECIFICACION/, /ESPECIFICAR/, /OFERTA TECNICA/, /OFERTA ECONOMICA/,
-    /CARTA DE PRESENTACION/, /NOTA DE PRESENTACION/, /ANEXO/, /DATOS DE LA EMPRESA/, /RAZON SOCIAL/,
+    /CARTA DE PRESENTACION/, /NOTA DE PRESENTACION/, /ANEXO/, /DATOS (DE LA EMPRESA|DEL OFERENTE|IDENTIFICATORIOS)/, /IDENTIFICACION DEL OFERENTE/, /RAZON SOCIAL/,
     /DETALLE DE (PRECIO|MONTO)/, /PRECIO UNITARIO/, /COTIZACION/, /\bIVA\b/, /IMPUESTOS/, /PLAZO DE (ENTREGA|MANTENIMIENTO)/, /MARCA/, /ORIGEN/,
     /IDENTIFICACION DEL (REPUESTO|PRODUCTO|ARTICULO|BIEN)/, /ACEPTACION DEL PLIEGO/, /MANTENIMIENTO DE (LA )?OFERTA/],
     diasHabiles: 0, alcanzable: true, preparaLuxis: true, nota: 'Lo prepara Luxis en Postulación.' },
