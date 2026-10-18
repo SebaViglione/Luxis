@@ -16,7 +16,7 @@ function eventos(d: DetalleLicitacion): Evento[] {
   push({ clave: 'publicacion', titulo: 'Se publicó', fecha: l.fechaPublicacion, icono: FileText });
   push({ clave: 'consultas', titulo: 'Último día para hacer preguntas al organismo', fecha: l.fechaSolAclar, icono: MessageCircleQuestion });
   push({ clave: 'prorroga', titulo: 'Último día para pedir más plazo', fecha: l.fechaSolProrr, icono: CalendarPlus });
-  push({ clave: 'ofertas', titulo: 'Cierre: último momento para presentar tu oferta', fecha: l.fechaTopeOfertas, icono: CalendarClock, destacado: true });
+  push({ clave: 'ofertas', titulo: 'Cierre de ofertas: último momento para presentar la tuya', fecha: l.fechaTopeOfertas, icono: CalendarClock, destacado: true });
   if (l.fechaApertura && l.fechaApertura !== l.fechaTopeOfertas) push({ clave: 'apertura', titulo: 'Se abren las ofertas', fecha: l.fechaApertura, icono: DoorOpen });
   push({ clave: 'entrega', titulo: 'Entrega de la mercadería', fecha: l.fechaTopeEntrega, icono: Truck });
   for (const [i, f] of (d.analisis?.fechasClave ?? []).entries()) {

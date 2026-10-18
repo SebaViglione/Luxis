@@ -1,9 +1,9 @@
 import type { EventoCalendario } from '@/lib/types';
 
 export const TIPO_EVENTO: Record<EventoCalendario['tipo'], { etiqueta: string; marca: string }> = {
-  apertura: { etiqueta: 'Cierre: último momento para ofertar', marca: 'bg-primary' },
+  apertura: { etiqueta: 'Cierre de ofertas', marca: 'bg-primary' },
   visita: { etiqueta: 'Visita al lugar', marca: 'bg-alerta' },
-  consultas: { etiqueta: 'Último día para hacer preguntas', marca: 'bg-muted-foreground/60' },
+  consultas: { etiqueta: 'Último día para preguntas', marca: 'bg-muted-foreground/60' },
   prorroga: { etiqueta: 'Último día para pedir más plazo', marca: 'bg-muted-foreground/60' },
   entrega: { etiqueta: 'Entrega de mercadería', marca: 'bg-exito' },
   otro: { etiqueta: 'Otra fecha', marca: 'bg-muted-foreground/40' },
