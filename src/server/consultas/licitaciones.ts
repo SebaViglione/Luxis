@@ -23,9 +23,6 @@ const COLS_LICITACION = {
 const iso = (d: Date | null | undefined) => (d ? d.toISOString() : null);
 const numero = (l: { numCompra: string | null; anioCompra: number | null }) => `${l.numCompra ?? '?'}/${l.anioCompra ?? ''}`;
 
-/** Confianza efectiva en SQL (mismos valores que AJUSTE_DOCUMENTAL en lib/types). */
-const CONF_EF = sql`(${schema.matches.confianza} - case ${schema.matches.estadoDocumental} when 'dificil' then 25 when 'alcanzable' then 10 else 0 end)`;
-
 /**
  * Monto estimado = Σ cantidad × precio sugerido de los ítems, en la moneda de esos precios (subconsulta correlacionada:
  * un solo viaje a la base). Devuelve "idMoneda|total". Precios en monedas distintas no se suman: queda sin monto.
@@ -42,6 +39,9 @@ export function leerMontoEstimado(valor: string | null): Pick<LicitacionCard, 'm
   const [moneda, total] = valor.split('|');
   return { montoEstimado: Number(total), moneda: monedaDesdeId(Number(moneda)) };
 }
+
+/** Confianza efectiva en SQL (mismos valores que AJUSTE_DOCUMENTAL en lib/types). */
+const CONF_EF = sql`(${schema.matches.confianza} - case ${schema.matches.estadoDocumental} when 'dificil' then 25 when 'alcanzable' then 10 else 0 end)`;
 
 /** Licitaciones con match para el dashboard. */
 export async function listarMatches(empresaId: string, filtros: FiltrosDashboard = {}): Promise<LicitacionCard[]> {
