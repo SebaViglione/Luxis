@@ -34,6 +34,18 @@ function ticksLindos(x0: number, x1: number) {
   return ticks;
 }
 
+/** Cómo leer el diagrama. Va una sola vez arriba del panel, no en cada tarjeta. */
+export function LeyendaCaja() {
+  return (
+    <p className="text-sm text-muted-foreground">
+      <span className="mr-1.5 inline-block size-2.5 translate-y-px rounded-sm border bg-secondary" aria-hidden />
+      La caja es donde cayó la mitad de las ofertas que ganaron; la línea negra, el precio del medio.
+      {' '}<span className="mr-1.5 ml-1 inline-block size-2.5 translate-y-px rounded-sm bg-primary/30" aria-hidden />
+      La zona ladrillo es la zona ganadora. Los puntos son las últimas adjudicaciones; las que quedan fuera del rango habitual no se dibujan, pero están en la tabla.
+    </p>
+  );
+}
+
 export function CajaPrecios({ p, puntos, unidad }: { p: PrecioHistorico; puntos: PuntoPrecio[]; unidad: string }) {
   const contenedor = useRef<HTMLDivElement>(null);
   const [ancho, setAncho] = useState(0);
@@ -57,8 +69,6 @@ export function CajaPrecios({ p, puntos, unidad }: { p: PrecioHistorico; puntos:
   const margenCerca = iqr > 0 ? 1.5 * iqr : Math.max(mediana * 0.5, 1);
   const bigoteBajo = Math.max(minimo, p25 - margenCerca);
   const bigoteAlto = Math.min(maximo, p75 + margenCerca);
-  const fueraAbajo = datos.filter((d) => d.precioUnit < bigoteBajo).length;
-  const fueraArriba = datos.filter((d) => d.precioUnit > bigoteAlto).length;
   const visibles = datos.filter((d) => d.precioUnit >= bigoteBajo && d.precioUnit <= bigoteAlto);
 
   const rango = bigoteAlto - bigoteBajo || bigoteAlto || 1;
@@ -154,15 +164,12 @@ export function CajaPrecios({ p, puntos, unidad }: { p: PrecioHistorico; puntos:
           </div>
         )}
       </div>
-      <figcaption className="space-y-1.5 text-xs text-muted-foreground">
-        <p>
-          <span className="mr-1.5 inline-block size-2.5 translate-y-px rounded-sm border bg-secondary" aria-hidden />La caja es donde cayó la mitad de las ofertas que ganaron; la línea negra, el precio del medio.
-          {' '}<span className="mr-1.5 ml-1 inline-block size-2.5 translate-y-px rounded-sm bg-primary/30" aria-hidden />La zona ladrillo es la zona ganadora.
-          {datos.length > 0 && <> Los puntos son las últimas {visibles.length} adjudicaciones{fueraAbajo + fueraArriba > 0 ? ` (${fueraAbajo + fueraArriba} quedan fuera del rango habitual)` : ''}.</>}
-        </p>
+      <figcaption className="text-xs text-muted-foreground">
         {datos.length > 0 && (
           <details className="group">
-            <summary className="cursor-pointer text-foreground underline-offset-4 hover:underline">Ver como tabla</summary>
+            <summary className="cursor-pointer text-foreground underline-offset-4 hover:underline">
+              Ver {datos.length === 1 ? 'la adjudicación' : `las ${datos.length} adjudicaciones`} como tabla
+            </summary>
             <div className="mt-2 max-h-64 overflow-auto rounded-md border bg-card">
               <table className="w-full text-left text-xs">
                 <caption className="sr-only">{resumen}</caption>

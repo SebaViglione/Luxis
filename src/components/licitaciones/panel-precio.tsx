@@ -2,7 +2,7 @@ import { Info } from 'lucide-react';
 import type { ItemLicitacion, Moneda, PrecioHistorico } from '@/lib/types';
 import type { HistorialItem } from '@/server/precios/historial';
 import { cantidad, fecha, monto, suavizarMayusculas } from './formato';
-import { CajaPrecios } from './caja-precios';
+import { CajaPrecios, LeyendaCaja } from './caja-precios';
 
 const NOMBRE_MONEDA: Record<Moneda, string> = {
   UYU: 'pesos uruguayos', USD: 'dólares', UI: 'unidades indexadas', UR: 'unidades reajustables', OTRA: 'otra moneda',
@@ -85,11 +85,12 @@ export function PanelPrecio({ precios, items, historial = {}, monedaSupuesta = f
     : `Precios en ${NOMBRE_MONEDA[monedas[0]]}, sin IVA, de compras del Estado de los últimos 2 años.${monedaSupuesta ? ' ARCE no informó la moneda: asumimos pesos.' : ''}`;
   return (
     <section className="space-y-3" aria-labelledby="titulo-precios">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="space-y-1.5">
         <h2 id="titulo-precios" className="text-lg font-semibold">A qué precio ganan las ofertas</h2>
-        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <Info aria-hidden className="size-4" /> {aclaracion}
+        <p className="flex items-start gap-1.5 text-sm text-muted-foreground">
+          <Info aria-hidden className="mt-0.5 size-4 shrink-0" /> <span>{aclaracion}</span>
         </p>
+        <LeyendaCaja />
       </div>
       <div className="grid gap-3 lg:grid-cols-2">
         {precios.map((p) => (
