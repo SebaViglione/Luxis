@@ -14,13 +14,14 @@ npm run dev
 
 ## MCP: la base de precios desde tu propia IA
 
-Luxis expone un servidor MCP (Model Context Protocol) de solo lectura en `/api/mcp` (Streamable HTTP, sin autenticación: son datos públicos de ARCE). Sirve para que Claude, ChatGPT o cualquier agente de la empresa consulte la base vectorizada de precios ganadores y las licitaciones abiertas sin pasar por la app.
+Luxis expone un servidor MCP (Model Context Protocol) de solo lectura en `/api/mcp` (Streamable HTTP, sin autenticación: son datos públicos de ARCE). Sirve para que un ERP, un sistema de cotización, Claude, ChatGPT o cualquier agente consulte la base vectorizada de precios ganadores y las licitaciones abiertas sin pasar por la app. Cobertura: precios ganadores de materiales de construcción desde enero de 2024 (todas las líneas del rubro que publica ARCE), todos los llamados vigentes de ARCE, y la lectura por IA de los pliegos del rubro.
 
 Herramientas:
 
 | Herramienta | Qué responde |
 |---|---|
 | `precio_ganador` | A qué precio unitario se adjudicó un artículo descripto en texto libre (busca por significado con embeddings): cuántas adjudicaciones hubo, entre qué precios estuvo la mitad de las que ganaron, precio del medio, precio sugerido, últimas adjudicaciones con ganador y organismo, proveedores que más lo ganan. Sin IVA, por unidad y moneda. |
+| `cotizar_lista` | Hasta 20 artículos de una vez (lo que manda un ERP o una planilla): un renglón por artículo con adjudicaciones, rango, precio del medio, precio sugerido, última adjudicación y quién más lo gana; con cantidad, el total sugerido por renglón y por moneda. |
 | `buscar_licitaciones` | Licitaciones con recepción de ofertas abierta, filtradas por palabras y días al cierre, con resumen hecho por IA. |
 | `detalle_licitacion` | Ficha completa de un llamado: ítems, lectura del pliego por IA (requisitos, fechas, condiciones, riesgos), precio ganador por ítem y archivos. |
 

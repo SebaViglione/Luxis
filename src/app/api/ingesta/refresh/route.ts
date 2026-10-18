@@ -7,6 +7,7 @@ import { generarNotificaciones } from '@/server/notificaciones/generar';
 import { procesarArchivos } from '@/server/arce/procesar-archivos';
 import { evaluarEmpresa } from '@/server/ia/matching';
 import { analizarLicitacion } from '@/server/ia/analisis-pliego';
+import { sincronizarArticulos } from '@/server/ia/vectores';
 import { calcularGapParaMatch } from '@/server/ia/gap-documental';
 import { enParalelo } from '@/lib/ia/estructurado';
 import { empresaIdActual } from '@/server/consultas/empresa-actual';
@@ -105,6 +106,8 @@ async function trabajoEnSegundoPlano(dias: number) {
   const hasta = new Date();
   const desde = new Date(hasta.getTime() - dias * 864e5);
   await ingestarAdjudicaciones(desde, hasta).catch((e) => console.warn('[refresh] adjudicaciones', (e as Error).message));
+  // Las descripciones nuevas entran a la base vectorizada enseguida (si no, el MCP y los precios solo las encuentran por texto).
+  await sincronizarArticulos({ limite: 3000 }).catch((e) => console.warn('[refresh] vectores', (e as Error).message));
   await procesarPendientes().catch((e) => console.warn('[refresh] pliegos', (e as Error).message));
   await analizarRelevantes().catch((e) => console.warn('[refresh] análisis', (e as Error).message));
 }
