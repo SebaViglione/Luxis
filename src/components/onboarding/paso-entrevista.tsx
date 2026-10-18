@@ -101,7 +101,8 @@ export function PasoEntrevista({ perfil, onListo, onSaltar, acciones }: PasoEntr
 
   return (
     <Card>
-      <CardHeader>
+      {/* gap-x: aire entre la descripción y el botón de voz (el gap por defecto del header es de 4 px). */}
+      <CardHeader className="gap-x-8">
         <CardTitle>Contanos de tu barraca</CardTitle>
         <CardDescription>
           Te hacemos unas preguntas cortas para completar lo que falta. Respondé como en WhatsApp; si no sabés algo, decí

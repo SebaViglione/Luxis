@@ -24,8 +24,13 @@ export const PLAZOS_DOCUMENTALES: PlazoDocumental[] = [
     /REMITO/, /FACTURA/, /AL MOMENTO DE LA ENTREGA/, /ORDEN DE COMPRA/, /CONSTANCIA DE ENTREGA/],
     diasHabiles: 3, alcanzable: true, postAdjudicacion: true, nota: 'Se exige después de la adjudicación o en la entrega: no frena tu oferta.' },
   { tipo: 'OTRO', patrones: [/GARANTIA DE MANTENIMIENTO/, /GARANTIA DE OFERTA/, /GARANTIA .*MANTENIMIENTO/], diasHabiles: 3, alcanzable: true, nota: 'Banco o aseguradora: 1 a 3 días hábiles.' },
-  { tipo: 'OTRO', patrones: [/FORMULARIO/, /DECLARACION/, /PLANILLA/, /ESPECIFICACION/, /ESPECIFICAR/, /OFERTA TECNICA/, /OFERTA ECONOMICA/, /OFERTA ENVIADA/,
-    /OFERTA POR CORREO/, /PRESENTACION DE (LA )?OFERTA/, /CARTA DE PRESENTACION/, /NOTA DE PRESENTACION/, /ANEXO/, /DATOS DE LA EMPRESA/, /RAZON SOCIAL/,
+  // Presentar la oferta no es un papel: es el envío, que hace la empresa (en ARCE o como diga el pliego) con lo que arma Luxis.
+  // ("Formulario/carta de presentación de la oferta" sí es un papel: sigue en la regla de abajo.)
+  { tipo: 'OTRO', patrones: [/^(?!.*(FORMULARIO|CARTA|NOTA|PLANILLA|DECLARACION|ANEXO)).*(OFERTA ENVIADA|OFERTA POR CORREO|OFERTA EN LINEA|PRESENTACION DE (LA )?OFERTA|CARGAR? (DE )?(LA )?OFERTA)/],
+    diasHabiles: 0, alcanzable: true, preparaLuxis: true,
+    nota: 'No es un papel: es el envío. La oferta la cargás vos en ARCE (o como pida el pliego) con lo que prepara Luxis en Postulación.' },
+  { tipo: 'OTRO', patrones: [/FORMULARIO/, /DECLARACION/, /PLANILLA/, /ESPECIFICACION/, /ESPECIFICAR/, /OFERTA TECNICA/, /OFERTA ECONOMICA/,
+    /CARTA DE PRESENTACION/, /NOTA DE PRESENTACION/, /ANEXO/, /DATOS (DE LA EMPRESA|DEL OFERENTE|IDENTIFICATORIOS)/, /IDENTIFICACION DEL OFERENTE/, /RAZON SOCIAL/,
     /DETALLE DE (PRECIO|MONTO)/, /PRECIO UNITARIO/, /COTIZACION/, /\bIVA\b/, /IMPUESTOS/, /PLAZO DE (ENTREGA|MANTENIMIENTO)/, /MARCA/, /ORIGEN/,
     /IDENTIFICACION DEL (REPUESTO|PRODUCTO|ARTICULO|BIEN)/, /ACEPTACION DEL PLIEGO/, /MANTENIMIENTO DE (LA )?OFERTA/,
     /PROPUESTA (ECONOMICA|TECNICA|DE PRECIO)/, /OFERTA COTIZADA/, /OFERTA (DE|CON) PRECIO/],

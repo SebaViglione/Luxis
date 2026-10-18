@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { descargarArchivo } from './descargas';
 import { extraerTexto, extensionDe, decodificarTexto, type ArchivoExtraido } from './extraccion';
@@ -72,15 +72,20 @@ export async function procesarArchivos(idCompra: string, opts: { indexarDespues?
     ...x, categoria: (() => { const c = clasificarArchivo(x.nombre, x.texto); return x.esAclaracion && c === 'otro' ? 'aclaracion' as const : c; })(),
   })));
 
-  await db.delete(schema.licitacionArchivos).where(eq(schema.licitacionArchivos.idCompra, idCompra));
-  if (clasificados.length) {
-    await db.insert(schema.licitacionArchivos).values(clasificados.map((x) => ({
-      idCompra, nombre: x.nombre, url: x.url.startsWith('http') ? x.url : new URL(x.url, BASE_ARCE).toString(), extension: x.extension,
-      tamano: x.tamano, contenedor: x.contenedor, categoria: x.categoria, relevante: x.relevante, estadoExtraccion: x.estado,
-      error: x.error ?? null, texto: x.texto ? x.texto.slice(0, MAX_TEXTO) : null, caracteres: x.texto?.length ?? null,
-    })));
-  }
-  await db.update(schema.licitaciones).set({ archivosProcesados: true, updatedAt: new Date() }).where(eq(schema.licitaciones.idCompra, idCompra));
+  // Reemplazo atómico y con lock por licitación: dos procesamientos a la vez (refresh en segundo plano, análisis por URL)
+  // no duplican archivos; el segundo reemplaza lo del primero.
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`archivos:${idCompra}`}))`);
+    await tx.delete(schema.licitacionArchivos).where(eq(schema.licitacionArchivos.idCompra, idCompra));
+    if (clasificados.length) {
+      await tx.insert(schema.licitacionArchivos).values(clasificados.map((x) => ({
+        idCompra, nombre: x.nombre, url: x.url.startsWith('http') ? x.url : new URL(x.url, BASE_ARCE).toString(), extension: x.extension,
+        tamano: x.tamano, contenedor: x.contenedor, categoria: x.categoria, relevante: x.relevante, estadoExtraccion: x.estado,
+        error: x.error ?? null, texto: x.texto ? x.texto.slice(0, MAX_TEXTO) : null, caracteres: x.texto?.length ?? null,
+      })));
+    }
+    await tx.update(schema.licitaciones).set({ archivosProcesados: true, updatedAt: new Date() }).where(eq(schema.licitaciones.idCompra, idCompra));
+  });
   // Párrafos + embeddings para la búsqueda híbrida (si falla, el texto completo sigue disponible).
   if (!opts.indexarDespues) await indexarParrafos(idCompra).catch((e) => console.warn('[indexarParrafos]', idCompra, (e as Error).message));
   return {

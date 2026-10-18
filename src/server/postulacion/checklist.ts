@@ -15,6 +15,9 @@ const normalizar = (s: string) =>
 // Lo que arma Luxis en el paso de documentos o en la planilla.
 const LO_ARMA_LUXIS =
   /FORMULARIO|IDENTIFICACION DEL OFERENTE|DATOS (DE LA EMPRESA|DEL OFERENTE|IDENTIFICATORIOS)|DECLARACION JURADA|DECLARACION DE|PLANILLA|COTIZACION|PROPUESTA ECONOMICA|OFERTA ECONOMICA|ESPECIFICA|TOTALIDAD DE LA INFORMACION|CARTA DE PRESENTACION|NOTA DE PRESENTACION|MONEDA/;
+// Presentar la oferta es el envío, no un papel: lo cubre el ítem del canal (ARCE en línea o mail/papel).
+const ENVIO_DE_OFERTA =
+  /^(?!.*(FORMULARIO|CARTA|NOTA|PLANILLA|DECLARACION|ANEXO)).*(OFERTA ENVIADA|OFERTA POR CORREO|OFERTA EN LINEA|PRESENTACION DE (LA )?OFERTA|CARGAR? (DE )?(LA )?OFERTA)/;
 // Se exige recién si te adjudican: no frena la oferta.
 const POST_ADJUDICACION = /FIEL CUMPLIMIENTO|CUMPLIMIENTO DE CONTRATO|GARANTIA DE CUMPLIMIENTO/;
 // Se pide al entregar la mercadería.
@@ -81,6 +84,11 @@ export function armarChecklist(
   // 2. RUPE (habilita a ofertar; activo para que te adjudiquen)
   const rupe = perfil.documentacion.find((x) => x.tipo === 'RUPE')?.estado ?? 'desconocido';
   const seccionRupe = [...seccionDe].find(([doc]) => /RUPE/.test(normalizar(doc)))?.[1] ?? null;
+  // Si el gap (que descuenta la confianza) dice que el RUPE no llega, el ítem lo muestra como riesgo: si no, la página
+  // diría "te falta 1 cosa" al lado de "baja 25 puntos: hay papeles que no llegás a tener".
+  const rupeNoLlega = (d.match?.gapDocumental ?? []).some(
+    (g) => (g.tipo === 'RUPE' || /\bRUPE\b/.test(normalizar(g.documento))) && !g.tiene && g.obligatorio && g.alcanzableAntesCierre === false,
+  );
   items.push(
     rupe === 'vigente'
       ? { id: 'rupe', titulo: 'RUPE activo', detalle: 'Podés ofertar y te pueden adjudicar.', estado: 'listo', seccion: seccionRupe }
@@ -98,7 +106,7 @@ export function armarChecklist(
             titulo: 'Inscribite en RUPE',
             detalle:
               'Es gratis y en línea (comprasestatales.gub.uy → RUPE). Con quedar EN INGRESO ya podés ofertar; para que te adjudiquen tiene que estar ACTIVO.',
-            estado: habilesAlCierre !== null && habilesAlCierre < 2 ? 'riesgo' : 'pendiente',
+            estado: rupeNoLlega || (habilesAlCierre !== null && habilesAlCierre < 2) ? 'riesgo' : 'pendiente',
             plazo: '1 a 5 días hábiles',
             seccion: seccionRupe,
           },
@@ -177,6 +185,7 @@ function itemDeGap(g: GapDocumental, seccion: string | null): ItemChecklist | nu
   const nombre = normalizar(g.documento);
   const base = { id: `doc-${nombre}`, titulo: g.documento, seccion, obligatorio: g.obligatorio };
 
+  if (ENVIO_DE_OFERTA.test(nombre)) return null;
   // Primero lo que arma Luxis: "Formulario de identificación… validado en RUPE" es un formulario, no el RUPE.
   if (LO_ARMA_LUXIS.test(nombre)) {
     return { ...base, estado: 'luxis', detalle: 'Lo armamos con tus datos en el paso de documentos o en la planilla. Revisalo y firmalo.' };
@@ -193,9 +202,15 @@ function itemDeGap(g: GapDocumental, seccion: string | null): ItemChecklist | nu
     };
   }
   if (VERIFICADO_EN_RUPE.test(g.tipo)) {
+    // Mismo criterio que el ajuste de confianza: si no llega antes del cierre es un riesgo, no algo pendiente.
     return g.tiene
       ? { ...base, estado: 'listo', detalle: 'El organismo lo verifica en RUPE: no hace falta adjuntarlo.' }
-      : { ...base, estado: 'pendiente', detalle: `Ponelo al día: el organismo lo verifica en RUPE. ${g.nota}`, plazo: plazoGap(g) };
+      : {
+          ...base,
+          estado: g.alcanzableAntesCierre === false ? 'riesgo' : 'pendiente',
+          detalle: `Ponelo al día: el organismo lo verifica en RUPE. ${g.nota}`,
+          plazo: plazoGap(g),
+        };
   }
   if (g.tiene) return { ...base, estado: 'listo', detalle: g.nota || 'Ya lo tenés.' };
   if (g.alcanzableAntesCierre === false) return { ...base, estado: 'riesgo', detalle: g.nota, plazo: plazoGap(g) };

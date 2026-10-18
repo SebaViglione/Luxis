@@ -25,14 +25,44 @@ function grupoDe(g: GapDocumental): Grupo {
   return 'llegas';
 }
 
+const esPliego = (documento: string) => esDocumentoDeLaLicitacion(documento) || /^\s*(el\s+)?pliegos?\b/i.test(documento);
+
+function RequisitosSinComparar({ requisitos }: { requisitos: RequisitoDocumental[] }) {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold">Papeles que piden</h2>
+        <p className="text-sm text-muted-foreground">
+          Esto es lo que pide el pliego. Todavía no lo comparamos con los papeles de tu perfil: en &quot;Preparar mi oferta&quot; ves qué te falta.
+        </p>
+      </div>
+      <ul className="grid gap-2 sm:grid-cols-2">
+        {requisitos.map((r, i) => (
+          <li key={`${r.documento}-${i}`} className="rounded-md border bg-card p-3">
+            <p className="text-sm font-medium">
+              {r.documento}
+              {!r.obligatorio && <span className="font-normal text-muted-foreground"> · opcional</span>}
+            </p>
+            {r.detalle && <p className="mt-0.5 text-sm text-muted-foreground">{r.detalle}</p>}
+            {r.seccion && <p className="mt-1 text-xs text-muted-foreground">Dónde lo piden: {r.seccion}</p>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function PanelDocumentacion({ gap: gapGuardado, requisitos }: {
   gap: GapDocumental[];
   requisitos: RequisitoDocumental[];
   diasCierre?: number | null;
 }) {
   // Papeles = entregables. Los análisis viejos listaban el pliego como requisito: se lee, no se presenta.
-  const gap = gapGuardado.filter((g) => !esDocumentoDeLaLicitacion(g.documento) && !/^\s*(el\s+)?pliegos?\b/i.test(g.documento));
+  const gap = gapGuardado.filter((g) => !esPliego(g.documento));
   if (!gap.length) {
+    // El pliego ya se leyó pero todavía no se comparó con tus papeles: igual mostramos lo que piden (como en la postulación).
+    const pedidos = requisitos.filter((r) => !esPliego(r.documento));
+    if (pedidos.length) return <RequisitosSinComparar requisitos={pedidos} />;
     return <EstadoVacio icono={FileCheck} titulo="Todavía no sabemos qué papeles piden" descripcion="Cuando leamos el pliego vas a ver acá qué papeles piden y si llegás a tenerlos antes del cierre." />;
   }
   const seccion = new Map(requisitos.map((r) => [r.documento, r.seccion]));
@@ -64,7 +94,8 @@ export function PanelDocumentacion({ gap: gapGuardado, requisitos }: {
                   <p className="text-sm font-medium">{g.documento}</p>
                   <p className="mt-0.5 text-sm text-muted-foreground">
                     {k === 'llegas' && g.diasEstimados ? `Tarda unos ${g.diasEstimados} días hábiles. ` : ''}
-                    {k === 'luxis' || k === 'tenes' ? '' : g.nota}
+                    {/* En "Los prepara Luxis" la nota genérica sobra; la del envío de la oferta aclara quién la presenta. */}
+                    {k === 'tenes' || (k === 'luxis' && /^Lo prepara Luxis/.test(g.nota)) ? '' : g.nota}
                   </p>
                   {seccion.get(g.documento) && <p className="mt-1 text-xs text-muted-foreground">Dónde lo piden: {seccion.get(g.documento)}</p>}
                 </li>
