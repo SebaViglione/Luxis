@@ -84,6 +84,11 @@ export function armarChecklist(
   // 2. RUPE (habilita a ofertar; activo para que te adjudiquen)
   const rupe = perfil.documentacion.find((x) => x.tipo === 'RUPE')?.estado ?? 'desconocido';
   const seccionRupe = [...seccionDe].find(([doc]) => /RUPE/.test(normalizar(doc)))?.[1] ?? null;
+  // Si el gap (que descuenta la confianza) dice que el RUPE no llega, el ítem lo muestra como riesgo: si no, la página
+  // diría "te falta 1 cosa" al lado de "baja 25 puntos: hay papeles que no llegás a tener".
+  const rupeNoLlega = (d.match?.gapDocumental ?? []).some(
+    (g) => (g.tipo === 'RUPE' || /\bRUPE\b/.test(normalizar(g.documento))) && !g.tiene && g.obligatorio && g.alcanzableAntesCierre === false,
+  );
   items.push(
     rupe === 'vigente'
       ? { id: 'rupe', titulo: 'RUPE activo', detalle: 'Podés ofertar y te pueden adjudicar.', estado: 'listo', seccion: seccionRupe }
@@ -101,7 +106,7 @@ export function armarChecklist(
             titulo: 'Inscribite en RUPE',
             detalle:
               'Es gratis y en línea (comprasestatales.gub.uy → RUPE). Con quedar EN INGRESO ya podés ofertar; para que te adjudiquen tiene que estar ACTIVO.',
-            estado: habilesAlCierre !== null && habilesAlCierre < 2 ? 'riesgo' : 'pendiente',
+            estado: rupeNoLlega || (habilesAlCierre !== null && habilesAlCierre < 2) ? 'riesgo' : 'pendiente',
             plazo: '1 a 5 días hábiles',
             seccion: seccionRupe,
           },
@@ -197,9 +202,15 @@ function itemDeGap(g: GapDocumental, seccion: string | null): ItemChecklist | nu
     };
   }
   if (VERIFICADO_EN_RUPE.test(g.tipo)) {
+    // Mismo criterio que el ajuste de confianza: si no llega antes del cierre es un riesgo, no algo pendiente.
     return g.tiene
       ? { ...base, estado: 'listo', detalle: 'El organismo lo verifica en RUPE: no hace falta adjuntarlo.' }
-      : { ...base, estado: 'pendiente', detalle: `Ponelo al día: el organismo lo verifica en RUPE. ${g.nota}`, plazo: plazoGap(g) };
+      : {
+          ...base,
+          estado: g.alcanzableAntesCierre === false ? 'riesgo' : 'pendiente',
+          detalle: `Ponelo al día: el organismo lo verifica en RUPE. ${g.nota}`,
+          plazo: plazoGap(g),
+        };
   }
   if (g.tiene) return { ...base, estado: 'listo', detalle: g.nota || 'Ya lo tenés.' };
   if (g.alcanzableAntesCierre === false) return { ...base, estado: 'riesgo', detalle: g.nota, plazo: plazoGap(g) };

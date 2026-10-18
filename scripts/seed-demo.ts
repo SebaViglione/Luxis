@@ -14,6 +14,11 @@ const EMPRESA = {
   zonasEntrega: ['Canelones', 'Montevideo', 'San José', 'Florida'],
   capacidadNotas: '4 camiones por semana; hasta 20 toneladas de áridos o 400 bolsas de portland por entrega.',
 };
+const DATOS_POSTULACION = {
+  domicilio: 'Av. Artigas 1520', ciudad: 'Las Piedras, Canelones', codigoPostal: '90200',
+  representante: 'Aurelio Fernández', ciRepresentante: '1.234.567-2', cargoRepresentante: 'Socio gerente',
+  emailNotificaciones: 'licitaciones@donaurelio.com.uy',
+};
 const PRODUCTOS: Array<[string, string, string, number]> = [
   ['Cemento Portland bolsa 25 kg', 'Aglomerantes', 'bolsa', 390], ['Cemento Portland a granel', 'Aglomerantes', 'tonelada', 12500],
   ['Cal hidratada bolsa 25 kg', 'Aglomerantes', 'bolsa', 260], ['Arena fina', 'Áridos', 'm3', 1150], ['Arena terciada', 'Áridos', 'm3', 1250],
@@ -75,6 +80,8 @@ async function main() {
     ...EMPRESA, productos: PRODUCTOS.map(([nombre, categoria, unidad, precio]) => ({ nombre, categoria, unidad, precioReferencia: precio, moneda: 'UYU' as const, keywords: [], fuente: 'documento' as const })),
     documentacion: DOCUMENTOS.map(([tipo, nombre, estado]) => ({ tipo: tipo as 'RUPE', nombre, estado: estado as 'vigente', vencimiento: null })),
     experienciaLicitaciones: 'Se presentó a 2 licitaciones en 2025 y ganó 1.', camposFaltantes: [],
+    // Datos que piden los formularios de Postulación (ficticios): sin esto los documentos salen con líneas en blanco.
+    datosPostulacion: DATOS_POSTULACION,
   };
   const datos = { ...EMPRESA, perfilJson, estadoOnboarding: 'completo', perfilActualizadoEn: new Date(), updatedAt: new Date() };
   if (empresaId) await db.update(schema.empresas).set(datos).where(eq(schema.empresas.id, empresaId));
