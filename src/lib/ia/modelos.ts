@@ -5,8 +5,8 @@ import type { LanguageModel } from 'ai';
 
 /**
  * Único lugar donde se nombran modelos. IA_PROVEEDOR = anthropic | deepseek | google.
- * rápido → matching, extracción estructurada masiva, explicaciones cortas.
- * fuerte → chat con el pliego, entrevista, análisis on-demand.
+ * rápido → matching, extracción estructurada masiva, explicaciones cortas, entrevista del onboarding (dos pasos por turno).
+ * fuerte → chat con el pliego, extracción del perfil, análisis on-demand.
  */
 export type Proveedor = 'anthropic' | 'deepseek' | 'google';
 export const proveedor = (process.env.IA_PROVEEDOR ?? 'anthropic') as Proveedor;

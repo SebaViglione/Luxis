@@ -57,3 +57,15 @@ export const MAX_PREGUNTAS_ENTREVISTA = 8;
 
 // Duración máxima de la entrevista por voz: cuida los minutos compartidos de ElevenLabs.
 export const DURACION_MAXIMA_VOZ_S = 4 * 60;
+
+// Temas de la entrevista (RF-04), en el orden en que se preguntan. Los cuatro primeros son esenciales para el matching.
+export const TEMAS_ENTREVISTA = ['productos', 'zonas', 'capacidad', 'papeles', 'experiencia'] as const;
+export type TemaEntrevista = (typeof TEMAS_ENTREVISTA)[number];
+
+export const NOMBRE_TEMA: Record<TemaEntrevista, string> = {
+  productos: 'productos',
+  zonas: 'zonas de entrega',
+  capacidad: 'capacidad de entrega',
+  papeles: 'papeles',
+  experiencia: 'experiencia en licitaciones',
+};

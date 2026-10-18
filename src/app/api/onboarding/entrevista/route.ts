@@ -1,13 +1,13 @@
 import { convertToModelMessages, isStepCount, streamText, type UIMessage } from 'ai';
-import { modeloFuerte } from '@/lib/ia/modelos';
+import { modeloRapido } from '@/lib/ia/modelos';
 import { IANoConfigurada, verificarIA } from '@/lib/ia/estructurado';
 import { obtenerSesion } from '@/server/auth/sesion';
 import { herramientasEntrevista, promptEntrevista } from '@/server/ia/perfil';
-import { MAX_PREGUNTAS_ENTREVISTA } from '@/server/onboarding/constantes';
+import { ultimaAnotacion } from '@/server/onboarding/entrevista';
 import { guardarPerfil, leerPerfil } from '@/server/onboarding/guardar-perfil';
 import { fusionarPerfil } from '@/server/onboarding/perfil';
 
-// El cierre genera el perfil completo en la llamada a guardar_perfil y después la despedida.
+// Cada turno puede anotar la respuesta (herramienta) y después preguntar; al cerrar, guarda y se despide.
 export const maxDuration = 120;
 
 export async function POST(request: Request) {
@@ -29,22 +29,37 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Mensaje inválido.' }, { status: 400 });
   }
 
+  // El perfil se relee en cada turno: las anotaciones anteriores ya están guardadas, así la agenda se achica sola.
   const perfil = await leerPerfil(sesion.empresaId);
-  const preguntasHechas = Math.min(messages.filter((m) => m.role === 'assistant').length, MAX_PREGUNTAS_ENTREVISTA);
+  const preguntasHechas = messages.filter((m) => m.role === 'assistant').length;
+  // Lo que no está en el perfil (temas preguntados sin dato, lo extraído para contradicciones) viaja en el historial.
+  const anterior = ultimaAnotacion(messages);
+  const estado = { tratados: anterior?.tratados ?? [], extraido: anterior?.extraido ?? {} };
 
-  const resultado = streamText({
-    model: modeloFuerte,
-    instructions: promptEntrevista(perfil, { canal: 'chat', preguntasHechas }),
-    messages: await convertToModelMessages(messages),
-    tools: herramientasEntrevista(async (datos) => {
-      // Releemos por si el perfil cambió durante la conversación.
-      const actualizado = fusionarPerfil(await leerPerfil(sesion.empresaId), datos);
+  const tools = herramientasEntrevista({
+    estado,
+    preguntasHechas,
+    alGuardar: async (datos) => {
+      // Releemos por si el perfil cambió durante la conversación. La descripción que vino de los documentos no se pisa.
+      const base = await leerPerfil(sesion.empresaId);
+      const actualizado = fusionarPerfil(base, base.descripcion ? { ...datos, descripcion: undefined } : datos);
       await guardarPerfil(sesion.empresaId, actualizado, { completo: false });
       return actualizado;
-    }),
-    // Paso 1: pregunta o guarda. Paso 2 (solo si guardó): despedida, sin herramientas.
-    // No se fuerza tool_choice: DeepSeek en modo thinking lo rechaza. El cierre lo pide el prompt
-    // y, si el modelo no guarda, la UI arma el perfil desde la transcripción.
+    },
+  });
+
+  const resultado = streamText({
+    // Modelo rápido: cada turno son dos pasos (anotar y preguntar) y con el fuerte tardaba 13-15 s; con el
+    // rápido, 3 s, y en las pruebas siguió la agenda y las herramientas igual de bien.
+    model: modeloRapido,
+    instructions: promptEntrevista(perfil, { canal: 'chat', preguntasHechas, tratados: estado.tratados }),
+    // Con `tools`, los resultados anteriores de la herramienta le llegan al modelo como el texto corto de toModelOutput.
+    messages: await convertToModelMessages(messages, { tools, ignoreIncompleteToolCalls: true }),
+    tools,
+    // Paso 1: anota (herramienta) o pregunta. Paso 2 (solo si anotó): confirma y hace la siguiente pregunta,
+    // o se despide si la herramienta dijo que terminó; sin herramientas.
+    // No se fuerza tool_choice: DeepSeek en modo thinking lo rechaza. Si el modelo no anota ni cierra,
+    // la UI arma el perfil desde la transcripción.
     stopWhen: isStepCount(2),
     // Respuestas de chat cortas: sin el razonamiento de DeepSeek V4 cada turno sale en pocos segundos.
     providerOptions: { deepseek: { thinking: { type: 'disabled' } } },

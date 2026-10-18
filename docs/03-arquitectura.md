@@ -183,7 +183,7 @@ Hasta que existan, maxi implementa las **mismas firmas** en `src/lib/mocks/consu
 | # | Componente | Modelo | Entrada | Salida (schema zod) | Dueño |
 |---|---|---|---|---|---|
 | 1 | Perfil de empresa | fuerte | textos de archivos/web (≤ 150k chars) o transcript | `PerfilEmpresa` | rafa |
-| 2 | Entrevista | fuerte, `streamText` + tool `guardar_perfil` | perfil parcial + faltantes + mensajes | texto + llamada a tool | rafa |
+| 2 | Entrevista | fuerte, `streamText` + tool `anotar_respuesta` (una por respuesta; el servidor recalcula la agenda y decide el cierre) | perfil guardado + agenda de temas pendientes + mensajes | texto + llamada a tool | rafa |
 | 3 | Matching | rápido, `generarObjeto`, concurrencia 5 | perfil resumido (productos, zonas, capacidad, documentación) + licitación (objeto, organismo, tipo, fechas, lugar de entrega, ítems con cantidades, `que_piden` del análisis si existe) | `{ relevante, confianza 0–100, razon, items: ItemOfertable[] }` | seba |
 | 4 | Análisis de pliego | rápido (masivo) / fuerte (`?forzar=1` desde el detalle) | metadata + archivos relevantes (≤ 350k chars) | `AnalisisPliego` | seba |
 | 5 | Gap documental | sin LLM: `requisitosDocumentales` × `empresa_documentos` × `config/plazos-documentales.ts` × días al cierre | `GapDocumental[]`, `estadoDocumental` | seba |
