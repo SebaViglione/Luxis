@@ -1,6 +1,6 @@
 import { createMcpHandler } from 'mcp-handler';
 import { z } from 'zod';
-import { buscarLicitaciones, detalleLicitacion, precioGanador } from '@/server/mcp/herramientas';
+import { buscarLicitaciones, cotizarLista, detalleLicitacion, MAX_RENGLONES, precioGanador } from '@/server/mcp/herramientas';
 
 export const maxDuration = 60;
 
@@ -37,6 +37,30 @@ const handler = createMcpHandler(
     );
 
     server.registerTool(
+      'cotizar_lista',
+      {
+        title: 'Cotizar una lista de artículos',
+        annotations: SOLO_LECTURA,
+        description:
+          'Cotiza de una vez una lista de artículos (lo que manda un ERP, un sistema de cotización o una planilla): un renglón por artículo con '
+          + 'cuántas adjudicaciones hubo, entre qué precios estuvo la mitad de las ofertas que ganaron, el precio del medio, el precio sugerido para '
+          + 'quedar en la zona ganadora, la última adjudicación y quién más lo gana; si pasás cantidad, también el total sugerido, y el total por '
+          + `moneda al final. Hasta ${MAX_RENGLONES} artículos por llamada. Misma búsqueda por significado que precio_ganador.`,
+        inputSchema: z.object({
+          articulos: z.array(z.object({
+            articulo: z.string().min(2).max(200).describe('Descripción del artículo en texto libre, en español.'),
+            cantidad: z.number().positive().optional().describe('Cantidad que querés cotizar, para calcular el total sugerido.'),
+            unidad: z.string().max(30).optional().describe('Unidad (BOLSA, M3, KG, UNIDAD, M, TON…). Si se omite, se usa la unidad con más adjudicaciones.'),
+            moneda: z.enum(['UYU', 'USD', 'UI']).optional().describe('Moneda de este renglón; si se omite, la general.'),
+          })).min(1).max(MAX_RENGLONES).describe('Los artículos a cotizar.'),
+          moneda: z.enum(['UYU', 'USD', 'UI']).optional().describe('Moneda general. Por defecto UYU.'),
+          meses: z.number().int().min(1).max(36).optional().describe('Ventana hacia atrás en meses. Por defecto 24.'),
+        }),
+      },
+      async (args) => { try { return texto(await cotizarLista(args)); } catch (e) { return falla(e); } },
+    );
+
+    server.registerTool(
       'buscar_licitaciones',
       {
         title: 'Buscar licitaciones abiertas',
@@ -49,7 +73,7 @@ const handler = createMcpHandler(
           texto: z.string().max(200).optional().describe('Palabras a buscar, por ejemplo "balasto canelones" o "pintura".'),
           dias: z.number().int().min(1).max(120).optional().describe('Solo las que cierran dentro de estos días.'),
           soloRubro: z.boolean().optional().describe('true (por defecto) limita al rubro barraca / materiales de construcción.'),
-          limite: z.number().int().min(1).max(50).optional().describe('Máximo de resultados, por defecto 15.'),
+          limite: z.number().int().min(1).max(50).optional().describe('Máximo de resultados, por defecto 10.'),
         }),
       },
       async (args) => { try { return texto(await buscarLicitaciones(args)); } catch (e) { return falla(e); } },
@@ -75,8 +99,9 @@ const handler = createMcpHandler(
     serverInfo: { name: 'luxis', version: '0.1.0' },
     instructions:
       'Luxis analiza licitaciones públicas de Uruguay (ARCE) para barracas de materiales de construcción. Usá precio_ganador para saber a qué '
-      + 'precio se adjudica un artículo y quién lo gana, buscar_licitaciones para ver qué llamados están abiertos y detalle_licitacion para leer '
-      + 'uno en profundidad. Todos los precios son sin IVA y vienen de adjudicaciones publicadas; ARCE no publica ofertas perdedoras. '
+      + 'precio se adjudica un artículo y quién lo gana, cotizar_lista para cotizar varios artículos de una vez, buscar_licitaciones para ver qué '
+      + 'llamados están abiertos y detalle_licitacion para leer uno en profundidad. Cobertura: precios ganadores de materiales de construcción '
+      + 'desde enero de 2024 (todas las líneas del rubro que publica ARCE), todos los llamados vigentes de ARCE, y la lectura por IA de los pliegos del rubro. Todos los precios son sin IVA y vienen de adjudicaciones publicadas; ARCE no publica ofertas perdedoras. '
       + 'Hablale al usuario como a quien atiende una barraca: "precio del medio" y "la mitad de las ofertas que ganaron estuvo entre X e Y"; no uses "mediana", "percentil", "p25" ni "p75".',
   },
 );

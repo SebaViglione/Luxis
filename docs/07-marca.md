@@ -152,4 +152,4 @@ Para evitar ambigüedades con nombres parecidos:
     - la confianza, en el badge de cada licitación.
   - La evaluación del matching sigue en `demo-assets/eval-resultado.json` y `npm run eval:matching`, por si hace falta mostrarla en la demo.
 - **Secciones de la app:** el menú lateral tiene Licitaciones (`/dashboard` y el detalle `/licitaciones/[id]`), Calendario, Notificaciones y Cuenta, más "Ver la guía" al pie. No sumar ítems sin acordarlo.
-- **Secciones de la landing:** Hero, Organismos, Cómo funciona (pasos), Funciones, Datos (cifras reales), Preguntas y CTA final.
+- **Secciones de la landing:** Hero, Organismos, Cómo funciona (pasos), Funciones, Datos (cifras reales), MCP (conectá tu software o tu asistente), Preguntas y CTA final.

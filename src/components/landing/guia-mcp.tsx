@@ -10,53 +10,111 @@ const RUTA = '/api/mcp';
 const sinSuscripcion = () => () => {};
 
 type Copiable = { etiqueta: string; texto: string; bloque?: boolean };
-type Guia = { id: string; nombre: string; pasos: string[]; copiable: (url: string) => Copiable; nota?: string };
+type Grupo = 'asistente' | 'desarrollo' | 'software';
+type Guia = { id: string; grupo: Grupo; nombre: string; pasos: string[]; copiable: (url: string) => Copiable; nota?: string };
+
+const GRUPOS: [Grupo, string][] = [['asistente', 'Asistentes'], ['desarrollo', 'Desarrollo'], ['software', 'Tu software']];
 
 /** Una guía por cliente. Pasos cortos y lo que hay que pegar, con la dirección real ya puesta. */
 const GUIAS: Guia[] = [
   {
     id: 'claude',
+    grupo: 'asistente',
     nombre: 'Claude',
     pasos: ['Ajustes, Conectores, Agregar conector personalizado.', 'Nombre «Luxis», pegá la dirección, sin autenticación.', 'En el chat, activalo desde el menú de herramientas.'],
     copiable: (url) => ({ etiqueta: 'Dirección del servidor', texto: url }),
-    nota: 'claude.ai y Claude Desktop. Planes Pro, Max, Team y Enterprise.',
+    nota: 'claude.ai y Claude Desktop.',
   },
   {
     id: 'chatgpt',
+    grupo: 'asistente',
     nombre: 'ChatGPT',
     pasos: ['Ajustes, Seguridad e inicio de sesión, activá Modo desarrollador.', 'Plugins, botón +, pegá la dirección, nombre «Luxis», Crear.', 'En un chat nuevo, elegilo desde el botón + y Más.'],
     copiable: (url) => ({ etiqueta: 'Dirección del servidor', texto: url }),
-    nota: 'Planes Plus, Pro, Business y Enterprise.',
+    nota: 'ChatGPT con el modo desarrollador activo.',
   },
   {
     id: 'claude-code',
+    grupo: 'desarrollo',
     nombre: 'Claude Code',
     pasos: ['Pegá el comando en la terminal.', 'En la próxima sesión ya tenés las herramientas.'],
     copiable: (url) => ({ etiqueta: 'Comando', texto: `claude mcp add --transport http luxis ${url}` }),
   },
   {
     id: 'codex',
+    grupo: 'desarrollo',
     nombre: 'Codex',
     pasos: ['Pegá el comando en la terminal.', 'Queda en ~/.codex/config.toml para todos tus proyectos.'],
     copiable: (url) => ({ etiqueta: 'Comando', texto: `codex mcp add luxis --url ${url}` }),
   },
   {
     id: 'cursor',
+    grupo: 'desarrollo',
     nombre: 'Cursor',
     pasos: ['Ajustes, MCP, Add new MCP server, o editá el archivo a mano.', 'Guardá: Luxis aparece en la lista con sus tres herramientas.'],
     copiable: (url) => ({ etiqueta: '~/.cursor/mcp.json', texto: JSON.stringify({ mcpServers: { luxis: { url } } }, null, 2), bloque: true }),
   },
   {
     id: 'vscode',
+    grupo: 'desarrollo',
     nombre: 'VS Code',
     pasos: ['Creá .vscode/mcp.json en tu proyecto con este contenido.', 'En el chat de Copilot, modo Agente, aparecen las herramientas.'],
     copiable: (url) => ({ etiqueta: '.vscode/mcp.json', texto: JSON.stringify({ servers: { luxis: { type: 'http', url } } }, null, 2), bloque: true }),
   },
   {
     id: 'gemini',
+    grupo: 'desarrollo',
     nombre: 'Gemini CLI',
     pasos: ['Pegá el comando en la terminal.', 'Con /mcp dentro de Gemini ves las herramientas conectadas.'],
     copiable: (url) => ({ etiqueta: 'Comando', texto: `gemini mcp add --transport http luxis ${url}` }),
+  },
+  {
+    id: 'http',
+    grupo: 'software',
+    nombre: 'HTTP directo',
+    pasos: ['Un POST por llamada: JSON-RPC 2.0 sobre Streamable HTTP, sin sesión ni clave.', 'tools/list muestra las herramientas; tools/call las usa. La respuesta viene en content[0].text como JSON.', 'Sirve desde cualquier lenguaje, un ERP o un cron.'],
+    copiable: (url) => ({
+      etiqueta: 'curl',
+      bloque: true,
+      texto: `curl -X POST ${url} \\
+  -H 'content-type: application/json' \\
+  -H 'accept: application/json, text/event-stream' \\
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"precio_ganador","arguments":{"articulo":"arena gruesa","unidad":"M3"}}}'`,
+    }),
+  },
+  {
+    id: 'python',
+    grupo: 'software',
+    nombre: 'Python',
+    pasos: ['pip install mcp', 'Abrí una sesión contra la dirección y llamá a la herramienta que necesites.', 'La respuesta viene en content[0].text como JSON.'],
+    copiable: (url) => ({
+      etiqueta: 'cotizar.py',
+      bloque: true,
+      texto: `from mcp import ClientSession
+from mcp.client.streamable_http import streamablehttp_client
+
+async with streamablehttp_client("${url}") as (lectura, escritura, _):
+    async with ClientSession(lectura, escritura) as sesion:
+        await sesion.initialize()
+        r = await sesion.call_tool("cotizar_lista", {"articulos": [{"articulo": "portland", "cantidad": 50}]})
+        print(r.content[0].text)`,
+    }),
+  },
+  {
+    id: 'typescript',
+    grupo: 'software',
+    nombre: 'TypeScript',
+    pasos: ['npm install @modelcontextprotocol/client', 'Conectá con el transporte HTTP y llamá a la herramienta.', 'La respuesta viene en content[0].text como JSON.'],
+    copiable: (url) => ({
+      etiqueta: 'cotizar.ts',
+      bloque: true,
+      texto: `import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+
+const cliente = new Client({ name: 'mi-erp', version: '1.0.0' });
+await cliente.connect(new StreamableHTTPClientTransport(new URL('${url}')));
+const r = await cliente.callTool({ name: 'cotizar_lista', arguments: { articulos: [{ articulo: 'portland', cantidad: 50 }] } });
+console.log(r.content[0].text);`,
+    }),
   },
 ];
 
@@ -118,9 +176,12 @@ export function GuiaMcp() {
   return (
     <MotionConfig reducedMotion="user">
       <div className="rounded-2xl border bg-card/90 p-6 shadow-[0_40px_80px_-40px_rgba(27,27,27,0.3)] backdrop-blur-[2px] md:p-8">
-        <p className="font-mono text-xs tracking-wide text-muted-foreground uppercase">Instalalo en tu cliente</p>
-        <div role="tablist" aria-label="Cliente" className="mt-4 flex flex-wrap gap-2">
-          {GUIAS.map((g) => {
+        <p className="font-mono text-xs tracking-wide text-muted-foreground uppercase">Conectalo desde tu cliente</p>
+        <div role="tablist" aria-label="Cliente" className="mt-4 space-y-2.5">
+          {GRUPOS.map(([grupo, etiqueta]) => (
+            <div key={grupo} className="flex flex-wrap items-center gap-2">
+              <span className="w-full font-mono text-[11px] tracking-wide text-muted-foreground uppercase sm:w-24 sm:shrink-0">{etiqueta}</span>
+              {GUIAS.filter((g) => g.grupo === grupo).map((g) => {
             const on = g.id === activa;
             return (
               <button
@@ -140,6 +201,8 @@ export function GuiaMcp() {
               </button>
             );
           })}
+            </div>
+          ))}
         </div>
 
         <div id={`guia-${guia.id}`} role="tabpanel" className="mt-6">

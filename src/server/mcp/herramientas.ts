@@ -5,6 +5,7 @@ import { embedConsulta, embeddingsDisponibles, vectorSql } from '@/lib/ia/embedd
 import { monedaDesdeId, type Moneda } from '@/lib/types';
 import { normalizarTexto, urlDetalleCompra } from '@/server/arce/normalizar';
 import { leerPrecios } from '@/server/ia/precio';
+import { enParalelo } from '@/lib/ia/estructurado';
 
 /**
  * Herramientas de solo lectura que expone el MCP de Luxis (`/api/mcp`) para que un agente externo
@@ -129,6 +130,9 @@ export async function precioGanador(c: ConsultaPrecio) {
 
   const base = filas[0];
   const incluidas = base?.incluidas ?? [];
+  // Qué tan parecido es lo que se encontró a lo que se pidió: la IA (y un ERP) tienen que saber si es el mismo artículo o solo uno parecido.
+  const mejor = incluidas[0]?.via;
+  const coincidencia: 'exacta' | 'mismo articulo' | 'parecido' | 'ninguna' = mejor === 'exacta' || mejor === 'mismo articulo' ? mejor : incluidas.length ? 'parecido' : 'ninguna';
   const grupos = [...filas].filter((f) => f.n !== null).map((f) => {
     const sugerido = sugerir(f.n ?? 0, f.p25, f.mediana);
     return {
@@ -140,12 +144,74 @@ export async function precioGanador(c: ConsultaPrecio) {
   });
 
   return {
-    consulta: { articulo: c.articulo, descripcionNormalizada: descNorm, moneda, unidad: unidad || 'todas', meses, busqueda },
+    consulta: { articulo: c.articulo, descripcionNormalizada: descNorm, moneda, unidad: unidad || 'todas', meses, busqueda, coincidencia },
     articulosIncluidos: incluidas.slice(0, MAX_INCLUIDOS),
     articulosIncluidosOmitidos: Math.max(0, incluidas.length - MAX_INCLUIDOS),
     porUnidad: grupos,
     sinResultados: grupos.length === 0,
-    nota: (busqueda === 'texto' ? 'Búsqueda por similitud de texto (la semántica no estuvo disponible): puede faltar algún artículo escrito distinto. ' : '') + (grupos.length ? NOTA_PRECIOS : `No encontramos adjudicaciones comparables en ${moneda} en los últimos ${meses} meses. Probá con otra descripción, otra moneda o más meses. ${NOTA_PRECIOS}`),
+    nota: (busqueda === 'texto' ? 'Búsqueda por similitud de texto (la semántica no estuvo disponible): puede faltar algún artículo escrito distinto. ' : '')
+      + (coincidencia === 'parecido' && grupos.length ? 'No hay un artículo igual en la base: los precios son de artículos parecidos (ver articulosIncluidos), tomalos como orientación. ' : '')
+      + (grupos.length ? NOTA_PRECIOS : `No encontramos adjudicaciones comparables en ${moneda} en los últimos ${meses} meses. Probá con otra descripción, otra moneda o más meses. ${NOTA_PRECIOS}`),
+  };
+}
+
+export interface ConsultaCotizacion {
+  articulos: { articulo: string; cantidad?: number; unidad?: string; moneda?: MonedaConsulta }[];
+  moneda?: MonedaConsulta;
+  meses?: number;
+}
+
+type RenglonBase = { renglon: number; articulo: string; cantidad: number | null; unidadPedida: string | null };
+type Renglon =
+  | (RenglonBase & { sinDatos: true; motivo: string })
+  | (RenglonBase & {
+      sinDatos: false; unidad: string; moneda: MonedaConsulta; adjudicaciones: number;
+      precioDelMedio: number | null; mitadDeLasGanadorasEntre: { desde: number | null; hasta: number | null }; precioSugerido: number | null; totalSugerido: number | null;
+      ultimaAdjudicacion: { ganador: string | null; precioUnit: number; fecha: string; organismo: string | null; url: string } | null;
+      quienMasGana: string | null; articulosComparados: string[]; busqueda: string;
+    });
+
+/** Máximo de renglones por llamada: lo que manda un ERP o una planilla de una vez sin pasarse de los 60 s de Vercel. */
+export const MAX_RENGLONES = 20;
+
+/** Cotiza una lista de artículos de una vez: un renglón por artículo con el precio ganador, y el total sugerido por moneda. */
+export async function cotizarLista(c: ConsultaCotizacion) {
+  const moneda: MonedaConsulta = c.moneda ?? 'UYU';
+  const meses = Math.min(Math.max(Math.round(c.meses ?? 24), 1), 36);
+  const pedidos = c.articulos.slice(0, MAX_RENGLONES);
+  const renglones = await enParalelo(pedidos, 4, async (a, i): Promise<Renglon> => {
+    const base: RenglonBase = { renglon: i + 1, articulo: a.articulo, cantidad: a.cantidad ?? null, unidadPedida: a.unidad ?? null };
+    const mon = a.moneda ?? moneda;
+    const r = await precioGanador({ articulo: a.articulo, unidad: a.unidad, moneda: mon, meses }).catch((e: Error) => ({ error: e.message }));
+    if ('error' in r) return { ...base, sinDatos: true, motivo: r.error ?? 'No se pudo cotizar este renglón.' };
+    const g = r.porUnidad[0];
+    if (!g) return { ...base, sinDatos: true, motivo: `Sin adjudicaciones comparables en ${mon} en los últimos ${meses} meses.` };
+    if (r.consulta.coincidencia === 'parecido' || r.consulta.coincidencia === 'ninguna') {
+      const parecidos = r.articulosIncluidos.slice(0, 3).map((x) => x.descripcion).join(', ');
+      return { ...base, sinDatos: true, motivo: `No encontramos un artículo igual en la base${parecidos ? `; los más parecidos son: ${parecidos}` : ''}. Revisá la descripción o consultalo con precio_ganador.` };
+    }
+    const ultima = g.ultimasAdjudicaciones[0];
+    const total = a.cantidad && g.precioSugerido !== null ? Math.round(a.cantidad * g.precioSugerido * 100) / 100 : null;
+    return {
+      ...base, sinDatos: false, unidad: g.unidad, moneda: mon, adjudicaciones: g.n,
+      precioDelMedio: g.precioDelMedio, mitadDeLasGanadorasEntre: g.mitadDeLasGanadorasEntre, precioSugerido: g.precioSugerido, totalSugerido: total,
+      ultimaAdjudicacion: ultima ? { ganador: ultima.ganador, precioUnit: ultima.precioUnit, fecha: ultima.fecha, organismo: ultima.organismo, url: ultima.url } : null,
+      quienMasGana: g.competidores[0]?.nombre ?? null,
+      articulosComparados: r.articulosIncluidos.slice(0, 3).map((x) => x.descripcion),
+      busqueda: r.consulta.busqueda,
+    };
+  });
+  const totales: Partial<Record<MonedaConsulta, number>> = {};
+  for (const r of renglones) {
+    if (r.sinDatos || r.totalSugerido === null) continue;
+    totales[r.moneda] = Math.round(((totales[r.moneda] ?? 0) + r.totalSugerido) * 100) / 100;
+  }
+  return {
+    consulta: { articulos: pedidos.length, omitidos: Math.max(0, c.articulos.length - pedidos.length), moneda, meses },
+    renglones,
+    conDatos: renglones.filter((r) => !r.sinDatos).length,
+    totalSugeridoPorMoneda: totales,
+    nota: `Un renglón por artículo; totalSugerido es cantidad × precio sugerido, solo para los renglones con cantidad. ${NOTA_PRECIOS}`,
   };
 }
 
