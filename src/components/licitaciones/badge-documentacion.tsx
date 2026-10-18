@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 
 const ESTADOS: Record<EstadoDocumental, { texto: string; icono: typeof CircleCheck; clases: string; icono_clase: string }> = {
   cumple: { texto: 'Tenés los papeles', icono: CircleCheck, clases: 'bg-exito-suave text-exito', icono_clase: 'text-exito' },
-  alcanzable: { texto: 'Te falta un papel que llegás a conseguir', icono: Clock, clases: 'bg-alerta-suave text-alerta-fuerte', icono_clase: 'text-alerta' },
+  alcanzable: { texto: 'Te faltan papeles, pero llegás', icono: Clock, clases: 'bg-alerta-suave text-alerta-fuerte', icono_clase: 'text-alerta' },
   dificil: { texto: 'Te falta un papel difícil de conseguir', icono: TriangleAlert, clases: 'bg-error-suave text-error', icono_clase: 'text-error' },
   desconocido: { texto: 'Papeles sin revisar', icono: CircleHelp, clases: 'bg-muted text-muted-foreground', icono_clase: 'text-muted-foreground' },
 };

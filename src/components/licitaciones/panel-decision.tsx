@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { motion } from 'motion/react';
 import { ArrowRight, CalendarClock, ExternalLink, FileText } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
+import { NOTA_SIN_DATO } from '@/config/plazos-documentales';
 import type { DetalleLicitacion } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { AccionesMatch } from './acciones-match';
@@ -26,6 +27,10 @@ function resumenPapeles(match: NonNullable<DetalleLicitacion['match']>) {
   if (!match.gapDocumental.length) return { titulo: 'Sin revisar todavía', detalle: 'Cuando leamos el pliego te decimos qué papeles piden.', tono: 'text-muted-foreground' };
   if (!faltan.length) return { titulo: 'Tenés todo lo que piden', detalle: 'Los formularios y la planilla de precios los armás con Luxis.', tono: 'text-exito' };
   if (dificiles) return { titulo: `Te ${dificiles === 1 ? 'falta 1 papel difícil' : `faltan ${dificiles} papeles difíciles`}`, detalle: 'No llegarías a conseguirlo antes del cierre.', tono: 'text-error' };
+  // Papeles del perfil sin dato (RUPE, DGI…): no sabemos si te faltan.
+  if (faltan.every((g) => g.nota.startsWith(NOTA_SIN_DATO))) {
+    return { titulo: 'Confirmá tus papeles', detalle: `No nos dijiste si tenés ${faltan.map((g) => g.tipo === 'OTRO' ? g.documento : g.tipo).join(', ')}. Marcalos en Cuenta.`, tono: 'text-alerta-fuerte' };
+  }
   return { titulo: `Te ${faltan.length === 1 ? 'falta 1 papel' : `faltan ${faltan.length} papeles`}`, detalle: 'Llegás a conseguirlo antes del cierre.', tono: 'text-alerta-fuerte' };
 }
 
