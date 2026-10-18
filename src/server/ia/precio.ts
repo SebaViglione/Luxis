@@ -2,6 +2,7 @@ import { sql, eq, and } from 'drizzle-orm';
 import { embedTextos, embeddingsDisponibles } from '@/lib/ia/embeddings';
 import { db, schema } from '@/db';
 import { monedaDesdeId, type PrecioHistorico } from '@/lib/types';
+import { TOLERANCIA_PRECIO } from '@/server/precios/atipicos';
 
 
 
@@ -61,12 +62,18 @@ export async function calcularPrecios(idCompra: string): Promise<PrecioHistorico
       union select it.nro_item, a.id from it join adjudicaciones a on a.desc_normalizada = it.desc_normalizada
       union select s.nro_item, a.id from sim s join adjudicaciones a on a.desc_normalizada = s.d2
     ),
-    comp as materialized (
+    comp_todo as materialized (
       select c.nro_item, a.precio_unit, a.fecha_pub_adj, a.nombre_comercial, a.nro_doc_prov, a.id_compra
       from cand c join adjudicaciones a on a.id = c.id join it on it.nro_item = c.nro_item
       where a.id_moneda = it.mon and a.precio_unit > 0 and a.id_compra <> ${idCompra}
         and a.fecha_pub_adj > now() - interval '24 months'
         and (it.un = '' or upper(coalesce(a.unidad, '')) = it.un)
+    ),
+    -- Sin precios atípicos (src/server/precios/atipicos.ts): lejos del precio del medio del mismo ítem.
+    medio as (select nro_item, percentile_cont(0.5) within group (order by precio_unit) as m from comp_todo group by nro_item),
+    comp as materialized (
+      select t.* from comp_todo t join medio on medio.nro_item = t.nro_item
+      where t.precio_unit between medio.m / ${TOLERANCIA_PRECIO} and medio.m * ${TOLERANCIA_PRECIO}
     ),
     stats as (
       select nro_item, count(*)::int as n,

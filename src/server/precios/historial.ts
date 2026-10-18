@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 import { db } from '@/db';
 import type { Competidor, ItemLicitacion, ItemOfertable, Moneda, PrecioHistorico } from '@/lib/types';
 import { normalizarTexto } from '@/server/arce/normalizar';
+import { TOLERANCIA_PRECIO } from './atipicos';
 
 export interface PuntoPrecio {
   fecha: string;
@@ -77,12 +78,18 @@ function consultaHistorial(idCompra: string, items: ItemConsulta[], maxPuntos: n
       union select s.nro_item, a.id from sim s join adjudicaciones a on a.desc_normalizada = s.d2
       union select nro_item, id from trg
     ),
-    comp as materialized (
+    comp_todo as materialized (
       select c.nro_item, a.precio_unit, a.fecha_pub_adj, a.nombre_comercial, a.nro_doc_prov, a.cant_adj, a.unidad, a.organismo, a.id_compra
       from cand c join adjudicaciones a on a.id = c.id join it on it.nro_item = c.nro_item
       where a.id_moneda = any(it.monedas) and a.precio_unit > 0 and a.id_compra <> ${idCompra}
         and a.fecha_pub_adj > now() - interval '24 months'
         and (it.un = '' or upper(coalesce(a.unidad, '')) = it.un)
+    ),
+    -- Mismo filtro de atípicos que calcularPrecios: lejos del precio del medio del mismo ítem.
+    medio as (select nro_item, percentile_cont(0.5) within group (order by precio_unit) as m from comp_todo group by nro_item),
+    comp as materialized (
+      select t.* from comp_todo t join medio on medio.nro_item = t.nro_item
+      where t.precio_unit between medio.m / ${TOLERANCIA_PRECIO} and medio.m * ${TOLERANCIA_PRECIO}
     ),
     stats as (
       select nro_item, count(*)::int as n,
