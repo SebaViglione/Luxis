@@ -26,7 +26,7 @@ const PASOS: Paso[] = [
   { selector: '[data-guia="filtros"]', titulo: 'Filtrá a tu medida', texto: 'Elegí la coincidencia mínima y la fecha de cierre. En "Tipo de compra y organismo" afinás por quién compra o el tamaño de la compra.' },
   { selector: '[data-guia="analizar-url"]', titulo: 'Analizá cualquier llamado', texto: '¿Viste uno en ARCE? Pegá el link y lo leemos aunque no te haya aparecido como match.' },
   { selector: 'header button[aria-label^="Notificaciones"]', titulo: 'Avisos', texto: 'Nuevos matches, cierres y visitas que se acercan y aclaraciones del organismo.' },
-  { selector: 'header button[title^="Trae novedades"]', titulo: 'Actualizar', texto: 'Trae lo último publicado en ARCE y lo compara con lo que vendés. Suele tardar entre 10 y 30 segundos.' },
+  { selector: 'header button[title^="Trae novedades"]', titulo: 'Buscar novedades', texto: 'Trae lo último publicado en ARCE y lo compara con lo que vendés. Suele tardar entre 10 y 30 segundos.' },
   { selector: 'aside a[href="/calendario"]', titulo: 'Calendario', texto: 'Consultas, visitas y aperturas de lo que guardaste, ordenadas por fecha.' },
   { titulo: 'Listo', texto: 'Empezá por la primera licitación de la lista. Si querés repasar, la guía está en el menú.' },
 ];

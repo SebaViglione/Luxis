@@ -46,10 +46,10 @@ export function BotonActualizar() {
         {estado.tipo === 'inactivo' ? '' : estado.texto}
         {trabajando && <span className="ml-1 font-mono">{segundos} s</span>}
       </span>
-      <Button variant="outline" size="sm" onClick={actualizar} disabled={trabajando} title="Trae novedades de ARCE (suele tardar entre 10 y 30 segundos)">
+      <Button variant="outline" size="sm" onClick={actualizar} disabled={trabajando} title="Trae novedades de ARCE y las compara con lo que vendés (tarda entre 10 y 30 segundos)">
         <RefreshCw aria-hidden className={trabajando ? 'animate-spin motion-reduce:animate-none' : undefined} />
-        <span className="hidden sm:inline">{trabajando ? 'Actualizando…' : 'Actualizar'}</span>
-        <span className="sr-only sm:hidden">Actualizar</span>
+        <span className="hidden sm:inline">{trabajando ? 'Buscando…' : 'Buscar novedades'}</span>
+        <span className="sr-only sm:hidden">Buscar novedades</span>
       </Button>
     </div>
   );

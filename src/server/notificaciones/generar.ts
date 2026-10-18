@@ -1,10 +1,19 @@
 import { and, eq, gt, gte, inArray, ne, sql } from 'drizzle-orm';
 import { db, schema } from '@/db';
-import type { Notificacion } from '@/lib/types';
+import { confianzaEfectiva, type Notificacion } from '@/lib/types';
+import { esDocumentoDeLaLicitacion } from '@/config/plazos-documentales';
 import { fechaCorta, fechaHora, suavizarMayusculas } from '@/components/licitaciones/formato';
 import { actualizarResultados } from '@/server/estadisticas/resultados';
 
 const HORA = 36e5;
+
+/** "en 5 horas", "mañana", "en 2 días": cuánto falta para el cierre, en palabras. */
+function cuandoCierra(tope: Date, ahora: Date): string {
+  const horas = Math.max(1, Math.round((tope.getTime() - ahora.getTime()) / HORA));
+  if (horas < 24) return horas === 1 ? 'en 1 hora' : `en ${horas} horas`;
+  const dias = Math.round(horas / 24);
+  return dias === 1 ? 'mañana' : `en ${dias} días`;
+}
 
 interface NuevaNotificacion {
   tipo: Notificacion['tipo'];
@@ -32,22 +41,23 @@ export async function generarNotificaciones(empresaId: string): Promise<number> 
   const resueltas = resultados.ganadas + resultados.perdidas;
 
   const filas = await db.select({
-    idCompra: M.idCompra, confianza: M.confianza, estado: M.estadoUsuario, gap: M.gapDocumental, creado: M.createdAt,
+    idCompra: M.idCompra, confianzaBase: M.confianza, estadoDoc: M.estadoDocumental, estado: M.estadoUsuario, gap: M.gapDocumental, creado: M.createdAt,
     objeto: L.objeto, tope: L.fechaTopeOfertas, fechas: A.fechasClave,
   }).from(M).innerJoin(L, eq(L.idCompra, M.idCompra)).leftJoin(A, eq(A.idCompra, M.idCompra))
     .where(and(eq(M.empresaId, empresaId), ne(M.estadoUsuario, 'descartada'), gte(M.confianza, 50), gt(L.fechaTopeOfertas, ahora)));
 
   const nuevas: NuevaNotificacion[] = [];
-  for (const f of filas) {
+  for (const fila of filas) {
+    // Mismo puntaje que el dashboard: la coincidencia ya descontada por papeles difíciles.
+    const f = { ...fila, confianza: confianzaEfectiva(fila.confianzaBase, fila.estadoDoc).confianza };
     const objeto = corto(f.objeto);
 
     if (f.confianza >= 70 && ahora.getTime() - f.creado.getTime() <= 24 * HORA) {
-      nuevas.push({ tipo: 'nuevo_match', titulo: `Nueva licitación para vos: ${objeto}`, cuerpo: `Confianza ${f.confianza}. Cierra el ${fechaHora(f.tope?.toISOString() ?? null)}.`, idCompra: f.idCompra, clave: `nuevo_match:${f.idCompra}:${dia(f.creado)}` });
+      nuevas.push({ tipo: 'nuevo_match', titulo: `Nueva licitación para vos: ${objeto}`, cuerpo: `Coincidencia ${f.confianza} de 100 con lo que vendés. Cierra el ${fechaHora(f.tope?.toISOString() ?? null)}.`, idCompra: f.idCompra, clave: `nuevo_match:${f.idCompra}:${dia(f.creado)}` });
     }
 
     if (f.tope && f.tope.getTime() - ahora.getTime() <= 48 * HORA) {
-      const horas = Math.max(1, Math.round((f.tope.getTime() - ahora.getTime()) / HORA));
-      nuevas.push({ tipo: 'cierre_proximo', titulo: `Cierra en ${horas} h: ${objeto}`, cuerpo: `La recepción de ofertas cierra el ${fechaHora(f.tope.toISOString())}.`, idCompra: f.idCompra, clave: `cierre_proximo:${f.idCompra}:${dia(f.tope)}` });
+      nuevas.push({ tipo: 'cierre_proximo', titulo: `Cierra ${cuandoCierra(f.tope, ahora)}: ${objeto}`, cuerpo: `Podés ofertar hasta el ${fechaHora(f.tope.toISOString())}.`, idCompra: f.idCompra, clave: `cierre_proximo:${f.idCompra}:${dia(f.tope)}` });
     }
 
     for (const fc of f.fechas ?? []) {
@@ -62,13 +72,17 @@ export async function generarNotificaciones(empresaId: string): Promise<number> 
       });
     }
 
-    if (f.confianza >= 70 && f.tope) {
-      const faltantes = (f.gap ?? []).filter((g) => !g.tiene && g.alcanzableAntesCierre === true);
+    // Acá va la coincidencia sin descontar: el papel que falta es justo lo que el descuento castiga.
+    if (f.confianzaBase >= 70 && f.tope) {
+      // Solo papeles que hay que presentar para ofertar: ni el pliego ni lo que se pide después de ganar.
+      const faltantes = (f.gap ?? []).filter((g) => g.obligatorio && !g.tiene && g.alcanzableAntesCierre === true && !esDocumentoDeLaLicitacion(g.documento));
       if (faltantes.length) {
-        const extra = faltantes.length > 1 ? ` (y ${faltantes.length - 1} más)` : '';
+        const otros = faltantes.length - 1;
+        const dias = Math.max(0, ...faltantes.map((g) => g.diasEstimados ?? 0));
         nuevas.push({
-          tipo: 'doc_alcanzable', titulo: `Te falta ${faltantes[0].documento}${extra}, pero llegás: cierra el ${fechaCorta(f.tope.toISOString())}`,
-          cuerpo: faltantes.map((g) => g.nota).filter(Boolean).join(' '), idCompra: f.idCompra, clave: `doc_alcanzable:${f.idCompra}:${dia(f.tope)}`,
+          tipo: 'doc_alcanzable',
+          titulo: otros ? `Te faltan ${faltantes.length} papeles para ${objeto}` : `Te falta un papel para ${objeto}`,
+          cuerpo: `${faltantes.map((g) => g.documento).join(', ')}. Llegás a conseguir${otros ? 'los' : 'lo'} antes del cierre (${fechaCorta(f.tope.toISOString())})${dias ? `: el trámite tarda ${dias === 1 ? 'un día hábil' : `unos ${dias} días hábiles`}` : ''}.`, idCompra: f.idCompra, clave: `doc_alcanzable:${f.idCompra}:${dia(f.tope)}`,
         });
       }
     }

@@ -1,41 +1,30 @@
 import { Suspense } from 'react';
-import { connection } from 'next/server';
-import { eq } from 'drizzle-orm';
-import { db, schema } from '@/db';
 import { Logo } from '@/components/marca/logo';
-import { obtenerSesion } from '@/server/auth/sesion';
-import { contarNoLeidas, listarNotificaciones } from '@/server/notificaciones/consultas';
+import { datosNavegacion } from '@/server/consultas/navegacion';
 import { BotonActualizar } from './boton-actualizar';
 import { Campanita } from './campanita';
-import { MenuMovil } from './menu-movil';
 
 async function DatosSesion() {
-  // Supabase usa Date.now() al validar el token: sin connection() el prerender lo rechaza.
-  await connection();
-  const sesion = await obtenerSesion();
-  if (!sesion) return null;
-  const [[empresa], noLeidas, ultimas] = await Promise.all([
-    db.select({ nombre: schema.empresas.nombre }).from(schema.empresas).where(eq(schema.empresas.id, sesion.empresaId)),
-    contarNoLeidas(sesion.empresaId),
-    listarNotificaciones(sesion.empresaId, { limite: 5 }),
-  ]);
+  const d = await datosNavegacion();
+  if (!d) return null;
   return (
     <>
-      <div className="flex min-w-0 flex-1 justify-end md:justify-start">
-        <span className="truncate text-sm font-medium">{empresa?.nombre ?? ''}</span>
-      </div>
-      <Campanita noLeidas={noLeidas} ultimas={ultimas} />
+      <Campanita noLeidas={d.noLeidas} ultimas={d.ultimas} />
       <BotonActualizar />
     </>
   );
 }
 
+/**
+ * Barra superior: en el celular, la marca; siempre, los avisos y la búsqueda de novedades a la derecha.
+ * La navegación vive en la barra lateral (computadora) o en la barra inferior (celular).
+ */
 export function Topbar() {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background px-4 md:px-8">
-      <MenuMovil />
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur md:px-8">
       <Logo href="/dashboard" className="md:hidden" />
-      <Suspense fallback={<div className="flex flex-1 justify-end md:justify-start"><span aria-hidden className="h-4 w-36 rounded-sm bg-muted" /></div>}>
+      <div className="flex-1" />
+      <Suspense fallback={<span aria-hidden className="h-8 w-40 rounded-md bg-muted" />}>
         <DatosSesion />
       </Suspense>
     </header>
