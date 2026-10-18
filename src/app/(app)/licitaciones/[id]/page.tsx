@@ -114,7 +114,6 @@ async function Detalle({ params }: { params: Promise<{ id: string }> }) {
           ),
           papeles: <PanelDocumentacion gap={d.match?.gapDocumental ?? []} requisitos={d.analisis?.requisitosDocumentales ?? []} />,
           fechas: <PanelFechas detalle={d} ahora={ahora} />,
-          chat: <div data-slot="chat-pliego" className="min-h-64"><ChatPliego idCompra={l.idCompra} /></div>,
           archivos: (
             <div className="space-y-4">
               <a href={l.urlOfertar} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
@@ -124,6 +123,7 @@ async function Detalle({ params }: { params: Promise<{ id: string }> }) {
             </div>
           ),
         }}
+        chat={<ChatPliego idCompra={l.idCompra} enPanel />}
       />
     </div>
   );

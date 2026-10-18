@@ -30,7 +30,7 @@ src/
     (onboarding)/onboarding/                   rafa
     (app)/layout.tsx                           maxi   sidebar + topbar + campanita
     (app)/dashboard/                           maxi
-    (app)/licitaciones/[id]/                   maxi   (el tab Chat lo llena rafa)
+    (app)/licitaciones/[id]/                   maxi   (el chat flotante "Preguntale al pliego" lo llena rafa)
     (app)/calendario/                          maxi
     (app)/notificaciones/                      maxi
     (app)/como-funciona/                       maxi

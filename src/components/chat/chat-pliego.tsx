@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 import { RespuestaConCitas } from './respuesta-con-citas';
 import { useDictado } from './use-dictado';
 
@@ -27,8 +28,11 @@ interface InfoPliego {
   emailContacto: string | null;
 }
 
-/** Chat con el pliego de una licitación. Se monta en el tab "Chat" del detalle. */
-export function ChatPliego({ idCompra }: { idCompra: string }) {
+/**
+ * Chat con el pliego de una licitación. Vive en la ventana flotante del detalle (`ChatFlotante`):
+ * con `enPanel` ocupa todo el alto disponible en vez de un alto fijo.
+ */
+export function ChatPliego({ idCompra, enPanel = false }: { idCompra: string; enPanel?: boolean }) {
   const transporte = useMemo(
     () => new DefaultChatTransport({ api: '/api/chat/pliego', body: { idCompra } }),
     [idCompra],
@@ -114,7 +118,7 @@ export function ChatPliego({ idCompra }: { idCompra: string }) {
   }
 
   return (
-    <section className="flex flex-col gap-3" aria-label="Chat con el pliego">
+    <section className={cn('flex flex-col gap-3', enPanel && 'h-full min-h-0')} aria-label="Chat con el pliego">
       {info?.basadoEn === 'metadata' ? (
         <Alert>
           <AlertTriangle aria-hidden />
@@ -125,7 +129,7 @@ export function ChatPliego({ idCompra }: { idCompra: string }) {
         </Alert>
       ) : (
         info && (
-          <p className="text-xs text-muted-foreground">
+          <p className={cn('text-xs text-muted-foreground', enPanel && 'line-clamp-2')} title={enPanel ? info.archivos.map((a) => a.nombre).join(', ') : undefined}>
             Leímos {info.archivos.length} {info.archivos.length === 1 ? 'archivo' : 'archivos'} del pliego:{' '}
             {info.archivos.map((a) => a.nombre).join(', ')}
             {info.omitidos.length > 0 && `. No entraron por largo: ${info.omitidos.join(', ')}`}.
@@ -133,7 +137,7 @@ export function ChatPliego({ idCompra }: { idCompra: string }) {
         )
       )}
 
-      <div className="flex h-[min(32rem,65svh)] flex-col gap-4 overflow-y-auto rounded-md border p-3" aria-live="polite">
+      <div className={cn('flex flex-col gap-4 overflow-y-auto rounded-md border p-3', enPanel ? 'min-h-0 flex-1' : 'h-[min(32rem,65svh)]')} aria-live="polite">
         {messages.length === 0 && (
           <div className="m-auto flex max-w-md flex-col items-center gap-3 text-center">
             <p className="text-sm text-muted-foreground">
