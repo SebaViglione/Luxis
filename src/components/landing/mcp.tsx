@@ -1,5 +1,6 @@
 import { Suspense, type ComponentType } from 'react';
 import { cacheLife } from 'next/cache';
+import { connection } from 'next/server';
 import { Coins, FileText, Search } from 'lucide-react';
 import { precioGanador } from '@/server/mcp/herramientas';
 import { Aparecer } from './aparecer';
@@ -28,6 +29,8 @@ const nombrePropio = (s: string | null) => (s ?? 'un proveedor').toLowerCase().r
 
 /** Lo que devuelve `precio_ganador` para la pregunta de ejemplo, con los datos actuales. Nada de este bloque está escrito a mano. */
 async function Ejemplo() {
+  // Se arma por pedido y no en el build: en Vercel el build no llegó a la base y el bloque quedó vacío horas en producción.
+  await connection();
   let r: Awaited<ReturnType<typeof leerEjemplo>>;
   try {
     r = await leerEjemplo();

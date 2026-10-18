@@ -10,6 +10,8 @@ export const maxDuration = 60;
  *   claude mcp add --transport http luxis https://<dominio>/api/mcp
  */
 const texto = (datos: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify(datos) }] });
+/** Las tres herramientas solo leen: los clientes (claude.ai, Cursor…) pueden correrlas sin pedir confirmación por llamada. */
+const SOLO_LECTURA = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
 const falla = (e: unknown) => ({ isError: true, content: [{ type: 'text' as const, text: `Error consultando Luxis: ${(e as Error).message}` }] });
 
 const handler = createMcpHandler(
@@ -18,6 +20,7 @@ const handler = createMcpHandler(
       'precio_ganador',
       {
         title: 'Precio ganador histórico de un artículo',
+        annotations: SOLO_LECTURA,
         description:
           'Devuelve a qué precio unitario se adjudicó un artículo en las compras del Estado uruguayo (ARCE): cantidad de adjudicaciones, '
           + 'entre qué precios estuvo la mitad de las ofertas que ganaron, precio del medio, precio sugerido para quedar en la zona ganadora, últimas adjudicaciones con ganador y organismo, y los '
@@ -37,6 +40,7 @@ const handler = createMcpHandler(
       'buscar_licitaciones',
       {
         title: 'Buscar licitaciones abiertas',
+        annotations: SOLO_LECTURA,
         description:
           'Lista licitaciones de ARCE con recepción de ofertas todavía abierta, ordenadas por cierre. Filtra por palabras (objeto, organismo, '
           + 'ítems y resumen del pliego) y por días hasta el cierre. Por defecto solo las del rubro materiales de construcción; con soloRubro=false '
@@ -55,10 +59,11 @@ const handler = createMcpHandler(
       'detalle_licitacion',
       {
         title: 'Detalle de una licitación',
+        annotations: SOLO_LECTURA,
         description:
           'Ficha completa de una licitación ya ingestada por Luxis: datos del llamado, ítems con cantidades, lectura del pliego por IA '
           + '(resumen, qué piden, requisitos documentales como RUPE/DGI/BPS/BSE, fechas clave como visitas y consultas, condiciones, riesgos), '
-          + 'precio ganador histórico por ítem con competidores, y archivos del pliego. Acepta el id de compra o la URL de ARCE.',
+          + 'precio ganador histórico por ítem con competidores (vacío si Luxis todavía no los calculó para esa licitación), y archivos del pliego. Acepta el id de compra o la URL de ARCE.',
         inputSchema: z.object({
           idCompra: z.string().min(1).max(300).describe('Id de la compra en ARCE (por ejemplo "1375519") o la URL del llamado.'),
         }),

@@ -4,7 +4,7 @@ import { db } from '@/db';
 import { embedConsulta, embeddingsDisponibles, vectorSql } from '@/lib/ia/embeddings';
 import { monedaDesdeId, type Moneda } from '@/lib/types';
 import { normalizarTexto, urlDetalleCompra } from '@/server/arce/normalizar';
-import { calcularPrecios, leerPrecios } from '@/server/ia/precio';
+import { leerPrecios } from '@/server/ia/precio';
 
 /**
  * Herramientas de solo lectura que expone el MCP de Luxis (`/api/mcp`) para que un agente externo
@@ -27,6 +27,12 @@ function sugerir(n: number, p25: number | null, med: number | null): number | nu
   if (n < 5 || p25 === null) return med;
   return (p25 + med) / 2;
 }
+
+/** Acorta un texto largo para no inflar el contexto de la IA; el completo se consigue con detalle_licitacion. */
+const recortar = (s: string | null, n: number) => (s && s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
+
+/** Cuántos artículos parecidos, últimas adjudicaciones y grupos por unidad se devuelven: lo justo para decidir sin inflar la respuesta. */
+const MAX_INCLUIDOS = 8;
 
 const NOTA_PRECIOS = 'Precios unitarios SIN IVA de adjudicaciones publicadas por ARCE (comprasestatales.gub.uy). ARCE no publica ofertas perdedoras: es el precio al que se ganó, no una probabilidad de ganar. Las monedas no se convierten. Explicalo en palabras simples (precio del medio, entre qué precios estuvo la mitad de las que ganaron), sin "mediana" ni "percentil".';
 
@@ -107,12 +113,12 @@ export async function precioGanador(c: ConsultaPrecio) {
         percentile_cont(0.5) within group (order by precio_unit)::float as mediana,
         percentile_cont(0.75) within group (order by precio_unit)::float as p75,
         min(precio_unit)::float as minimo, max(precio_unit)::float as maximo
-      from comp group by 1 order by count(*) desc limit 4
+      from comp group by 1 order by count(*) desc limit 3
     )
     select g.un, g.n, g.p25, g.mediana, g.p75, g.minimo, g.maximo,
       (select json_agg(json_build_object('fecha', x.fecha_pub_adj, 'precioUnit', x.precio_unit::float, 'cantidad', x.cant_adj::float,
           'ganador', x.nombre_comercial, 'organismo', x.organismo, 'idCompra', x.id_compra) order by x.fecha_pub_adj desc)
-        from (select * from comp c where upper(coalesce(c.unidad, '')) = g.un order by c.fecha_pub_adj desc limit 8) x) as ultimas,
+        from (select * from comp c where upper(coalesce(c.unidad, '')) = g.un order by c.fecha_pub_adj desc limit 5) x) as ultimas,
       (select json_agg(json_build_object('nombre', r.nombre, 'nroDoc', r.nro_doc_prov, 'veces', r.veces) order by r.veces desc)
         from (select nro_doc_prov, max(nombre_comercial) as nombre, count(*)::int as veces from comp c
               where upper(coalesce(c.unidad, '')) = g.un and nro_doc_prov is not null group by 1 order by 2 desc limit 5) r) as competidores,
@@ -135,7 +141,8 @@ export async function precioGanador(c: ConsultaPrecio) {
 
   return {
     consulta: { articulo: c.articulo, descripcionNormalizada: descNorm, moneda, unidad: unidad || 'todas', meses, busqueda },
-    articulosIncluidos: incluidas,
+    articulosIncluidos: incluidas.slice(0, MAX_INCLUIDOS),
+    articulosIncluidosOmitidos: Math.max(0, incluidas.length - MAX_INCLUIDOS),
     porUnidad: grupos,
     sinResultados: grupos.length === 0,
     nota: (busqueda === 'texto' ? 'Búsqueda por similitud de texto (la semántica no estuvo disponible): puede faltar algún artículo escrito distinto. ' : '') + (grupos.length ? NOTA_PRECIOS : `No encontramos adjudicaciones comparables en ${moneda} en los últimos ${meses} meses. Probá con otra descripción, otra moneda o más meses. ${NOTA_PRECIOS}`),
@@ -157,7 +164,7 @@ type FilaLicitacion = {
 
 /** Licitaciones de ARCE con recepción de ofertas abierta, filtradas por texto libre. */
 export async function buscarLicitaciones(c: ConsultaLicitaciones) {
-  const limite = Math.min(Math.max(Math.round(c.limite ?? 15), 1), 50);
+  const limite = Math.min(Math.max(Math.round(c.limite ?? 10), 1), 50);
   const dias = c.dias ? Math.min(Math.max(Math.round(c.dias), 1), 120) : null;
   const soloRubro = c.soloRubro ?? true;
   const terminos = (c.texto ?? '').split(/\s+/).map((t) => t.trim()).filter((t) => t.length >= 3).slice(0, 6);
@@ -173,7 +180,7 @@ export async function buscarLicitaciones(c: ConsultaLicitaciones) {
     select l.id_compra, l.objeto, l.organismo, l.tipo_compra, l.num_compra, l.anio_compra, l.fecha_tope_ofertas, l.fecha_apertura, l.lugar_entrega, l.es_rubro,
       a.resumen, a.confianza, a.basado_en,
       (select count(*) from licitacion_items i where i.id_compra = l.id_compra)::int as items,
-      (select string_agg(left(x.desc_articulo, 70), '; ' order by x.nro_item) from (select * from licitacion_items i where i.id_compra = l.id_compra order by nro_item limit 6) x) as items_muestra
+      (select string_agg(left(x.desc_articulo, 60), '; ' order by x.nro_item) from (select * from licitacion_items i where i.id_compra = l.id_compra order by nro_item limit 4) x) as items_muestra
     from licitaciones l left join analisis_licitacion a on a.id_compra = l.id_compra
     where l.fecha_tope_ofertas > now()
       and (${!soloRubro}::bool or l.es_rubro)
@@ -190,12 +197,12 @@ export async function buscarLicitaciones(c: ConsultaLicitaciones) {
       numero: f.num_compra && f.anio_compra ? `${f.num_compra}/${f.anio_compra}` : f.num_compra,
       cierraOfertas: f.fecha_tope_ofertas, diasParaCierre: f.fecha_tope_ofertas ? Math.max(0, Math.ceil((new Date(f.fecha_tope_ofertas).getTime() - ahora) / 86_400_000)) : null,
       apertura: f.fecha_apertura, lugarEntrega: f.lugar_entrega, delRubroBarraca: f.es_rubro,
-      resumenIA: f.resumen, confianzaAnalisis: f.confianza, analisisBasadoEn: f.basado_en,
+      resumenIA: recortar(f.resumen, 300), confianzaAnalisis: f.confianza, analisisBasadoEn: f.basado_en,
       cantidadItems: f.items, itemsMuestra: f.items_muestra, url: urlDetalleCompra(f.id_compra),
     })),
     nota: soloRubro
-      ? 'Solo licitaciones del rubro materiales de construcción (filtro de Luxis). Pasá soloRubro=false para buscar en todas las abiertas.'
-      : 'Todas las licitaciones abiertas ingestadas por Luxis (últimos 60 días de publicación).',
+      ? 'Solo licitaciones del rubro materiales de construcción (filtro de Luxis). Pasá soloRubro=false para buscar en todas las abiertas. El resumen viene recortado: detalle_licitacion trae el completo.'
+      : 'Todas las licitaciones abiertas ingestadas por Luxis (últimos 60 días de publicación). El resumen viene recortado: detalle_licitacion trae el completo.',
   };
 }
 
@@ -238,9 +245,8 @@ export async function detalleLicitacion(entrada: string) {
       select nombre, categoria, estado_extraccion, url, caracteres from licitacion_archivos where id_compra = ${idCompra} order by relevante desc, id`),
   ]);
 
-  // Precios ya calculados; si nunca se calcularon y hay ítems, se calculan ahora (misma regla que /api/licitaciones/[id]/precio).
-  let precios = await leerPrecios(idCompra);
-  if (!precios.length && items.length) precios = await calcularPrecios(idCompra).catch(() => []);
+  // Solo precios ya calculados: calcularlos acá escribiría en la base y llamaría a Gemini desde un endpoint público sin autenticación.
+  const precios = await leerPrecios(idCompra);
 
   return {
     licitacion: {
@@ -261,12 +267,10 @@ export async function detalleLicitacion(entrada: string) {
       nota: lic.basado_en === 'metadata' ? 'Sin texto de pliego legible: el análisis se basa solo en los datos publicados y tiene confianza baja.' : 'Leído del pliego por IA; puede equivocarse, verificá en el original.',
     } : null,
     preciosGanadores: precios.map((p) => ({
-      nroItem: p.nroItem, descripcion: p.descripcion, moneda: p.moneda, unidad: p.unidad, n: p.n, precioDelMedio: p.mediana, mitadDeLasGanadorasEntre: { desde: p.p25, hasta: p.p75 },
-      precioSugerido: p.precioSugerido, ultimoGanador: p.ultimoGanador, ultimoPrecio: p.ultimoPrecio, ultimaFecha: p.ultimaFecha, competidores: p.competidores,
-      // Las explicaciones guardadas antes del cambio de vocabulario todavía dicen "mediana".
-      explicacion: p.explicacion?.replace(", con mediana ", "; el precio del medio fue ") ?? null,
+      nroItem: p.nroItem, descripcion: recortar(p.descripcion, 60), moneda: p.moneda, unidad: p.unidad, n: p.n, precioDelMedio: p.mediana, mitadDeLasGanadorasEntre: { desde: p.p25, hasta: p.p75 },
+      precioSugerido: p.precioSugerido, ultimoGanador: p.ultimoGanador, ultimoPrecio: p.ultimoPrecio, ultimaFecha: p.ultimaFecha, competidores: p.competidores.slice(0, 3).map((c) => ({ nombre: c.nombre, veces: c.vecesAdjudicado })),
     })),
     archivos: [...archivos].map((a) => ({ nombre: a.nombre, categoria: a.categoria, leido: a.estado_extraccion === 'ok', estado: a.estado_extraccion, caracteres: a.caracteres, url: a.url })),
-    nota: NOTA_PRECIOS,
+    nota: (!precios.length && items.length ? 'Luxis todavía no calculó precios para esta licitación: al abrirla en la app se calculan en segundos. ' : '') + NOTA_PRECIOS,
   };
 }
