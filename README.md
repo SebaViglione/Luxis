@@ -20,7 +20,7 @@ Herramientas:
 
 | Herramienta | Qué responde |
 |---|---|
-| `precio_ganador` | A qué precio unitario se adjudicó un artículo descripto en texto libre (busca por significado con embeddings): n, p25/mediana/p75, precio sugerido, últimas adjudicaciones con ganador y organismo, proveedores que más lo ganan. Sin IVA, por unidad y moneda. |
+| `precio_ganador` | A qué precio unitario se adjudicó un artículo descripto en texto libre (busca por significado con embeddings): cuántas adjudicaciones hubo, entre qué precios estuvo la mitad de las que ganaron, precio del medio, precio sugerido, últimas adjudicaciones con ganador y organismo, proveedores que más lo ganan. Sin IVA, por unidad y moneda. |
 | `buscar_licitaciones` | Licitaciones con recepción de ofertas abierta, filtradas por palabras y días al cierre, con resumen hecho por IA. |
 | `detalle_licitacion` | Ficha completa de un llamado: ítems, lectura del pliego por IA (requisitos, fechas, condiciones, riesgos), precio ganador por ítem y archivos. |
 

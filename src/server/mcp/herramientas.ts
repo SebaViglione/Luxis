@@ -28,7 +28,7 @@ function sugerir(n: number, p25: number | null, med: number | null): number | nu
   return (p25 + med) / 2;
 }
 
-const NOTA_PRECIOS = 'Precios unitarios SIN IVA de adjudicaciones publicadas por ARCE (comprasestatales.gub.uy). ARCE no publica ofertas perdedoras: es el precio al que se ganó, no una probabilidad de ganar. Las monedas no se convierten.';
+const NOTA_PRECIOS = 'Precios unitarios SIN IVA de adjudicaciones publicadas por ARCE (comprasestatales.gub.uy). ARCE no publica ofertas perdedoras: es el precio al que se ganó, no una probabilidad de ganar. Las monedas no se convierten. Explicalo en palabras simples (precio del medio, entre qué precios estuvo la mitad de las que ganaron), sin "mediana" ni "percentil".';
 
 export interface ConsultaPrecio {
   articulo: string;
@@ -126,7 +126,7 @@ export async function precioGanador(c: ConsultaPrecio) {
   const grupos = [...filas].filter((f) => f.n !== null).map((f) => {
     const sugerido = sugerir(f.n ?? 0, f.p25, f.mediana);
     return {
-      unidad: f.un || 'sin unidad', n: f.n ?? 0, p25: f.p25, mediana: f.mediana, p75: f.p75, minimo: f.minimo, maximo: f.maximo,
+      unidad: f.un || 'sin unidad', n: f.n ?? 0, precioDelMedio: f.mediana, mitadDeLasGanadorasEntre: { desde: f.p25, hasta: f.p75 }, minimo: f.minimo, maximo: f.maximo,
       precioSugerido: sugerido,
       ultimasAdjudicaciones: (f.ultimas ?? []).map((u) => ({ ...u, url: urlDetalleCompra(u.idCompra) })),
       competidores: f.competidores ?? [],
@@ -261,8 +261,10 @@ export async function detalleLicitacion(entrada: string) {
       nota: lic.basado_en === 'metadata' ? 'Sin texto de pliego legible: el análisis se basa solo en los datos publicados y tiene confianza baja.' : 'Leído del pliego por IA; puede equivocarse, verificá en el original.',
     } : null,
     preciosGanadores: precios.map((p) => ({
-      nroItem: p.nroItem, descripcion: p.descripcion, moneda: p.moneda, unidad: p.unidad, n: p.n, p25: p.p25, mediana: p.mediana, p75: p.p75,
-      precioSugerido: p.precioSugerido, ultimoGanador: p.ultimoGanador, ultimoPrecio: p.ultimoPrecio, ultimaFecha: p.ultimaFecha, competidores: p.competidores, explicacion: p.explicacion,
+      nroItem: p.nroItem, descripcion: p.descripcion, moneda: p.moneda, unidad: p.unidad, n: p.n, precioDelMedio: p.mediana, mitadDeLasGanadorasEntre: { desde: p.p25, hasta: p.p75 },
+      precioSugerido: p.precioSugerido, ultimoGanador: p.ultimoGanador, ultimoPrecio: p.ultimoPrecio, ultimaFecha: p.ultimaFecha, competidores: p.competidores,
+      // Las explicaciones guardadas antes del cambio de vocabulario todavía dicen "mediana".
+      explicacion: p.explicacion?.replace(", con mediana ", "; el precio del medio fue ") ?? null,
     })),
     archivos: [...archivos].map((a) => ({ nombre: a.nombre, categoria: a.categoria, leido: a.estado_extraccion === 'ok', estado: a.estado_extraccion, caracteres: a.caracteres, url: a.url })),
     nota: NOTA_PRECIOS,

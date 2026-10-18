@@ -18,7 +18,7 @@ function explicar(p: Omit<PrecioHistorico, 'explicacion'>): string {
   if (p.n === 0) return 'No hay adjudicaciones de este artículo en los últimos 24 meses con la misma moneda y unidad. Cotizá con tu precio de lista.';
   if (p.n === 1) return `Solo hay 1 adjudicación comparable: ${p.ultimoGanador ?? 'un proveedor'} ganó a ${fmt(p.ultimoPrecio, p.moneda)} por ${p.unidad}. Muestra chica, tomalo como referencia.`;
   const rival = p.competidores[0];
-  return `En ${p.n} adjudicaciones de los últimos 24 meses (sin IVA, por ${p.unidad}) el precio ganador estuvo entre ${fmt(p.p25, p.moneda)} y ${fmt(p.p75, p.moneda)}, con mediana ${fmt(p.mediana, p.moneda)}. ` +
+  return `En ${p.n} adjudicaciones de los últimos 24 meses (sin IVA, por ${p.unidad}) el precio ganador estuvo entre ${fmt(p.p25, p.moneda)} y ${fmt(p.p75, p.moneda)}; el precio del medio fue ${fmt(p.mediana, p.moneda)}. ` +
     (p.precioSugerido !== null ? `Para quedar en la zona ganadora, apuntá a ${fmt(p.precioSugerido, p.moneda)}. ` : '') +
     (rival ? `El que más gana este artículo es ${rival.nombre} (${rival.vecesAdjudicado} ${rival.vecesAdjudicado === 1 ? "vez" : "veces"}).` : '');
 }

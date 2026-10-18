@@ -19,7 +19,7 @@ const PASOS: { numero: string; titulo: string; texto: string; detalle: string[];
     numero: '02',
     titulo: 'Cotizá',
     texto: 'Para cada ítem ves a qué precio ganaron otras barracas en los últimos 24 meses y quiénes fueron.',
-    detalle: ['Rango p25 · mediana · p75 de adjudicaciones', 'Último ganador y competidores frecuentes', 'Precio sugerido para entrar en carrera'],
+    detalle: ['Entre qué precios ganó la mitad de las ofertas', 'Último ganador y competidores frecuentes', 'Precio sugerido para entrar en carrera'],
     Visual: VisualPrecio,
   },
   {

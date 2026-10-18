@@ -64,10 +64,10 @@ export function Escenario3D({ progreso, px, py }: EscenarioProps) {
     <div className="relative mx-auto w-full max-w-xl [perspective:1600px]">
       <motion.div style={{ rotateX, rotateY, transformStyle: 'preserve-3d' }} className="relative" aria-hidden>
         <PanelApp />
-        <Flotante z={120} retraso={0} className="-top-12 -left-14 w-52">
+        <Flotante z={120} retraso={0} className="-top-12 -left-14 w-60">
           <p className="font-mono text-[10px] tracking-wide text-muted-foreground uppercase">Precio sugerido</p>
           <p className="mt-1 font-mono text-2xl font-semibold tracking-tight">$ 412</p>
-          <p className="text-[11px] text-muted-foreground">mediana $ 420 · 14 adjudicaciones</p>
+          <p className="text-[11px] text-muted-foreground">precio del medio $ 420 · 14 ganadas</p>
         </Flotante>
         <Flotante z={90} retraso={0.45} className="-bottom-16 -left-12 w-48">
           <p className="mb-2 font-mono text-[10px] tracking-wide text-muted-foreground uppercase">Documentación</p>

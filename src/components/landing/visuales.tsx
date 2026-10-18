@@ -139,9 +139,9 @@ export function VisualPrecio() {
         </div>
       </div>
       <dl className="mt-4 grid grid-cols-3 gap-3 border-t pt-4 text-xs">
-        <div><dt className="text-muted-foreground">p25</dt><dd className="font-mono text-sm">$ 398</dd></div>
-        <div><dt className="text-muted-foreground">Mediana</dt><dd className="font-mono text-sm">$ 420</dd></div>
-        <div><dt className="text-muted-foreground">p75</dt><dd className="font-mono text-sm">$ 447</dd></div>
+        <div><dt className="text-muted-foreground">Desde</dt><dd className="font-mono text-sm">$ 398</dd></div>
+        <div><dt className="text-muted-foreground">Precio del medio</dt><dd className="font-mono text-sm">$ 420</dd></div>
+        <div><dt className="text-muted-foreground">Hasta</dt><dd className="font-mono text-sm">$ 447</dd></div>
       </dl>
     </Marco>
   );

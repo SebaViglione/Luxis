@@ -36,7 +36,7 @@ async function Ejemplo() {
   }
   if ('error' in r) return null;
   const g = r.porUnidad[0];
-  if (!g || g.mediana === null || g.n < 5) return null;
+  if (!g || g.precioDelMedio === null || g.n < 5) return null;
   const ultima = g.ultimasAdjudicaciones[0];
   const rival = g.competidores[0];
 
@@ -50,12 +50,12 @@ async function Ejemplo() {
           <dd className="mt-1 font-mono text-3xl font-semibold tracking-tight tabular-nums">{g.n}</dd>
         </div>
         <div>
-          <dt className="text-sm text-muted-foreground">Mediana por bolsa, sin IVA</dt>
-          <dd className="mt-1 font-mono text-3xl font-semibold tracking-tight tabular-nums text-primary">{pesos(g.mediana)}</dd>
+          <dt className="text-sm text-muted-foreground">Precio del medio por bolsa, sin IVA</dt>
+          <dd className="mt-1 font-mono text-3xl font-semibold tracking-tight tabular-nums text-primary">{pesos(g.precioDelMedio)}</dd>
         </div>
         <div>
-          <dt className="text-sm text-muted-foreground">Zona ganadora, p25 a p75</dt>
-          <dd className="mt-1 font-mono text-xl font-semibold tracking-tight tabular-nums">{pesos(g.p25)} a {pesos(g.p75)}</dd>
+          <dt className="text-sm text-muted-foreground">La mitad de las que ganaron estuvo entre</dt>
+          <dd className="mt-1 font-mono text-xl font-semibold tracking-tight tabular-nums">{pesos(g.mitadDeLasGanadorasEntre.desde)} y {pesos(g.mitadDeLasGanadorasEntre.hasta)}</dd>
         </div>
       </dl>
       <ul className="mt-5 space-y-1.5 text-sm text-muted-foreground">

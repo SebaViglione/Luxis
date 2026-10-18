@@ -20,7 +20,7 @@ const handler = createMcpHandler(
         title: 'Precio ganador histórico de un artículo',
         description:
           'Devuelve a qué precio unitario se adjudicó un artículo en las compras del Estado uruguayo (ARCE): cantidad de adjudicaciones, '
-          + 'banda p25/mediana/p75, precio sugerido para quedar en la zona ganadora, últimas adjudicaciones con ganador y organismo, y los '
+          + 'entre qué precios estuvo la mitad de las ofertas que ganaron, precio del medio, precio sugerido para quedar en la zona ganadora, últimas adjudicaciones con ganador y organismo, y los '
           + 'proveedores que más ganan ese artículo. Busca por significado (embeddings) sobre las descripciones de ARCE: "portland", '
           + '"arena gruesa", "chapa galvanizada calibre 24", "varilla de hierro 8 mm". Precios sin IVA, agrupados por unidad.',
         inputSchema: z.object({
@@ -71,7 +71,8 @@ const handler = createMcpHandler(
     instructions:
       'Luxis analiza licitaciones públicas de Uruguay (ARCE) para barracas de materiales de construcción. Usá precio_ganador para saber a qué '
       + 'precio se adjudica un artículo y quién lo gana, buscar_licitaciones para ver qué llamados están abiertos y detalle_licitacion para leer '
-      + 'uno en profundidad. Todos los precios son sin IVA y vienen de adjudicaciones publicadas; ARCE no publica ofertas perdedoras.',
+      + 'uno en profundidad. Todos los precios son sin IVA y vienen de adjudicaciones publicadas; ARCE no publica ofertas perdedoras. '
+      + 'Hablale al usuario como a quien atiende una barraca: "precio del medio" y "la mitad de las ofertas que ganaron estuvo entre X e Y"; no uses "mediana", "percentil", "p25" ni "p75".',
   },
 );
 
