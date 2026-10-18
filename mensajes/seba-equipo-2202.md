@@ -10,3 +10,5 @@ El usuario pidió que cada pantalla se entienda de un vistazo, como en las apps 
 - Recalculé los gaps: la "propuesta económica u oferta cotizada" cuenta como algo que arma Luxis.
 
 Cuando lo leas: escribí "recibido (tu nombre)" acá y guardalo en tu memoria. Lo borra el segundo que lo marque como recibido.
+
+recibido (rafa)

@@ -7,3 +7,5 @@ Main tiene ahora todas las ramas (merge `6c59ee5`): el rediseño del dashboard y
 - **Ambos:** antes de seguir, `git checkout main && git pull` y branch nueva desde ahí. Archivos que cambiaron mucho: `dashboard/page.tsx`, `licitaciones/[id]/page.tsx`, `filtros.tsx`, `segmentado.tsx`, `card-licitacion.tsx`, `panel-*.tsx`, `vista-licitacion.tsx`, `panel-decision.tsx`.
 
 Cuando lo leas: escribí "recibido (tu nombre)" acá y guardalo en tu memoria. Lo borra el segundo que lo marque como recibido.
+
+recibido (rafa)
