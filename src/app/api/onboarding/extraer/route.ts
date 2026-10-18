@@ -10,10 +10,11 @@ import { fetchWeb, normalizarUrl, WebNoDisponibleError } from '@/server/onboardi
 import { guardarPerfil, leerPerfil } from '@/server/onboarding/guardar-perfil';
 import { fusionarPerfil } from '@/server/onboarding/perfil';
 
-export const maxDuration = 120;
+// Una lista de precios larga puede tardar más de 2 min en extraerse (hasta 16k tokens de salida).
+export const maxDuration = 300;
 
 /**
- * POST multipart: `archivos` (0–5), `url` (opcional) y/o `texto` (transcript de la entrevista por voz).
+ * POST multipart: `archivos` (0–5), `url` (opcional) y/o `texto` (transcript de la entrevista por voz o del cierre del chat).
  * Responde un stream NDJSON de EventoExtraccion con el progreso real y el perfil parcial al final.
  */
 export async function POST(request: Request) {
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
           }
         }
 
-        if (texto) fuentes.push({ fuente: 'Entrevista por voz', texto });
+        if (texto) fuentes.push({ fuente: 'Transcripción de la entrevista', texto });
 
         if (fuentes.length === 0) {
           enviar({ tipo: 'error', mensaje: 'No pudimos leer ninguna de las fuentes. Probá con otros archivos o seguí con la entrevista.' });

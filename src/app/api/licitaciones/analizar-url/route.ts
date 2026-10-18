@@ -50,10 +50,21 @@ export async function POST(req: NextRequest) {
         });
         // Precios solo necesita los ítems: arranca ya, en paralelo con la lectura y el análisis del pliego.
         const precios = calcularPrecios(idCompra).catch(() => null);
-        await etapa('archivos', 'Descargando y leyendo el pliego…', () => procesarArchivos(idCompra, { indexarDespues: true }));
-        // Párrafos + embeddings (para el chat de pliegos grandes) no frenan al usuario.
-        after(() => indexarParrafos(idCompra).catch(() => null));
-        await etapa('analizando', 'Analizando el pliego con IA…', () => analizarLicitacion(idCompra, { forzar: true }));
+        // Pliego ya leído y analizado (por el refresh, el análisis del detalle u otro usuario): se reutiliza. Rehacerlo tarda,
+        // gasta IA y reemplazaba un análisis del modelo fuerte por uno del rápido. Si el pliego cambió, el upsert lo marca sin leer.
+        const [previo] = await db.select({ leido: schema.licitaciones.archivosProcesados, basadoEn: schema.analisisLicitacion.basadoEn })
+          .from(schema.licitaciones).leftJoin(schema.analisisLicitacion, eq(schema.analisisLicitacion.idCompra, schema.licitaciones.idCompra))
+          .where(eq(schema.licitaciones.idCompra, idCompra));
+        const yaAnalizada = !!previo?.leido && previo.basadoEn === 'pliego';
+        if (yaAnalizada) {
+          await etapa('archivos', 'El pliego ya estaba leído.', async () => {});
+          await etapa('analizando', 'Ya lo habíamos analizado.', () => analizarLicitacion(idCompra));
+        } else {
+          await etapa('archivos', 'Descargando y leyendo el pliego…', () => procesarArchivos(idCompra, { indexarDespues: true }));
+          // Párrafos + embeddings (para el chat de pliegos grandes) no frenan al usuario.
+          after(() => indexarParrafos(idCompra).catch(() => null));
+          await etapa('analizando', 'Analizando el pliego con IA…', () => analizarLicitacion(idCompra, { forzar: true }));
+        }
         await etapa('matching', 'Comparando con tus productos…', async () => {
           const perfil = await cargarPerfil(empresaId);
           if (perfil) await evaluarLicitacion(perfil, idCompra, { sinExtras: true });

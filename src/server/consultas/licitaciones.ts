@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql, type AnyColumn } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import {
   ESTADOS_COMPRA, TIPOS_COMPRA, monedaDesdeId, confianzaEfectiva,
@@ -6,6 +6,7 @@ import {
   type EstadoExtraccion, type EstadoUsuarioMatch, type FiltrosDashboard, type LicitacionCard,
 } from '@/lib/types';
 import { leerPrecios } from '@/server/ia/precio';
+import { fechasLegibles } from '@/server/ia/analisis-pliego';
 import { urlDetalleCompra, BASE_ARCE } from '@/server/arce/normalizar';
 
 const DIA = 864e5;
@@ -22,40 +23,76 @@ const COLS_LICITACION = {
 const iso = (d: Date | null | undefined) => (d ? d.toISOString() : null);
 const numero = (l: { numCompra: string | null; anioCompra: number | null }) => `${l.numCompra ?? '?'}/${l.anioCompra ?? ''}`;
 
+/**
+ * Monto estimado = Σ cantidad × precio sugerido de los ítems, en la moneda de esos precios (subconsulta correlacionada:
+ * un solo viaje a la base). Devuelve "idMoneda|total". Precios en monedas distintas no se suman: queda sin monto.
+ */
+export function montoEstimadoSql(idCompra: AnyColumn) {
+  return sql<string | null>`(select case when count(distinct p.id_moneda) = 1
+      then min(p.id_moneda)::text || '|' || sum(i.cant_pedida * p.precio_sugerido)::text end
+    from licitacion_items i join precios_sugeridos p on p.id_compra = i.id_compra and p.nro_item = i.nro_item
+    where i.id_compra = ${idCompra} and p.precio_sugerido is not null)`;
+}
+
+export function leerMontoEstimado(valor: string | null): Pick<LicitacionCard, 'montoEstimado' | 'moneda'> {
+  if (!valor) return { montoEstimado: null, moneda: 'UYU' };
+  const [moneda, total] = valor.split('|');
+  return { montoEstimado: Number(total), moneda: monedaDesdeId(Number(moneda)) };
+}
+
 /** Confianza efectiva en SQL (mismos valores que AJUSTE_DOCUMENTAL en lib/types). */
 const CONF_EF = sql`(${schema.matches.confianza} - case ${schema.matches.estadoDocumental} when 'dificil' then 25 when 'alcanzable' then 10 else 0 end)`;
+
+/** Filtros que no dependen de la pestaña: empresa, abiertas, tipo de compra, organismo y cierre. */
+function condicionesComunes(empresaId: string, filtros: FiltrosDashboard) {
+  const L = schema.licitaciones, M = schema.matches;
+  const conds = [eq(M.empresaId, empresaId), sql`${L.fechaTopeOfertas} > now()`];
+  if (filtros.tipos?.length) conds.push(sql`${L.tipoCompra} in (${sql.join(filtros.tipos.map((t) => sql`${t}`), sql`, `)})`);
+  if (filtros.organismo) conds.push(sql`${L.organismo} ilike ${'%' + filtros.organismo + '%'}`);
+  if (filtros.cierreDias) conds.push(sql`${L.fechaTopeOfertas} < now() + make_interval(days => ${filtros.cierreDias})`);
+  return conds;
+}
+
+export type ConteoPestanas = Record<'nuevas' | 'guardadas' | 'descartadas' | 'todas', number>;
+
+/** Cuántas licitaciones hay en cada pestaña del dashboard con los filtros actuales (una sola consulta). */
+export async function contarPorPestana(empresaId: string, filtros: FiltrosDashboard = {}): Promise<ConteoPestanas> {
+  const L = schema.licitaciones, M = schema.matches;
+  const minimo = sql`${CONF_EF} >= ${filtros.confianzaMin ?? 40}`;
+  const [r] = await db.select({
+    nuevas: sql<number>`count(*) filter (where ${minimo} and ${M.estadoUsuario} <> 'descartada')::int`,
+    guardadas: sql<number>`count(*) filter (where ${M.estadoUsuario} in ('guardada','presentada'))::int`,
+    descartadas: sql<number>`count(*) filter (where ${M.estadoUsuario} = 'descartada')::int`,
+    todas: sql<number>`count(*) filter (where ${minimo})::int`,
+  }).from(M).innerJoin(L, eq(L.idCompra, M.idCompra)).where(and(...condicionesComunes(empresaId, filtros)));
+  return { nuevas: r?.nuevas ?? 0, guardadas: r?.guardadas ?? 0, descartadas: r?.descartadas ?? 0, todas: r?.todas ?? 0 };
+}
 
 /** Licitaciones con match para el dashboard. */
 export async function listarMatches(empresaId: string, filtros: FiltrosDashboard = {}): Promise<LicitacionCard[]> {
   const L = schema.licitaciones, M = schema.matches, A = schema.analisisLicitacion;
   const estado = filtros.estado ?? 'nuevas';
-  const conds = [eq(M.empresaId, empresaId), sql`${L.fechaTopeOfertas} > now()`];
-  conds.push(sql`${CONF_EF} >= ${filtros.confianzaMin ?? 40}`);
+  const conds = condicionesComunes(empresaId, filtros);
+  // Lo que el usuario guardó o descartó se muestra siempre, aunque la coincidencia sea baja.
+  if (estado === 'nuevas' || estado === 'todas') conds.push(sql`${CONF_EF} >= ${filtros.confianzaMin ?? 40}`);
   if (estado === 'nuevas') conds.push(sql`${M.estadoUsuario} not in ('descartada')`);
   if (estado === 'guardadas') conds.push(sql`${M.estadoUsuario} in ('guardada','presentada')`);
   if (estado === 'descartadas') conds.push(eq(M.estadoUsuario, 'descartada'));
-  if (filtros.tipos?.length) conds.push(sql`${L.tipoCompra} in (${sql.join(filtros.tipos.map((t) => sql`${t}`), sql`, `)})`);
-  if (filtros.organismo) conds.push(sql`${L.organismo} ilike ${'%' + filtros.organismo + '%'}`);
-  if (filtros.cierreDias) conds.push(sql`${L.fechaTopeOfertas} < now() + make_interval(days => ${filtros.cierreDias})`);
   const orden = filtros.orden === 'confianza' ? [desc(CONF_EF), L.fechaTopeOfertas] : [L.fechaTopeOfertas, desc(CONF_EF)];
 
-  // Monto estimado = Σ cantidad × precio sugerido de los ítems (subconsulta correlacionada: un solo viaje a la base).
-  const monto = sql<string | null>`(select sum(i.cant_pedida * p.precio_sugerido)::text from licitacion_items i
-    join precios_sugeridos p on p.id_compra = i.id_compra and p.nro_item = i.nro_item
-    where i.id_compra = ${M.idCompra} and p.precio_sugerido is not null)`;
+  const monto = montoEstimadoSql(M.idCompra);
   const filas = await db.select({ l: COLS_LICITACION, m: M, resumen: A.resumen, fechas: A.fechasClave, monto })
     .from(M).innerJoin(L, eq(L.idCompra, M.idCompra)).leftJoin(A, eq(A.idCompra, M.idCompra))
     .where(and(...conds)).orderBy(...orden).limit(200);
-  const montos = new Map<string, number>(filas.filter((f) => f.monto).map((f) => [f.l.idCompra, Number(f.monto)]));
 
-  const cards = filas.map(({ l, m, resumen, fechas }): LicitacionCard => ({
+  const cards = filas.map(({ l, m, resumen, fechas, monto }): LicitacionCard => ({
     idCompra: l.idCompra, objeto: l.objeto ?? '(sin objeto)', organismo: l.organismo ?? '', tipoCompra: l.tipoCompra,
     tipoCompraNombre: TIPOS_COMPRA[l.tipoCompra] ?? l.tipoCompra, numero: numero(l),
     fechaTopeOfertas: iso(l.fechaTopeOfertas), diasParaCierre: l.fechaTopeOfertas ? Math.ceil((l.fechaTopeOfertas.getTime() - Date.now()) / DIA) : null,
     fechaPublicacion: iso(l.fechaPublicacion) ?? iso(l.createdAt)!, ...(() => { const e = confianzaEfectiva(m.confianza, m.estadoDocumental); return { confianza: e.confianza, confianzaBase: m.confianza, ajusteDocumental: e.ajuste }; })(),
     razon: m.razon ?? '', resumen: resumen ?? null,
     itemsOfertables: m.itemsOfertables ?? [], estadoDocumental: m.estadoDocumental as EstadoDocumental, estadoUsuario: m.estadoUsuario as EstadoUsuarioMatch,
-    tieneVisita: (fechas ?? []).some((f) => f.tipo === 'visita'), montoEstimado: montos.get(l.idCompra) ?? null, moneda: 'UYU',
+    tieneVisita: (fechas ?? []).some((f) => f.tipo === 'visita'), ...leerMontoEstimado(monto),
   }));
   if (filtros.orden === 'monto') cards.sort((a, b) => (b.montoEstimado ?? 0) - (a.montoEstimado ?? 0));
   return cards;
@@ -90,7 +127,7 @@ export async function obtenerDetalle(empresaId: string, idCompra: string): Promi
   ]);
   if (!l) return null;
   const analisis: AnalisisPliego | null = an ? {
-    resumen: an.resumen ?? '', quePiden: an.quePiden ?? '', requisitosDocumentales: an.requisitosDocumentales ?? [], fechasClave: an.fechasClave ?? [],
+    resumen: an.resumen ?? '', quePiden: an.quePiden ?? '', requisitosDocumentales: an.requisitosDocumentales ?? [], fechasClave: fechasLegibles(an.fechasClave ?? []),
     condiciones: an.condiciones ?? {}, riesgos: an.riesgos ?? [], confianza: an.confianza ?? 0, basadoEn: an.basadoEn as 'pliego' | 'metadata',
   } : null;
   return {

@@ -106,7 +106,6 @@ export function AsistenteOnboarding({ perfilInicial }: { perfilInicial: PerfilEm
           onSaltar={() => avanzar('resumen')}
           acciones={
             <BotonEntrevistaVoz
-              perfil={perfil}
               onPerfil={(p, extraido) => {
                 registrar('entrevista', extraido);
                 avanzar('resumen', p);

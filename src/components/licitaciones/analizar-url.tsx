@@ -19,6 +19,8 @@ type EstadoEtapa = 'pendiente' | 'en_curso' | 'ok';
 // 'aviso' es informativo (p. ej. la URL era una adjudicación y se completó desde la compra original): no cambia la etapa.
 type Evento = { etapa?: string; estado?: 'en_curso' | 'ok' | 'aviso'; mensaje?: string; listo?: boolean; idCompra?: string; error?: string };
 
+const CORTADO = 'Se cortó la conexión antes de terminar. Probá de nuevo: lo que ya se analizó no se pierde.';
+
 export function AnalizarUrl({ compacto = false }: { compacto?: boolean }) {
   const router = useRouter();
   const [url, setUrl] = useState('');
@@ -28,11 +30,12 @@ export function AnalizarUrl({ compacto = false }: { compacto?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [enCurso, setEnCurso] = useState(false);
 
+  /** Aplica un evento del stream; devuelve true cuando llegó el final ("listo"). */
   const aplicar = (ev: Evento) => {
     if (ev.error) throw new Error(ev.error);
     if (ev.estado === 'aviso') {
       if (ev.mensaje) setNotas((prev) => [...prev, ev.mensaje!]);
-      return;
+      return false;
     }
     const { etapa, estado } = ev;
     if (etapa && estado) {
@@ -42,7 +45,9 @@ export function AnalizarUrl({ compacto = false }: { compacto?: boolean }) {
     if (ev.listo && ev.idCompra) {
       setMensaje('Listo. Abriendo la licitación…');
       router.push(`/licitaciones/${encodeURIComponent(ev.idCompra)}`);
+      return true;
     }
+    return false;
   };
 
   const analizar = async (e: React.FormEvent) => {
@@ -61,17 +66,23 @@ export function AnalizarUrl({ compacto = false }: { compacto?: boolean }) {
       const lector = res.body.getReader();
       const decoder = new TextDecoder();
       let resto = '';
+      let listo = false;
       for (;;) {
         const { value, done } = await lector.read();
         resto += decoder.decode(value, { stream: !done });
         const lineas = resto.split('\n');
         resto = lineas.pop() ?? '';
-        for (const l of lineas) if (l.trim()) aplicar(JSON.parse(l) as Evento);
+        for (const l of lineas) if (l.trim()) listo = aplicar(JSON.parse(l) as Evento) || listo;
         if (done) break;
       }
-      if (resto.trim()) aplicar(JSON.parse(resto) as Evento);
+      if (resto.trim()) listo = aplicar(JSON.parse(resto) as Evento) || listo;
+      // El stream terminó sin "listo": se cortó la conexión o la función llegó a su tiempo máximo.
+      if (!listo) throw new Error(CORTADO);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Algo salió mal al analizar.');
+      // Que no queden etapas girando después del error.
+      setEstados((prev) => prev && Object.fromEntries(Object.entries(prev).map(([k, v]) => [k, v === 'en_curso' ? 'pendiente' : v])));
+      // TypeError (red caída) y SyntaxError (línea cortada a la mitad) son cortes de conexión, no errores del análisis.
+      setError(err instanceof TypeError || err instanceof SyntaxError ? CORTADO : err instanceof Error ? err.message : 'Algo salió mal al analizar.');
     } finally {
       setEnCurso(false);
     }
@@ -81,17 +92,17 @@ export function AnalizarUrl({ compacto = false }: { compacto?: boolean }) {
     <section aria-labelledby="titulo-analizar" className={cn('space-y-3 rounded-md border bg-card', compacto ? 'p-4' : 'p-4')}>
       <div>
         <h2 id="titulo-analizar" className="text-base">{compacto ? '¿Viste una licitación en ARCE?' : 'Analizar una licitación puntual'}</h2>
-        <p className="text-sm text-muted-foreground">
+        <p className={cn('text-sm text-muted-foreground', compacto && 'hidden sm:block')}>
           {compacto
             ? 'Pegá el link o el número y te decimos si te conviene, qué papeles piden y a qué precio se gana.'
             : 'Pegá el link de un llamado de comprasestatales.gub.uy o su número. Tarda entre 20 segundos y un minuto y medio.'}
         </p>
       </div>
-      <form onSubmit={analizar} className={cn('flex flex-col gap-2', !compacto && 'sm:flex-row')}>
+      <form onSubmit={analizar} className={cn('flex gap-2', compacto ? 'flex-row' : 'flex-col sm:flex-row')}>
         <Input value={url} onChange={(e) => setUrl(e.target.value)} disabled={enCurso} aria-label="URL o ID de ARCE"
-          placeholder={compacto ? 'Link de comprasestatales.gub.uy o número' : 'https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1375519'} className="flex-1" />
+          placeholder={compacto ? 'Pegá el link o el número' : 'https://www.comprasestatales.gub.uy/consultas/detalle/mostrar-llamado/1/id/1375519'} className="flex-1" />
         <Button type="submit" disabled={enCurso || !url.trim()}>
-          <ScanSearch aria-hidden /> {enCurso ? 'Analizando…' : compacto ? 'Analizar esta licitación' : 'Analizar'}
+          <ScanSearch aria-hidden /> {enCurso ? 'Analizando…' : 'Analizar'}
         </Button>
       </form>
       {estados && (

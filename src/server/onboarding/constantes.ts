@@ -54,3 +54,6 @@ export const EXTENSIONES_PERMITIDAS = ['pdf', 'docx', 'xlsx', 'xls', 'csv', 'htm
 
 // Máximo de preguntas de la entrevista (RF-04).
 export const MAX_PREGUNTAS_ENTREVISTA = 8;
+
+// Duración máxima de la entrevista por voz: cuida los minutos compartidos de ElevenLabs.
+export const DURACION_MAXIMA_VOZ_S = 4 * 60;

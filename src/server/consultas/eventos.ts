@@ -10,7 +10,7 @@ export async function listarEventos(empresaId: string, desde: Date, hasta: Date)
   }>(sql`
     select l.id_compra, l.objeto, l.fecha_tope_ofertas as tope, l.fecha_sol_aclar as aclar, l.fecha_sol_prorr as prorr, l.fecha_tope_entrega as entrega, a.fechas_clave as fechas
     from matches m join licitaciones l on l.id_compra = m.id_compra left join analisis_licitacion a on a.id_compra = m.id_compra
-    where m.empresa_id = ${empresaId} and m.confianza >= 40 and m.estado_usuario <> 'descartada'
+    where m.empresa_id = ${empresaId} and (m.estado_usuario in ('guardada','presentada') or (m.confianza - case m.estado_documental when 'dificil' then 25 when 'alcanzable' then 10 else 0 end) >= 40) and m.estado_usuario <> 'descartada'
       and (l.fecha_tope_ofertas between ${d}::timestamptz and ${h}::timestamptz or l.fecha_sol_aclar between ${d}::timestamptz and ${h}::timestamptz
            or l.fecha_sol_prorr between ${d}::timestamptz and ${h}::timestamptz or l.fecha_tope_entrega between ${d}::timestamptz and ${h}::timestamptz
            or a.fechas_clave is not null)`);

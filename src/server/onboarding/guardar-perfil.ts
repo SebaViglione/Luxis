@@ -28,14 +28,41 @@ export async function leerPerfil(empresaId: string): Promise<PerfilEmpresa> {
 }
 
 /**
+ * Lo que lee el matching y el gap documental (nombre, departamento, productos, zonas, capacidad y papeles).
+ * Si no cambia (ej. solo se editó el teléfono), no hace falta reevaluar todas las licitaciones abiertas.
+ */
+function firmaMatching(p: PerfilEmpresa) {
+  return JSON.stringify([
+    p.nombre,
+    p.departamento ?? null,
+    p.capacidadNotas ?? null,
+    [...p.zonasEntrega].sort(),
+    p.productos.map((x) => `${x.nombre}|${x.unidad ?? ''}`).sort(),
+    completarDocumentacion(p.documentacion ?? []).map((d) => `${d.tipo}|${d.nombre}|${d.estado}|${d.vencimiento ?? ''}`).sort(),
+  ]);
+}
+
+/**
  * Upsert del perfil: actualiza `empresas`, reemplaza `empresa_productos` y `empresa_documentos`
- * y marca `perfil_actualizado_en` (el matching recalcula con eso). Si `completo`, marca el
- * onboarding como terminado y dispara el matching en segundo plano.
+ * y marca `perfil_actualizado_en` (el matching recalcula con eso) solo si cambió algo que el matching usa.
+ * Si `completo`, marca el onboarding como terminado y dispara el matching en segundo plano.
  */
 export async function guardarPerfil(empresaId: string, perfil: PerfilEmpresa, { completo }: { completo: boolean }) {
   const ahora = new Date();
 
   await db.transaction(async (tx) => {
+    const [actual] = await tx
+      .select({ perfilJson: empresas.perfilJson, perfilActualizadoEn: empresas.perfilActualizadoEn, estadoOnboarding: empresas.estadoOnboarding })
+      .from(empresas)
+      .where(eq(empresas.id, empresaId))
+      .for('update');
+    const reevaluar =
+      !actual?.perfilActualizadoEn ||
+      !actual.perfilJson ||
+      // Al terminar el onboarding siempre: el dashboard muestra "Buscando…" mientras el perfil sea reciente.
+      (completo && actual.estadoOnboarding !== 'completo') ||
+      firmaMatching(actual.perfilJson) !== firmaMatching(perfil);
+
     await tx
       .update(empresas)
       .set({
@@ -59,7 +86,7 @@ export async function guardarPerfil(empresaId: string, perfil: PerfilEmpresa, { 
         estadoOnboarding: completo
           ? 'completo'
           : sql`case when ${empresas.estadoOnboarding} = 'completo' then 'completo' else 'en_progreso' end`,
-        perfilActualizadoEn: ahora,
+        ...(reevaluar ? { perfilActualizadoEn: ahora } : {}),
         updatedAt: ahora,
       })
       .where(eq(empresas.id, empresaId));

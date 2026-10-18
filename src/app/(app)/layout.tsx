@@ -1,8 +1,27 @@
 import { Suspense } from 'react';
-import { Navegacion, NavegacionActiva } from '@/components/layout/sidebar';
+import { BarraInferior, CuentaLateral, Navegacion, NavegacionActiva, NavegacionInferior } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
 import { BotonGuia, GuiaInicial } from '@/components/guia/guia-inicial';
 import { Logo } from '@/components/marca/logo';
+import { datosNavegacion } from '@/server/consultas/navegacion';
+
+async function contadores() {
+  const d = await datosNavegacion();
+  return d ? { noLeidas: d.noLeidas, enCurso: d.enCurso } : undefined;
+}
+
+async function NavegacionConDatos() {
+  return <NavegacionActiva contadores={await contadores()} />;
+}
+
+async function InferiorConDatos() {
+  return <NavegacionInferior contadores={await contadores()} />;
+}
+
+async function CuentaConDatos() {
+  const d = await datosNavegacion();
+  return d ? <CuentaLateral empresa={d.empresa} email={d.email} /> : null;
+}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -13,16 +32,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col gap-4 border-r bg-sidebar md:flex">
         <div className="flex h-14 items-center px-5"><Logo href="/dashboard" /></div>
         <Suspense fallback={<Navegacion activo={null} />}>
-          <NavegacionActiva />
+          <NavegacionConDatos />
         </Suspense>
-        <div className="mt-auto px-3 pb-4">
+        <div className="mt-auto space-y-1 px-3 pb-3">
           <BotonGuia />
+          <div className="border-t pt-2">
+            <Suspense fallback={<div aria-hidden className="h-12 rounded-md bg-muted/60" />}>
+              <CuentaConDatos />
+            </Suspense>
+          </div>
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar />
-        <main id="contenido" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
+        {/* En el celular deja lugar para la barra inferior fija. */}
+        <main id="contenido" className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-24 md:px-8 md:py-8">{children}</main>
       </div>
+      <Suspense fallback={<BarraInferior activo={null} />}>
+        <InferiorConDatos />
+      </Suspense>
       <Suspense fallback={null}>
         <GuiaInicial />
       </Suspense>

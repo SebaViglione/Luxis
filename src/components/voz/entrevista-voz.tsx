@@ -10,10 +10,11 @@ import { BolaVoz, type EstadoBola } from '@/components/marca/bola-voz';
 import { extraerDesdeFuentes } from '@/components/onboarding/leer-eventos';
 import { cn } from '@/lib/utils';
 import type { PerfilEmpresa } from '@/lib/types';
+import { DURACION_MAXIMA_VOZ_S as DURACION_MAXIMA_S } from '@/server/onboarding/constantes';
 import type { EventoExtraccion } from '@/server/onboarding/tipos';
 
-const DURACION_MAXIMA_S = 4 * 60;
-const AVISO_FIN_S = DURACION_MAXIMA_S - 30;
+// A los 45 s del final se le avisa al agente para que cierre antes del corte.
+const AVISO_FIN_S = DURACION_MAXIMA_S - 45;
 const FALLBACK = 'Voz no disponible, seguimos por chat.';
 
 interface Linea {
@@ -22,7 +23,7 @@ interface Linea {
 }
 
 /** Botón "Hablar con Luxis": entrevista por voz con ElevenLabs que termina en el mismo perfil que el chat. */
-export function BotonEntrevistaVoz({ perfil, onPerfil }: { perfil: PerfilEmpresa; onPerfil: (perfil: PerfilEmpresa, extraido?: Partial<PerfilEmpresa>) => void }) {
+export function BotonEntrevistaVoz({ onPerfil }: { onPerfil: (perfil: PerfilEmpresa, extraido?: Partial<PerfilEmpresa>) => void }) {
   const [abierto, setAbierto] = useState(false);
   return (
     <>
@@ -44,7 +45,6 @@ export function BotonEntrevistaVoz({ perfil, onPerfil }: { perfil: PerfilEmpresa
           {abierto && (
             <ConversationProvider>
               <SesionVoz
-                perfil={perfil}
                 onCerrar={() => setAbierto(false)}
                 onPerfil={(p, extraido) => {
                   setAbierto(false);
@@ -62,11 +62,9 @@ export function BotonEntrevistaVoz({ perfil, onPerfil }: { perfil: PerfilEmpresa
 type Etapa = 'preparando' | 'conversando' | 'procesando' | 'error';
 
 function SesionVoz({
-  perfil,
   onCerrar,
   onPerfil,
 }: {
-  perfil: PerfilEmpresa;
   onCerrar: () => void;
   onPerfil: (perfil: PerfilEmpresa, extraido?: Partial<PerfilEmpresa>) => void;
 }) {
@@ -133,7 +131,7 @@ function SesionVoz({
     },
     onDisconnect: () => void procesarTranscript(),
   });
-  const { startSession, endSession } = conversacion;
+  const { startSession, endSession, sendContextualUpdate } = conversacion;
 
   useEffect(() => {
     // En desarrollo (StrictMode) el efecto corre dos veces: la limpieza del primero marca todo como
@@ -151,12 +149,13 @@ function SesionVoz({
         return;
       }
 
-      let token: string;
+      // El servidor arma el prompt con el perfil guardado (las mismas reglas que el chat).
+      let sesionVoz: { token: string; prompt: string; primerMensaje: string };
       try {
         const respuesta = await fetch('/api/voz/token', { cache: 'no-store' });
-        const cuerpo = (await respuesta.json()) as { token?: string };
-        if (!respuesta.ok || !cuerpo.token) throw new Error('sin token');
-        token = cuerpo.token;
+        const cuerpo = (await respuesta.json()) as Partial<typeof sesionVoz>;
+        if (!respuesta.ok || !cuerpo.token || !cuerpo.prompt || !cuerpo.primerMensaje) throw new Error('sin token');
+        sesionVoz = { token: cuerpo.token, prompt: cuerpo.prompt, primerMensaje: cuerpo.primerMensaje };
       } catch {
         fallar(FALLBACK);
         return;
@@ -164,12 +163,9 @@ function SesionVoz({
       if (cancelado) return;
 
       startSession({
-        conversationToken: token,
+        conversationToken: sesionVoz.token,
         connectionType: 'webrtc',
-        dynamicVariables: {
-          perfil_conocido: resumirPerfil(perfil),
-          campos_faltantes: perfil.camposFaltantes.join('; ') || 'nada importante',
-        },
+        overrides: { agent: { prompt: { prompt: sesionVoz.prompt }, firstMessage: sesionVoz.primerMensaje } },
       });
       setEtapa('conversando');
       reloj.current = setInterval(() => setSegundos((s) => s + 1), 1000);
@@ -186,10 +182,18 @@ function SesionVoz({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Corte automático a los 4 minutos para cuidar los minutos del plan.
+  // Corte automático a los 4 minutos para cuidar los minutos del plan; antes, el agente recibe el aviso para despedirse.
   useEffect(() => {
-    if (segundos >= DURACION_MAXIMA_S && etapa === 'conversando') endSession();
-  }, [segundos, etapa, endSession]);
+    if (etapa !== 'conversando') return;
+    if (segundos === AVISO_FIN_S) {
+      try {
+        sendContextualUpdate('Aviso: quedan menos de 45 segundos de llamada. No hagas preguntas nuevas: cuando termine de responder, despedite y cortá con end_call.');
+      } catch {
+        // Si la llamada todavía no conectó o ya se cortó, no hay a quién avisarle.
+      }
+    }
+    if (segundos >= DURACION_MAXIMA_S) endSession();
+  }, [segundos, etapa, endSession, sendContextualUpdate]);
 
   const conectado = conversacion.status === 'connected';
   const estadoBola: EstadoBola =
@@ -285,17 +289,4 @@ function SesionVoz({
 function formatear(segundos: number) {
   const s = Math.min(segundos, DURACION_MAXIMA_S);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-}
-
-function resumirPerfil(perfil: PerfilEmpresa): string {
-  const partes = [`Empresa ${perfil.nombre}${perfil.departamento ? ` de ${perfil.departamento}` : ''}.`];
-  if (perfil.productos.length) {
-    const productos = perfil.productos.slice(0, 25).map((p) => `${p.nombre} (${p.unidad})`);
-    partes.push(`Vende: ${productos.join(', ')}${perfil.productos.length > 25 ? ' y otros' : ''}.`);
-  }
-  if (perfil.zonasEntrega.length) partes.push(`Entrega en: ${perfil.zonasEntrega.join(', ')}.`);
-  if (perfil.capacidadNotas) partes.push(`Capacidad: ${perfil.capacidadNotas}.`);
-  const conocidos = perfil.documentacion.filter((d) => d.estado !== 'desconocido');
-  if (conocidos.length) partes.push(`Documentación: ${conocidos.map((d) => `${d.tipo} ${d.estado.replace('_', ' ')}`).join(', ')}.`);
-  return partes.join(' ');
 }
