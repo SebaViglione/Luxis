@@ -7,7 +7,8 @@ import { MAX_PREGUNTAS_ENTREVISTA } from '@/server/onboarding/constantes';
 import { guardarPerfil, leerPerfil } from '@/server/onboarding/guardar-perfil';
 import { fusionarPerfil } from '@/server/onboarding/perfil';
 
-export const maxDuration = 60;
+// El cierre genera el perfil completo en la llamada a guardar_perfil y después la despedida.
+export const maxDuration = 120;
 
 export async function POST(request: Request) {
   const sesion = await obtenerSesion();
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
 
   const resultado = streamText({
     model: modeloFuerte,
-    instructions: promptEntrevista(perfil, preguntasHechas),
+    instructions: promptEntrevista(perfil, { canal: 'chat', preguntasHechas }),
     messages: await convertToModelMessages(messages),
     tools: herramientasEntrevista(async (datos) => {
       // Releemos por si el perfil cambió durante la conversación.
