@@ -1,7 +1,7 @@
 import { and, eq, gt, gte, inArray, ne, sql } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { confianzaEfectiva, type Notificacion } from '@/lib/types';
-import { esDocumentoDeLaLicitacion } from '@/config/plazos-documentales';
+import { NOTA_SIN_DATO, buscarPlazo, esDocumentoDeLaLicitacion } from '@/config/plazos-documentales';
 import { fechaCorta, fechaHora, suavizarMayusculas } from '@/components/licitaciones/formato';
 import { actualizarResultados } from '@/server/estadisticas/resultados';
 
@@ -74,8 +74,10 @@ export async function generarNotificaciones(empresaId: string): Promise<number> 
 
     // Acá va la coincidencia sin descontar: el papel que falta es justo lo que el descuento castiga.
     if (f.confianzaBase >= 70 && f.tope) {
-      // Solo papeles que hay que presentar para ofertar: ni el pliego ni lo que se pide después de ganar.
-      const faltantes = (f.gap ?? []).filter((g) => g.obligatorio && !g.tiene && g.alcanzableAntesCierre === true && !esDocumentoDeLaLicitacion(g.documento));
+      // Solo papeles que hay que presentar para ofertar: ni el pliego ni lo que se pide después de ganar. La visita tiene
+      // su propio aviso, y un papel del perfil sin dato no es "te falta" (se confirma en Cuenta).
+      const faltantes = (f.gap ?? []).filter((g) => g.obligatorio && !g.tiene && g.alcanzableAntesCierre === true && !esDocumentoDeLaLicitacion(g.documento)
+        && !buscarPlazo(g.documento).visita && !g.nota.startsWith(NOTA_SIN_DATO));
       if (faltantes.length) {
         const otros = faltantes.length - 1;
         const dias = Math.max(0, ...faltantes.map((g) => g.diasEstimados ?? 0));

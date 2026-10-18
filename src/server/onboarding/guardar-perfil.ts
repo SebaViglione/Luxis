@@ -4,6 +4,7 @@ import { after } from 'next/server';
 import { db } from '@/db';
 import { empresaDocumentos, empresaProductos, empresas } from '@/db/schema';
 import type { PerfilEmpresa } from '@/lib/types';
+import { recalcularGapsEmpresa } from '@/server/ia/gap-documental';
 import { completarDocumentacion, normalizarTexto, palabrasClave, perfilVacio } from './perfil';
 
 /** Perfil guardado de la empresa (perfil_json) o uno base armado con las columnas de `empresas`. */
@@ -28,8 +29,8 @@ export async function leerPerfil(empresaId: string): Promise<PerfilEmpresa> {
 }
 
 /**
- * Lo que lee el matching y el gap documental (nombre, departamento, productos, zonas, capacidad y papeles).
- * Si no cambia (ej. solo se editó el teléfono), no hace falta reevaluar todas las licitaciones abiertas.
+ * Lo que lee el matching con IA (nombre, departamento, productos, zonas y capacidad).
+ * Si no cambia (ej. solo se editó el teléfono o un papel), no hace falta reevaluar todas las licitaciones abiertas.
  */
 function firmaMatching(p: PerfilEmpresa) {
   return JSON.stringify([
@@ -38,8 +39,12 @@ function firmaMatching(p: PerfilEmpresa) {
     p.capacidadNotas ?? null,
     [...p.zonasEntrega].sort(),
     p.productos.map((x) => `${x.nombre}|${x.unidad ?? ''}`).sort(),
-    completarDocumentacion(p.documentacion ?? []).map((d) => `${d.tipo}|${d.nombre}|${d.estado}|${d.vencimiento ?? ''}`).sort(),
   ]);
+}
+
+/** Los papeles los usa solo el gap documental, que se recalcula con reglas (sin IA). */
+function firmaPapeles(p: PerfilEmpresa | null | undefined) {
+  return JSON.stringify(completarDocumentacion(p?.documentacion ?? []).map((d) => `${d.tipo}|${d.nombre}|${d.estado}|${d.vencimiento ?? ''}`).sort());
 }
 
 /**
@@ -49,6 +54,7 @@ function firmaMatching(p: PerfilEmpresa) {
  */
 export async function guardarPerfil(empresaId: string, perfil: PerfilEmpresa, { completo }: { completo: boolean }) {
   const ahora = new Date();
+  let cambiaronPapeles = false;
 
   await db.transaction(async (tx) => {
     const [actual] = await tx
@@ -62,6 +68,7 @@ export async function guardarPerfil(empresaId: string, perfil: PerfilEmpresa, { 
       // Al terminar el onboarding siempre: el dashboard muestra "Buscando…" mientras el perfil sea reciente.
       (completo && actual.estadoOnboarding !== 'completo') ||
       firmaMatching(actual.perfilJson) !== firmaMatching(perfil);
+    cambiaronPapeles = firmaPapeles(actual?.perfilJson) !== firmaPapeles(perfil);
 
     await tx
       .update(empresas)
@@ -123,6 +130,10 @@ export async function guardarPerfil(empresaId: string, perfil: PerfilEmpresa, { 
     }
   });
 
+  // Papeles nuevos (ej. marcó el RUPE como vigente en Cuenta): el badge y la confianza se actualizan sin esperar al matching.
+  if (cambiaronPapeles) {
+    after(() => recalcularGapsEmpresa(empresaId).catch((error) => console.warn('[papeles] no se pudieron recalcular los gaps', error)));
+  }
   if (completo) await dispararMatching();
 }
 

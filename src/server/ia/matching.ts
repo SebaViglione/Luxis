@@ -63,20 +63,18 @@ export function calcularConfianza(c: { nivel: Nivel; fueraDeZona: boolean; volum
 
 export interface PerfilParaMatch {
   empresaId: string; nombre: string; departamento: string | null; zonas: string[]; capacidad: string | null;
-  productos: string[]; documentos: string[]; perfilActualizadoEn: Date | null;
+  productos: string[]; perfilActualizadoEn: Date | null;
 }
 
 export async function cargarPerfil(empresaId: string): Promise<PerfilParaMatch | null> {
-  const [[e], prods, docs] = await Promise.all([
+  const [[e], prods] = await Promise.all([
     db.select().from(schema.empresas).where(eq(schema.empresas.id, empresaId)),
     db.select().from(schema.empresaProductos).where(eq(schema.empresaProductos.empresaId, empresaId)),
-    db.select().from(schema.empresaDocumentos).where(eq(schema.empresaDocumentos.empresaId, empresaId)),
   ]);
   if (!e) return null;
   return {
     empresaId, nombre: e.nombre, departamento: e.departamento, zonas: e.zonasEntrega ?? [], capacidad: e.capacidadNotas,
     productos: prods.map((p) => `${p.nombre}${p.unidad ? ` (${p.unidad})` : ''}`),
-    documentos: docs.map((d) => `${d.tipo} ${d.nombre}: ${d.estado}`),
     perfilActualizadoEn: e.perfilActualizadoEn,
   };
 }
@@ -103,12 +101,12 @@ Qué piden según el pliego: ${a?.quePiden ?? 'sin pliego leído'}`;
   return { texto, totalItems: items.length, aCiegas: items.length === 0 && !a };
 }
 
+// Los papeles no van acá: los evalúa el gap documental y descuentan la confianza al leerla (AJUSTE_DOCUMENTAL).
 function textoPerfil(p: PerfilParaMatch) {
   return `${p.nombre} (${p.departamento ?? 'departamento no indicado'})
 Vende: ${p.productos.join('; ') || 'sin productos cargados'}
 Entrega en: ${p.zonas.join(', ') || 'no indicado'}
-Capacidad: ${p.capacidad ?? 'no indicada'}
-Documentación: ${p.documentos.join('; ') || 'no indicada'}`;
+Capacidad: ${p.capacidad ?? 'no indicada'}`;
 }
 
 /** Evalúa una licitación para una empresa sin guardar nada. */
